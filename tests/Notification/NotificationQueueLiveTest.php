@@ -7,6 +7,7 @@ use Framework\Notification\Notification;
 use Framework\Notification\NotificationQueue;
 use Framework\Notification\NotificationResult;
 use Framework\Notification\Schema\NotificationQueueRequest;
+use Framework\System\NotificationProvider;
 
 use Tests\Notification\Fixture\TestNotificationSender;
 use Tests\LiveTestCase;
@@ -38,6 +39,7 @@ class NotificationQueueLiveTest extends LiveTestCase {
     protected function tearDown(): void {
         $this->setConfig("NOTIFICATION_ACTIVE", false);
         $this->setConfig("NOTIFICATION_LIMIT", 0);
+        $this->setConfig("NOTIFICATION_PROVIDER", "");
         Notification::setSender();
         TestNotificationSender::reset();
     }
@@ -237,6 +239,46 @@ class NotificationQueueLiveTest extends LiveTestCase {
         $this->assertSame(NotificationResult::Sent, $notification->notificationResult);
         $this->assertSame("the-external-id", $notification->externalID);
         $this->assertSame("A title", TestNotificationSender::getLast()["title"]);
+    }
+
+    public function testOnlyTheDevicesOfTheProviderOfTheConfigArePushedTo(): void {
+        $this->setConfig("NOTIFICATION_ACTIVE", true);
+        $this->setConfig("NOTIFICATION_PROVIDER", "OneSignal");
+        Notification::setSender(TestNotificationSender::class);
+        Device::add(self::CredentialID, "a-player-id");
+        Device::add(self::CredentialID, "a-token", NotificationProvider::Firebase);
+        $notificationQueueID = $this->add();
+
+        NotificationQueue::sendAll();
+
+        $this->assertSame(1, TestNotificationSender::getCount());
+        $this->assertSame([ "a-player-id" ], TestNotificationSender::getLast()["playerIDs"]);
+
+        $notification = NotificationQueue::getByID($notificationQueueID);
+        $this->assertSame([ "a-player-id" ], $notification->playerIDs->toStrings());
+    }
+
+    public function testTheBadgeIsTheUnreadOfTheCredential(): void {
+        $this->setConfig("NOTIFICATION_ACTIVE", true);
+        Notification::setSender(TestNotificationSender::class);
+        Device::add(self::CredentialID, "a-player-id");
+        Device::add(self::OtherID, "another-player");
+
+        // Two unread and one read, which is pushed just the same but
+        // not counted, and one of somebody else
+        $this->add();
+        $this->add();
+        NotificationQueue::markAsRead($this->add());
+        $this->add(self::OtherID);
+
+        NotificationQueue::sendAll();
+
+        $badges = [];
+        foreach (TestNotificationSender::getAll() as $push) {
+            $badges[] = $push["badge"];
+        }
+        sort($badges);
+        $this->assertSame([ 1, 2, 2, 2 ], $badges);
     }
 
     public function testOneWithNoProviderSaysSo(): void {

@@ -2,13 +2,16 @@
 namespace Tests\Auth;
 
 use Framework\Auth\Device;
+use Framework\System\NotificationProvider;
 
 use Tests\LiveTestCase;
+use Tests\TestHelpers;
 
 /**
  * The Devices a Credential is reachable on, which a push is sent to
  */
 class DeviceLiveTest extends LiveTestCase {
+    use TestHelpers;
 
     private const CredentialID = 900001;
     private const OtherID      = 900002;
@@ -20,11 +23,15 @@ class DeviceLiveTest extends LiveTestCase {
         parent::setUp();
         $this->migrateOnce();
 
-        foreach ([ self::CredentialID, self::OtherID ] as $credentialID) {
-            foreach ([ self::PlayerID, self::OtherPlayer ] as $playerID) {
-                Device::remove($credentialID, $playerID);
-            }
+        // Removing by the credential only reaches the devices of the provider of
+        // the config, so what a test left of another one would stay behind
+        foreach ([ self::PlayerID, self::OtherPlayer ] as $playerID) {
+            Device::removeByPlayer($playerID);
         }
+    }
+
+    protected function tearDown(): void {
+        $this->setConfig("NOTIFICATION_PROVIDER", "");
     }
 
 
@@ -91,6 +98,70 @@ class DeviceLiveTest extends LiveTestCase {
         sort($result);
 
         $this->assertSame([ self::PlayerID, self::OtherPlayer ], $result);
+    }
+
+    public function testTheDevicesOfAnotherProviderAreNotReached(): void {
+        // The provider of the config is what a push goes through, so the
+        // devices of the one it replaced are kept but not answered
+        $this->setConfig("NOTIFICATION_PROVIDER", "Firebase");
+        Device::add(self::CredentialID, self::PlayerID, NotificationProvider::OneSignal);
+        Device::add(self::CredentialID, self::OtherPlayer, NotificationProvider::OneSignal);
+
+        $this->assertSame([], Device::getAllForCredential(self::CredentialID));
+        $this->assertFalse(Device::has(self::CredentialID));
+
+        $result = Device::getAllForCredential(self::CredentialID, NotificationProvider::OneSignal);
+        sort($result);
+        $this->assertSame([ self::PlayerID, self::OtherPlayer ], $result);
+        $this->assertTrue(Device::has(self::CredentialID, NotificationProvider::OneSignal));
+    }
+
+    public function testWithNoProviderEveryDeviceIsRead(): void {
+        // None asks for no provider rather than for the ones of none, so with
+        // the config naming none, what any of them left behind is read as well
+        Device::add(self::CredentialID, self::PlayerID);
+        Device::add(self::CredentialID, self::OtherPlayer, NotificationProvider::OneSignal);
+
+        $result = Device::getAllForCredential(self::CredentialID);
+        sort($result);
+        $this->assertSame([ self::PlayerID, self::OtherPlayer ], $result);
+        $this->assertTrue(Device::has(self::CredentialID));
+    }
+
+    public function testADeviceIsOfTheProviderOfTheConfigUnlessToldOtherwise(): void {
+        $this->setConfig("NOTIFICATION_PROVIDER", "Firebase");
+        Device::add(self::CredentialID, self::PlayerID);
+        Device::add(self::CredentialID, self::OtherPlayer, NotificationProvider::OneSignal);
+
+        $this->assertSame([ self::PlayerID ], Device::getAllForCredential(self::CredentialID));
+        $this->assertSame(
+            [ self::OtherPlayer ],
+            Device::getAllForCredential(self::CredentialID, NotificationProvider::OneSignal),
+        );
+    }
+
+    public function testRemovingReachesOnlyTheDevicesOfTheProvider(): void {
+        $this->setConfig("NOTIFICATION_PROVIDER", "Firebase");
+        Device::add(self::CredentialID, self::PlayerID, NotificationProvider::OneSignal);
+
+        // Not of the provider of the config, so it is not the one removed
+        $this->assertFalse(Device::remove(self::CredentialID, self::PlayerID));
+        $this->assertTrue(Device::has(self::CredentialID, NotificationProvider::OneSignal));
+
+        $this->assertTrue(Device::remove(self::CredentialID, self::PlayerID, NotificationProvider::OneSignal));
+        $this->assertFalse(Device::has(self::CredentialID, NotificationProvider::OneSignal));
+    }
+
+    public function testRemovingAPlayerTakesItOffEveryCredential(): void {
+        Device::add(self::CredentialID, self::PlayerID);
+        Device::add(self::CredentialID, self::OtherPlayer);
+        Device::add(self::OtherID, self::PlayerID);
+
+        $this->assertTrue(Device::removeByPlayer(self::PlayerID));
+        $this->assertFalse(Device::removeByPlayer(self::PlayerID));
+
+        $this->assertSame([ self::OtherPlayer ], Device::getAllForCredential(self::CredentialID));
+        $this->assertFalse(Device::has(self::OtherID));
     }
 
     public function testAskingForNoCredentialFindsNothing(): void {

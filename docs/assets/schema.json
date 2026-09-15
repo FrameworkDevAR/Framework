@@ -146,6 +146,10 @@
                 "isPrimary": true
             },
             {
+                "name": "provider",
+                "type": "enum"
+            },
+            {
                 "name": "modifiedTime",
                 "type": "date"
             }

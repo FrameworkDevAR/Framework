@@ -18,6 +18,7 @@ use Framework\Notification\NotificationSender;
  *   dataType:  string,
  *   dataID:    int,
  *   playerIDs: list<string>,
+ *   badge:     int,
  * }
  */
 class TestNotificationSender implements NotificationSender {
@@ -56,7 +57,7 @@ class TestNotificationSender implements NotificationSender {
         string $dataType,
         int $dataID,
     ): string {
-        return self::keep($title, $message, $url, $icon, $dataType, $dataID, []);
+        return self::keep($title, $message, $url, $icon, $dataType, $dataID, [], 0);
     }
 
     /**
@@ -68,6 +69,7 @@ class TestNotificationSender implements NotificationSender {
      * @param string       $dataType
      * @param int          $dataID
      * @param list<string> $playerIDs
+     * @param int          $badge     Optional.
      * @return string
      */
     #[\Override]
@@ -79,8 +81,9 @@ class TestNotificationSender implements NotificationSender {
         string $dataType,
         int $dataID,
         array $playerIDs,
+        int $badge = 0,
     ): string {
-        return self::keep($title, $message, $url, $icon, $dataType, $dataID, $playerIDs);
+        return self::keep($title, $message, $url, $icon, $dataType, $dataID, $playerIDs, $badge);
     }
 
     /**
@@ -92,6 +95,7 @@ class TestNotificationSender implements NotificationSender {
      * @param string       $dataType
      * @param int          $dataID
      * @param list<string> $playerIDs
+     * @param int          $badge
      * @return string
      */
     private static function keep(
@@ -102,6 +106,7 @@ class TestNotificationSender implements NotificationSender {
         string $dataType,
         int $dataID,
         array $playerIDs,
+        int $badge,
     ): string {
         self::$notifications[] = [
             "title"     => $title,
@@ -111,6 +116,7 @@ class TestNotificationSender implements NotificationSender {
             "dataType"  => $dataType,
             "dataID"    => $dataID,
             "playerIDs" => $playerIDs,
+            "badge"     => $badge,
         ];
 
         // A refused push was handed over just the same, so it is kept

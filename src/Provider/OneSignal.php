@@ -35,7 +35,7 @@ class OneSignal implements NotificationSender {
         string $dataType,
         int $dataID,
     ): string {
-        return self::send($title, $message, $url, $icon, $dataType, $dataID, [
+        return self::send($title, $message, $url, $icon, $dataType, $dataID, 0, [
             "included_segments" => [ "All" ],
         ]);
     }
@@ -49,6 +49,7 @@ class OneSignal implements NotificationSender {
      * @param string       $dataType
      * @param int          $dataID
      * @param list<string> $playerIDs
+     * @param int          $badge     Optional.
      * @return string
      */
     #[\Override]
@@ -60,6 +61,7 @@ class OneSignal implements NotificationSender {
         string $dataType,
         int $dataID,
         array $playerIDs,
+        int $badge = 0,
     ): string {
         $params = [
             "include_subscription_ids" => $playerIDs,
@@ -72,7 +74,7 @@ class OneSignal implements NotificationSender {
             ];
         }
 
-        return self::send($title, $message, $url, $icon, $dataType, $dataID, $params);
+        return self::send($title, $message, $url, $icon, $dataType, $dataID, $badge, $params);
     }
 
     /**
@@ -83,6 +85,7 @@ class OneSignal implements NotificationSender {
      * @param string              $icon
      * @param string              $dataType
      * @param int                 $dataID
+     * @param int                 $badge
      * @param array<string,mixed> $params
      * @return string
      */
@@ -93,6 +96,7 @@ class OneSignal implements NotificationSender {
         string $icon,
         string $dataType,
         int $dataID,
+        int $badge,
         array $params,
     ): string {
         $data = [
@@ -102,8 +106,9 @@ class OneSignal implements NotificationSender {
             "contents"       => [ "en" => $message ],
             "url"            => $url,
             "large_icon"     => $icon,
-            "ios_badgeType"  => "Increase",
-            "ios_badgeCount" => 1,
+            // Without a badge the device counts up on its own
+            "ios_badgeType"  => $badge > 0 ? "SetTo" : "Increase",
+            "ios_badgeCount" => $badge > 0 ? $badge : 1,
             "data"           => [
                 "type"   => $dataType,
                 "dataID" => $dataID,

@@ -4,6 +4,7 @@ namespace Framework\Auth\Model;
 use Framework\Database\Model\Model;
 use Framework\Database\Model\Field;
 use Framework\Database\Model\Requested;
+use Framework\System\NotificationProvider;
 
 /**
  * The Credential Device Model
@@ -23,4 +24,7 @@ class CredentialDeviceModel {
 
     #[Field(isPrimary: true), Requested]
     public string $playerID = "";
+
+    #[Field, Requested]
+    public NotificationProvider $provider = NotificationProvider::None;
 }

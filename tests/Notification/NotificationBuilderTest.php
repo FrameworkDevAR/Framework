@@ -93,7 +93,7 @@ class NotificationBuilderTest extends TestCase {
         $names  = Arrays::createArray($result["providers"], "name");
 
         // Every Provider that can push is found, named after its class
-        $this->assertSame([ "OneSignal" ], $names);
+        $this->assertSame([ "Firebase", "OneSignal" ], $names);
         $this->assertSame(count($names), $result["total"]);
     }
 

@@ -41,14 +41,15 @@
 
 <div class="eyebrow">Subsystems</div>
 <h1>Notifications</h1>
-<p class="lead">Push notifications through OneSignal, backed by a per-user queue that doubles as an in-app inbox —
+<p class="lead">Push notifications through Firebase or OneSignal, backed by a per-user queue that doubles as an in-app inbox —
 with unread counts, read state and localized copy.</p>
 
 <h2 id="sending">Sending</h2>
 <p>The <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Notification/Notification.php" target="_blank" rel="noopener noreferrer"><code>Notification</code></a> class pushes to devices directly. <code>sendToAll()</code> broadcasts to every
 registered device, while <code>sendToSome()</code> targets specific device <em>player ids</em>. Each carries a
-title, a message, a <code>url</code> to open, and a <code>dataType</code> / <code>dataID</code> pair the app can
-route on. Each answers with a <a href="#result"><code>NotificationResult</code></a> and the id the provider
+title, a message, a <code>url</code> to open, a <code>dataType</code> / <code>dataID</code> pair the app can
+route on. A send to some devices also takes an optional <code>badge</code>, the number the app icon shows,
+which a broadcast cannot, as no one number is right for everyone. Each answers with a <a href="#result"><code>NotificationResult</code></a> and the id the provider
 gave the push, which is empty when it did not go out:</p>
 <pre><code class="language-php">use Framework\Notification\Notification;
 
@@ -69,6 +70,7 @@ gave the push, which is empty when it did not go out:</p>
     dataType: &quot;order&quot;,
     dataID:   7,
     playerIDs: [ &quot;a1b2…&quot;, &quot;c3d4…&quot; ],
+    badge:    3,
 );</code></pre>
 
 <h2 id="result">Send results</h2>
@@ -105,6 +107,22 @@ to the matching provider, and answers <a href="#result"><code>Sent</code></a> wi
 or <a href="#result"><code>ProviderError</code></a> with an empty one if it would not take it.</p>
 <p>There is no provider to fall back on. A send with <code>NOTIFICATION_PROVIDER</code> unset returns
 <a href="#result"><code>NoProvider</code></a>, so a setup that was never finished says so.</p>
+<p>Each <a href="credentials.html#devices">device</a> records the provider that reaches it, and a push only goes
+to the devices of the provider of the config. So when one replaces another, the devices of the old one are kept
+rather than pushed to through the new one, and are there should the config go back.</p>
+
+<h3 id="firebase">Firebase</h3>
+<p>Pushes are delivered through <a href="https://firebase.google.com/docs/cloud-messaging" target="_blank" rel="noopener noreferrer">Firebase Cloud Messaging</a>,
+addressed by the <em>registration token</em> that each <a href="../subsystems/auth.html#access">device</a> registers when
+a user signs in. A push to everyone goes to the <code>all</code> topic, which every device subscribes to on its
+own, and a token Firebase reports as no longer registered takes its device off the credential. The keys are the
+<code>project_id</code>, <code>client_email</code> and <code>private_key</code> of the service account file the
+Firebase console gives you, pasted as they are:</p>
+<figure class="code"><figcaption class="code-tab">.env</figcaption><pre><code class="language-bash">NOTIFICATION_ACTIVE   = true
+NOTIFICATION_PROVIDER = &quot;Firebase&quot;
+FIREBASE_PROJECT_ID   = &quot;…&quot;
+FIREBASE_CLIENT_EMAIL = &quot;…&quot;
+FIREBASE_PRIVATE_KEY  = &quot;-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----\n&quot;</code></pre></figure>
 
 <h3 id="onesignal">OneSignal</h3>
 <p>Pushes are delivered through <a href="https://onesignal.com" target="_blank" rel="noopener noreferrer">OneSignal</a>&#39;s
@@ -123,16 +141,16 @@ subscription id.</p>
 <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Notification/NotificationSender.php" target="_blank" rel="noopener noreferrer"><code>NotificationSender</code></a>, and the <a href="../core/discovery.html">build</a> finds
 every one of them — in the framework and in your app — and writes the <code>NotificationProvider</code> enum from
 their names, the same way <a href="emails.html#senders">email</a> does. The class name is the case, so a
-<code>Firebase</code> class is <code>NOTIFICATION_PROVIDER = &quot;Firebase&quot;</code>, and a <code>Name</code>
+<code>Pushy</code> class is <code>NOTIFICATION_PROVIDER = &quot;Pushy&quot;</code>, and a <code>Name</code>
 constant on the class overrides that.</p>
 <p>Its keys are yours to name: add them to the <a href="../introduction/configuration.html">.env</a> and the
 build turns each into a typed <code>Config</code> getter. Both sends answer with the id the provider gave the
 push, or an empty string when it would not take it:</p>
-<figure class="code"><figcaption class="code-tab">src/Provider/Firebase.php</figcaption><pre><code class="language-php">namespace MyApp\Provider;
+<figure class="code"><figcaption class="code-tab">src/Provider/Pushy.php</figcaption><pre><code class="language-php">namespace MyApp\Provider;
 
 use Framework\Notification\NotificationSender;
 
-class Firebase implements NotificationSender {
+class Pushy implements NotificationSender {
 
     public static function sendToAll(
         string $title,
@@ -153,6 +171,7 @@ class Firebase implements NotificationSender {
         string $dataType,
         int $dataID,
         array $playerIDs,
+        int $badge = 0,
     ): string {
         return &quot;the-id-it-gave-back&quot;;
     }
@@ -185,7 +204,8 @@ NotificationQueue::add(
     dataType:     &quot;order&quot;,
     dataID:       7,
 );</code></pre>
-<p>A scheduled <code>sendAll()</code> then looks up each user&#39;s devices and pushes the pending rows, while the
+<p>A scheduled <code>sendAll()</code> then looks up each user&#39;s devices and pushes the pending rows, each with
+the user&#39;s unread amount as the badge, while the
 rest of the API drives an inbox UI:</p>
 <table class="api-table">
     <thead><tr><th>Method</th><th>Does</th></tr></thead>

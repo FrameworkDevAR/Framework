@@ -72,6 +72,7 @@ class Notification {
      * @param string       $dataType
      * @param int          $dataID
      * @param list<string> $playerIDs
+     * @param int          $badge     Optional.
      * @return array{NotificationResult,string}
      */
     public static function sendToSome(
@@ -81,6 +82,7 @@ class Notification {
         string $dataType,
         int $dataID,
         array $playerIDs,
+        int $badge = 0,
     ): array {
         if (!Config::isNotificationActive()) {
             return [ NotificationResult::InactiveSend, "" ];
@@ -102,6 +104,7 @@ class Notification {
             $dataType,
             $dataID,
             $playerIDs,
+            $badge,
         );
         return self::getResult($externalID);
     }

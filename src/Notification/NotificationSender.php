@@ -10,12 +10,14 @@ namespace Framework\Notification;
  * NOTIFICATION_PROVIDER takes, unless the class gives itself another with a
  * Name constant.
  *
- *     class Firebase implements NotificationSender {
- *         public const Name = "FCM";
+ *     class Pushy implements NotificationSender {
+ *         public const Name = "PushyMe";
  *     }
  *
  * Both sends answer with the ID the Provider gave the notification, or null
- * when it would not take it.
+ * when it would not take it. The badge is the number the app icon shows, and
+ * none means the Provider does what it does on its own. Everyone at once has
+ * no number that is right for each of them, so only some devices take one.
  */
 interface NotificationSender {
 
@@ -47,6 +49,7 @@ interface NotificationSender {
      * @param string       $dataType
      * @param int          $dataID
      * @param list<string> $playerIDs
+     * @param int          $badge     Optional.
      * @return string
      */
     public static function sendToSome(
@@ -57,5 +60,6 @@ interface NotificationSender {
         string $dataType,
         int $dataID,
         array $playerIDs,
+        int $badge = 0,
     ): string;
 }

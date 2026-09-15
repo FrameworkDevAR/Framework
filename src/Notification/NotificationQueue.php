@@ -232,6 +232,7 @@ class NotificationQueue extends NotificationQueueSchema {
 
         foreach ($list as $elem) {
             $playerIDs = Device::getAllForCredential($elem->credentialID);
+            $badge     = self::getUnreadAmount($elem->credentialID, $elem->currentUser);
 
             [ $notificationResult, $externalID ] = Notification::sendToSome(
                 $elem->title,
@@ -240,6 +241,7 @@ class NotificationQueue extends NotificationQueueSchema {
                 $elem->dataType,
                 $elem->dataID,
                 $playerIDs,
+                $badge,
             );
 
             self::editEntity(

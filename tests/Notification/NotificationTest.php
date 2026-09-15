@@ -48,10 +48,11 @@ class NotificationTest extends TestCase {
 
     /**
      * Sends to the one device of the tests
-     * @param string $url Optional.
+     * @param string $url   Optional.
+     * @param int    $badge Optional.
      * @return array{NotificationResult,string}
      */
-    private function send(string $url = "orders/7"): array {
+    private function send(string $url = "orders/7", int $badge = 0): array {
         return Notification::sendToSome(
             "A title",
             "A message",
@@ -59,6 +60,7 @@ class NotificationTest extends TestCase {
             "order",
             7,
             [ self::PlayerID ],
+            $badge,
         );
     }
 
@@ -104,6 +106,15 @@ class NotificationTest extends TestCase {
         $this->assertSame("order", $push["dataType"]);
         $this->assertSame(7, $push["dataID"]);
         $this->assertSame([ self::PlayerID ], $push["playerIDs"]);
+        $this->assertSame(0, $push["badge"]);
+    }
+
+    public function testTheBadgeIsHandedToTheProvider(): void {
+        $this->sendForReal();
+
+        $this->send(badge: 3);
+
+        $this->assertSame(3, TestNotificationSender::getLast()["badge"]);
     }
 
     /**

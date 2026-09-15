@@ -4,6 +4,7 @@ namespace Framework\Notification;
 use Framework\Analysis\Attr\NotTested;
 use Framework\Discovery\Discovery;
 use Framework\Discovery\Package;
+use Framework\Discovery\Attr\Priority;
 use Framework\Discovery\Type\DiscoveryBuilder;
 use Framework\Builder\Builder;
 use Framework\Intl\IntlConfig;
@@ -30,6 +31,7 @@ use Framework\Utils\Strings;
  *   total:     int,
  * }
  */
+#[Priority(Priority::High)]
 class NotificationBuilder implements DiscoveryBuilder {
 
     /**
