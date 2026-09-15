@@ -7,11 +7,13 @@ use Framework\Database\Model\FieldType;
 use Framework\Database\Model\Expression;
 use Framework\Database\Model\Count;
 use Framework\Database\Model\Relation;
+use Framework\Database\Query\Exp;
 use Framework\Database\Query\SelectionBuilder;
 use Framework\Database\Query\Query;
 use Framework\Utils\Dictionary;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 use ReflectionMethod;
 use ReflectionProperty;
@@ -44,6 +46,42 @@ class SelectionTest extends TestCase {
                 ]),
             ],
         );
+    }
+
+    /**
+     * A model with a chain of relations, so a table can be needed on its own
+     * and to reach another one, beside one that nothing needs
+     * @return SchemaModel
+     */
+    private function joinModel(): SchemaModel {
+        return new SchemaModel(
+            name:       "Product",
+            mainFields: [
+                Field::create(name: "productID", type: FieldType::Number, dbName: "PRODUCT_ID", isID: true),
+                Field::create(name: "name", type: FieldType::String),
+            ],
+            relations:  [
+                Relation::create("Category", "", "categoryID", "Product", "categoryID", "", [
+                    Field::create(name: "title", dbName: "title", prefixName: "categoryTitle", type: FieldType::String),
+                ]),
+                Relation::create("CategoryType", "", "categoryTypeID", "Category", "categoryTypeID", "", [
+                    Field::create(name: "typeName", dbName: "typeName", prefixName: "categoryTypeName", type: FieldType::String),
+                ]),
+                Relation::create("Brand", "", "brandID", "Product", "brandID", "", [
+                    Field::create(name: "brandName", dbName: "brandName", prefixName: "brandName", type: FieldType::String),
+                ]),
+            ],
+        );
+    }
+
+    /**
+     * Returns the tables that were joined, in the order they were added
+     * @param SelectionBuilder $selection
+     * @return list<string>
+     */
+    private function joinedTables(SelectionBuilder $selection): array {
+        preg_match_all('/LEFT JOIN `(\w+)`/', $this->sql($selection), $matches);
+        return $matches[1];
     }
 
     /**
@@ -126,6 +164,78 @@ class SelectionTest extends TestCase {
         $selection->addJoins([ "INNER JOIN store ON (store.id = product.storeID)" ]);
 
         $this->assertStringContainsString("INNER JOIN store ON (store.id = product.storeID)", $this->sql($selection));
+    }
+
+    /**
+     * The conditions of a Query, and the tables that have to be joined for them
+     * @param callable     $build
+     * @param list<string> $expected
+     * @return void
+     */
+    #[DataProvider("providerUsedJoins")]
+    public function testUnusedJoinsAreLeftOut(callable $build, array $expected): void {
+        $selection = SelectionBuilder::create($this->joinModel(), $build());
+        $selection->addJoins(withSelects: false, onlyUsed: true);
+
+        $this->assertSame($expected, $this->joinedTables($selection));
+    }
+
+    /**
+     * A table is joined when a condition names it, when anything else in the
+     * statement names it, and when a table that is joined is reached through it
+     * @return array<string,array{callable,list<string>}>
+     */
+    public static function providerUsedJoins(): array {
+        return [
+            "nothing asked"           => [
+                fn() => Query::select("products"),
+                [],
+            ],
+            "a column of its own"     => [
+                fn() => Query::select("products")->where("name", "=", "Widget"),
+                [],
+            ],
+            "a column with its table" => [
+                fn() => Query::select("products")->where("category.title", "=", "Tools"),
+                [ "category" ],
+            ],
+            "a column on its own"     => [
+                fn() => Query::select("products")->where("title", "=", "Tools"),
+                [ "category" ],
+            ],
+            "an order by"             => [
+                fn() => Query::select("products")->orderBy("category.title", isASC: true),
+                [ "category" ],
+            ],
+            "a condition as an Exp"   => [
+                fn() => Query::select("products")->where(Exp::column("brand.brandName")->isNotNull()),
+                [ "brand" ],
+            ],
+            "one reached through another" => [
+                fn() => Query::select("products")->where("category_type.typeName", "=", "Tool"),
+                [ "category", "category_type" ],
+            ],
+        ];
+    }
+
+    public function testATableNamedInASelectIsJoined(): void {
+        $selection = SelectionBuilder::create($this->joinModel(), Query::select("products"));
+        // The selects are added before the joins, so a table named in one of them
+        // is in the statement by the time the joins are worked out
+        $selection->addSelects("brand.brandName");
+        $selection->addJoins(withSelects: false, onlyUsed: true);
+
+        $this->assertSame([ "brand" ], $this->joinedTables($selection));
+    }
+
+    public function testTheExtraJoinsAreAlwaysAdded(): void {
+        $selection = SelectionBuilder::create($this->joinModel(), Query::select("products"));
+        $selection->addJoins([ "INNER JOIN store ON (store.id = product.storeID)" ], onlyUsed: true);
+
+        // None of the relations is asked about, so only the one given is there
+        $sql = $this->sql($selection);
+        $this->assertStringContainsString("INNER JOIN store ON (store.id = product.storeID)", $sql);
+        $this->assertStringNotContainsString("LEFT JOIN", $sql);
     }
 
     public function testACountBecomesASubQuery(): void {

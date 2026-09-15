@@ -167,7 +167,7 @@ class Schema {
         $query   = self::generateQuery($query, $withDeleted);
         $request = SelectionBuilder::create(static::getModel(), $query)
             ->addSelects("COUNT(*) AS cnt")
-            ->addJoins(withSelects: false)
+            ->addJoins(withSelects: false, onlyUsed: true)
             ->request()
             ->getResult();
 

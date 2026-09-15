@@ -3,11 +3,13 @@ namespace Framework\Database\Query;
 
 use Framework\Database\SchemaModel;
 use Framework\Database\Model\FieldType;
+use Framework\Database\Model\Relation;
 use Framework\Database\Query\Query;
 use Framework\Database\Query\QueryLike;
 use Framework\System\Config;
 use Framework\Utils\Arrays;
 use Framework\Utils\Dictionary;
+use Framework\Utils\Strings;
 
 /**
  * The Selection Builder
@@ -107,10 +109,16 @@ class SelectionBuilder {
      * Adds the Joins
      * @param list<string> $extraJoins  Optional.
      * @param bool         $withSelects Optional.
+     * @param bool         $onlyUsed    Optional.
      * @return SelectionBuilder
      */
-    public function addJoins(array $extraJoins = [], bool $withSelects = true): SelectionBuilder {
-        foreach ($this->schemaModel->relations as $relation) {
+    public function addJoins(
+        array $extraJoins = [],
+        bool $withSelects = true,
+        bool $onlyUsed = false,
+    ): SelectionBuilder {
+        $relations = $onlyUsed ? $this->getUsedRelations() : $this->schemaModel->relations;
+        foreach ($relations as $relation) {
             $this->builder->addJoin($relation->getExpression());
 
             if ($withSelects) {
@@ -127,6 +135,55 @@ class SelectionBuilder {
             $this->builder->addJoin($extraJoin);
         }
         return $this;
+    }
+
+    /**
+     * Returns the Relations the conditions use, with the ones those are joined through
+     * @return list<Relation>
+     */
+    private function getUsedRelations(): array {
+        // A condition can name a column on its own, and only the table keys put it on
+        // the table that owns it, so they have to be set before anything is read. A
+        // table that is named nowhere in the statement can then be left out without
+        // changing what the query returns
+        $this->setTableKeys();
+        $sql    = $this->builder->toSQL();
+        $tables = [];
+        foreach ($this->builder->getWhereColumns() as $column) {
+            if (Strings::contains($column, ".")) {
+                $tables[] = Strings::substringBefore($column, ".");
+            }
+        }
+
+        $result = [];
+        $added  = true;
+        while ($added) {
+            $added = false;
+            foreach ($this->schemaModel->relations as $relation) {
+                $tableName = $relation->getDbTableName();
+                if (isset($result[$tableName])) {
+                    continue;
+                }
+
+                $isUsed = Arrays::contains($tables, $tableName)
+                    || Strings::contains($sql, "$tableName.");
+                foreach ($result as $usedRelation) {
+                    if (SchemaModel::getDbTableName($usedRelation->ownerModelName) === $tableName) {
+                        $isUsed = true;
+                    }
+                }
+                if ($isUsed) {
+                    $result[$tableName] = $relation;
+                    $added              = true;
+                }
+            }
+        }
+
+        // The Joins keep the order of the Model, so a table is joined after the one it needs
+        return array_values(array_filter(
+            $this->schemaModel->relations,
+            fn (Relation $relation) => isset($result[$relation->getDbTableName()]),
+        ));
     }
 
     /**
