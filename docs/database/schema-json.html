@@ -162,6 +162,10 @@ foreach ($schema as $tableName =&gt; $table) {
 <p>Because it is written from the same <a href="models.html">models</a> the
 <a href="migrations.html">migrations</a> read, it never drifts from the database the app actually builds.</p>
 
+<h3 id="der">Drawing it with DER</h3>
+<p><a href="der.html">DER</a> reads this file and draws the database as a diagram, with a link for each
+<code>foreigns</code> entry.</p>
+
 <h2 id="framework">The framework&#39;s own tables</h2>
 <p>Every app inherits the tables the framework declares, for the credentials, the settings, the email and
 notification queues, and the logs. They are written in the shape above, and read back here from that very file —
@@ -170,7 +174,7 @@ so what follows is the schema itself, not a copy of it that could fall behind:</
     <p class="schema-empty">Reading <a class="src-link" href="../assets/schema.json" target="_blank" rel="noopener noreferrer"><code>schema.json</code></a>…</p>
 </div>
 
-<div class="page-nav"><a href="schema.html"><span class="dir">← Previous</span><span class="ttl">Generated Schema</span></a><a class="next" href="query.html"><span class="dir">Next →</span><span class="ttl">Query builder</span></a></div>
+<div class="page-nav"><a href="schema.html"><span class="dir">← Previous</span><span class="ttl">Generated Schema</span></a><a class="next" href="der.html"><span class="dir">Next →</span><span class="ttl">DER</span></a></div>
                 </article>
                 <nav class="toc" aria-label="On this page">
                     <p class="toc-title">On this page</p>

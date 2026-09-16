@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DER — Framework</title>
+    <meta name="description" content="DER draws the Schema JSON of an app as a diagram of its database, in the browser.">
+    <meta name="theme-color" content="#2f6fd0">
+    <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+    <link rel="mask-icon" href="../assets/favicon.svg" color="#2f6fd0">
+    <link rel="apple-touch-icon" href="../assets/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Serif:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="topbar">
+        <span class="brand-mark">Framework</span><a class="version" target="_blank" rel="noopener noreferrer"></a>
+        <button class="menu-toggle" aria-label="Toggle navigation">☰</button>
+    </div>
+
+    <div class="layout">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-head">
+                <div class="brand-row">
+                    <a class="brand" href="../index.html"><img class="brand-logo" src="../assets/favicon.svg" alt="" width="34" height="34">Framework</a><a class="version" id="docsVersion" target="_blank" rel="noopener noreferrer"></a>
+                </div>
+                <button class="search-open" id="searchOpen" type="button" data-search>
+                    <span>Search the docs…</span>
+                    <kbd>⌘K</kbd>
+                </button>
+            </div>
+            <nav id="docsNav"></nav>
+        </aside>
+
+        <div class="content">
+            <div class="doc">
+                <article class="doc-main prose">
+<div class="eyebrow">Database</div>
+                    <h1>DER</h1>
+                    <p class="lead">DER turns the database of an app into a diagram you can explore: every table
+                    on a board, every foreign key drawn as a line between the two tables it joins.</p>
+
+<p>It reads the <a href="schema-json.html">Schema JSON</a> the build writes and runs entirely in the browser.
+<a href="https://der.frameworkphp.com.ar/" target="_blank" rel="noopener noreferrer">Open DER</a>, or read its
+source on <a href="https://github.com/FrameworkDevAR/DER" target="_blank" rel="noopener noreferrer">GitHub</a>.</p>
+
+<h2 id="schema">Load a database</h2>
+<p>Set <a href="schema-json.html#writing"><code>DB_SCHEMA_FILE</code></a> in the app and the build writes the
+file DER reads. Then add it to DER in either of two ways:</p>
+<ul>
+    <li><b>Upload the file.</b> The schema is kept as it was when you uploaded it.</li>
+    <li><b>Give the URL it is published at.</b> The schema is fetched again each time you open it, so the diagram
+    keeps up with the app as its models change.</li>
+</ul>
+<p>You can keep as many databases as you like and switch between them from the title of the panel. To see what
+DER does before you have a schema of your own, <b>Try the Framework</b> on the first screen loads the tables the
+framework itself declares.</p>
+
+<h2 id="board">Build the board</h2>
+<p>The panel on the left lists every table of the database. Click one and it appears on the board; click
+<b>Add all</b> and every table lands at once, already laid out in clusters. When the list is long, type in the
+filter at the top to narrow it by the name of a table or a group.</p>
+<p>Once a table is on the board you can drag it anywhere, and the links follow. A table shows its first 15 fields
+and keeps the rest behind a button, so a wide table does not take over the board. The
+<a href="#settings">Settings</a> let you show every field, only the keys, or the keys first.</p>
+<p>When the board gets crowded, <b>Tidy</b> pushes the tables apart until nothing overlaps, moving each one as
+little as it can, so an arrangement you made stays yours. <b>Show the whole board</b> zooms out until every table
+is on screen at once, and the <a href="#settings">map in the corner</a> shows where you are on a board too big to
+see whole.</p>
+
+<h3 id="links">Read the links</h3>
+<p>Every entry in <a href="schema-json.html#shape"><code>foreigns</code></a> becomes a link, drawn from one column
+to the other. The ends of a link tell you how many rows meet there, in the usual crow&#39;s foot notation:</p>
+<table class="api-table">
+    <thead><tr><th>End</th><th>Means</th></tr></thead>
+    <tbody>
+        <tr><td>A bar</td><td>One row. The table the key points at always gets this end.</td></tr>
+        <tr><td>A crow&#39;s foot</td><td>Many rows. The table holding the key gets this end, unless that key is its whole primary key, in which case only one row can hold it.</td></tr>
+    </tbody>
+</table>
+<p>Click a table to see what it is connected to: its links light up in colour, the columns at both ends take the
+same colour, and every table it does not reach fades back. With
+<a href="#settings">Animate the links</a> on, the lit links run from the key towards the table it points at, so
+the direction of each relation is visible at a glance.</p>
+
+<h2 id="groups">Gather tables into groups</h2>
+<p>A group draws a box around the tables that belong together, and moves as one when you drag it. Select some
+tables and click <b>Create group</b>, or let <b>Group by prefix</b> do it for you: tables that share the first part
+of their name, like <code>credential_device</code> and <code>credential_reset</code>, are gathered under that
+prefix. Groups show up in the panel too, so a long list of tables folds into a short list of groups.</p>
+
+<h2 id="views">Keep more than one board</h2>
+<p>A view is a board of its own for the same database, with its own tables, groups, zoom and scroll. Use them to
+draw the database one part at a time: one view for the users and their credentials, another for the logs, another
+for everything. The strip at the bottom lists them, numbered, and a new view can start empty or as a copy of the
+one you are on.</p>
+
+<h2 id="settings">Change how it looks</h2>
+<p>The gear in the tools opens the Settings, which apply to every database you have loaded:</p>
+<table class="api-table">
+    <thead><tr><th>Setting</th><th>What you get</th></tr></thead>
+    <tbody>
+        <tr><td>Show the dots behind the board</td><td>A dotted grid behind the tables.</td></tr>
+        <tr><td>Snap a Table to the dots as it is dragged</td><td>Tables that line up with the grid when you drop them.</td></tr>
+        <tr><td>Push the board apart when a Table is added</td><td>Room made for each table you add, instead of it landing on another.</td></tr>
+        <tr><td>Show a map of the board in the corner</td><td>A small map of the whole board with the part on screen marked. Click anywhere on it to go there.</td></tr>
+        <tr><td>Show the table description</td><td>The <code>description</code> of each model under the name of its table.</td></tr>
+        <tr><td>Show the type of each field</td><td>The <a href="schema-json.html#types">type</a> written beside each field.</td></tr>
+        <tr><td>Show only the fields that are keys</td><td>Just the primary keys, the keys and the columns a link ends at, for a board about the relations rather than the columns.</td></tr>
+        <tr><td>Show the created, modified and status columns</td><td>The columns the model flags add, which are otherwise hidden to keep the tables short.</td></tr>
+        <tr><td>Put the keys before the other fields</td><td>The keys at the top of each table.</td></tr>
+        <tr><td>Show every field, with none kept back</td><td>No limit of 15 fields, however tall the table gets.</td></tr>
+        <tr><td>Draw the links straight rather than curved</td><td>Links with square corners instead of curves.</td></tr>
+        <tr><td>End the links in dots rather than in crow&#39;s feet</td><td>Plain dots at the <a href="#links">ends</a>, when you do not need to know how many rows meet.</td></tr>
+        <tr><td>Animate the links to show the direction</td><td>The links of the selected table running from the key to the table it points at.</td></tr>
+    </tbody>
+</table>
+<p>Light, dark or the system&#39;s choice is picked from the switch above the tools.</p>
+
+<h2 id="shortcuts">Work from the keyboard</h2>
+<p>Everything in the tools has a key, and the second tab of the Settings lists them all — <kbd>?</kbd> opens it.
+On Windows and Linux use <kbd>Ctrl</kbd> wherever this table says <kbd>⌘</kbd>:</p>
+<table class="api-table">
+    <thead><tr><th>Keys</th><th>What it does</th></tr></thead>
+    <tbody>
+        <tr><td><kbd>⌘</kbd> <kbd>Z</kbd></td><td>Undo the last change to the board.</td></tr>
+        <tr><td><kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>Z</kbd></td><td>Redo it.</td></tr>
+        <tr><td><kbd>⌘</kbd> <kbd>F</kbd></td><td>Jump to the filter and type a table name.</td></tr>
+        <tr><td><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd></td><td>While the filter has the caret, walk the list and open or close its rows. Otherwise, nudge the selected tables by a pixel — hold <kbd>⇧</kbd> for 10.</td></tr>
+        <tr><td><kbd>Enter</kbd></td><td>Select the row of the panel the arrows are on.</td></tr>
+        <tr><td><kbd>⌘</kbd> <kbd>B</kbd></td><td>Collapse the panel to give the board the whole window, or open it again.</td></tr>
+        <tr><td><kbd>⌘</kbd> <kbd>E</kbd></td><td>Show the whole board at once.</td></tr>
+        <tr><td><kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>E</kbd></td><td>Zoom in on the selected tables.</td></tr>
+        <tr><td><kbd>⌘</kbd> <kbd>D</kbd></td><td>Tidy the board.</td></tr>
+        <tr><td><kbd>⌘</kbd> <kbd>G</kbd></td><td>Create a group with the selected tables.</td></tr>
+        <tr><td><kbd>⌘</kbd> <kbd>⌫</kbd></td><td>Remove the selected tables from the board.</td></tr>
+        <tr><td><kbd>⌘</kbd> <kbd>+</kbd> / <kbd>−</kbd> / <kbd>0</kbd></td><td>Zoom in, zoom out, or back to 100%.</td></tr>
+        <tr><td><kbd>⌘</kbd> <kbd>1</kbd> – <kbd>9</kbd></td><td>Switch to the view with that number.</td></tr>
+        <tr><td><kbd>⌘</kbd> <kbd>,</kbd></td><td>Open the Settings.</td></tr>
+        <tr><td><kbd>Space</kbd></td><td>Hold it and drag to pan the board from anywhere, even from on top of a table.</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Close a menu or a dialog, empty the filter, or drop the selection, whichever comes first.</td></tr>
+    </tbody>
+</table>
+
+<h2 id="storage">Take it with you</h2>
+<p>Everything you do stays in your browser — the databases, and the boards, groups and views of each. Nothing is
+sent anywhere, and when you come back the board is exactly as you left it.</p>
+<p>To carry a database to another browser or another machine, <b>Export</b> it from the list of databases. The
+file holds the schema and every view you made of it, and <b>Import</b>, on the same list or on the first screen,
+brings it all back as a new database.</p>
+
+<div class="page-nav"><a href="schema-json.html"><span class="dir">← Previous</span><span class="ttl">Schema JSON</span></a><a class="next" href="query.html"><span class="dir">Next →</span><span class="ttl">Query builder</span></a></div>
+                </article>
+                <nav class="toc" aria-label="On this page">
+                    <p class="toc-title">On this page</p>
+                    <ul></ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"
+            data-autoloader-path="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/"></script>
+    <script src="../assets/version.js"></script>
+    <script src="../assets/nav.js"></script>
+    <script src="../assets/docs.js"></script>
+</body>
+</html>
