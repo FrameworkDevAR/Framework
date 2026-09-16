@@ -121,7 +121,8 @@ settings and internationalization tables the same way.</p>
 <p>Point the runner at your migrations folder in the main <a href="../introduction/config-files.html#migrations">config file</a>.
 When adopting migrations on a database that already has data, set the last migration that was applied by hand —
 everything up to and including it is then skipped:</p>
-<figure class="code"><figcaption class="code-tab">config/Migration.config.php</figcaption><pre><code class="language-php">use Framework\Database\Migration;
+<figure class="code"><figcaption class="code-tab">config/Migration.config.php</figcaption><pre><code class="language-php">use Framework\Database\Database;
+use Framework\Database\Migration\Migration;
 
 Migration::setPath(&quot;migrations&quot;);
 Migration::setLastApplied(&quot;2024_01_initial&quot;);</code></pre></figure>
@@ -144,11 +145,11 @@ sub-directories and named after the timestamp, so migrations from different bran
 └── 2026/
     └── 08/
         └── 2026-08-05-143022.php</code></pre>
-<p>Each file holds a class implementing <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Database/DataMigration.php" target="_blank" rel="noopener noreferrer"><code>DataMigration</code></a>: a <code>getTitle()</code> and a
+<p>Each file holds a class implementing <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Database/Migration/DataMigration.php" target="_blank" rel="noopener noreferrer"><code>DataMigration</code></a>: a <code>getTitle()</code> and a
 <code>migrate()</code> that receives the <a href="database.html#classes">Database</a>. The class name matches the
 timestamp so it is unique too — fill in the body with your changes:</p>
-<pre><code class="language-php">use Framework\Database\DataMigration;
-use Framework\Database\Database;
+<pre><code class="language-php">use Framework\Database\Database;
+use Framework\Database\Migration\DataMigration;
 
 class M20260805T143022 implements DataMigration {
     public static function getTitle(): string {
@@ -162,6 +163,40 @@ class M20260805T143022 implements DataMigration {
 <p>When <code>migrate</code> runs, each file is applied once and its name stored in the <code>Migrations</code>
 table. Pending files are found by comparing the folder against that table, so an applied migration is never run
 again — and <a href="#config">setLastApplied()</a> pre-marks everything up to a point when adopting the system.</p>
+
+<h2 id="post-deploy">A step for after the deploy</h2>
+<p>A deploy usually migrates the database first and swaps the code afterwards, so for a while the old code keeps
+writing to a schema that is already the new one. A migration that fills a new column from existing data fills
+what exists at that moment — the rows the old code writes in between are left empty, and the new code never
+goes back for them.</p>
+<p>A migration that needs to close that gap also implements <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Database/Migration/DeployMigration.php" target="_blank" rel="noopener noreferrer"><code>DeployMigration</code></a>,
+which adds a <code>postDeploy()</code> to the same file. The <code>migrate()</code> runs as before, and the
+second step runs once the code is live, with a command of its own:</p>
+<pre><code class="language-bash">./framework postDeploy</code></pre>
+<pre><code class="language-php">use Framework\Database\Database;
+use Framework\Database\Migration\DataMigration;
+use Framework\Database\Migration\DeployMigration;
+
+class M20260805T143022 implements DataMigration, DeployMigration {
+    public static function getTitle(): string {
+        return &quot;Store the full name of the users&quot;;
+    }
+
+    public static function migrate(Database $db): void {
+        $db-&gt;execute(&quot;UPDATE user SET fullName = CONCAT(firstName, ' ', lastName)&quot;);
+    }
+
+    public static function postDeploy(Database $db): void {
+        // Only the users the old code wrote after the migrate are still empty
+        $db-&gt;execute(&quot;UPDATE user SET fullName = CONCAT(firstName, ' ', lastName) WHERE fullName = ''&quot;);
+    }
+}</code></pre>
+<p>The command runs the <code>postDeploy()</code> of every migration that already ran and was not deployed yet,
+in name order, and records the time in the <a href="#tracking">tracking table</a>. A migration that did not run
+yet waits for its <code>migrate</code>, and one without the interface is never picked up. Write the step so it only touches what is still missing: then it is safe to run again, and a deploy
+that swaps the code first can run both commands back to back.</p>
+<p>A change with nothing to do before the code implements <code>DeployMigration</code> alone, and the whole
+of it runs on the post deploy.</p>
 
                 <div class="page-nav"><a href="query.html"><span class="dir">← Previous</span><span class="ttl">Query builder</span></a><a class="next" href="../subsystems/auth.html"><span class="dir">Next →</span><span class="ttl">Authentication</span></a></div>
                 </article>

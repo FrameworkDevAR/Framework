@@ -2,7 +2,7 @@
 namespace Tests;
 
 use Framework\Database\Database;
-use Framework\Database\SchemaMigration;
+use Framework\Database\Migration\SchemaMigration;
 
 use PHPUnit\Framework\TestCase;
 

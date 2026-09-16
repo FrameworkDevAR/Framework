@@ -1,5 +1,5 @@
 <?php
-namespace Framework\Database;
+namespace Framework\Database\Migration;
 
 use Framework\Application;
 use Framework\Console;
@@ -10,8 +10,10 @@ use Framework\Discovery\Package;
 use Framework\Discovery\Type\DiscoveryMigration;
 use Framework\Discovery\Attr\ConsoleCommand;
 use Framework\Database\Database;
-use Framework\Database\SchemaMigration;
-use Framework\Database\DataMigration;
+use Framework\Database\Migration\SchemaMigration;
+use Framework\Database\Migration\BaseMigration;
+use Framework\Database\Migration\DataMigration;
+use Framework\Database\Migration\DeployMigration;
 use Framework\Provider\Mustache;
 use Framework\Core\Configs;
 use Framework\Core\MigrationData;
@@ -213,7 +215,7 @@ class Migration {
 
         // Execute the required Data Migrations
         print("\nDATA MIGRATIONS\n");
-        self::migrateData();
+        self::applyDataMigrations();
 
 
         // Calculate and show the time taken
@@ -222,20 +224,12 @@ class Migration {
     }
 
     /**
-     * Migrates the Data
-     * @return bool
-     */
-    public static function migrateData(): bool {
-        return self::applyMigrations(self::getMigrations(Application::getBasePath()));
-    }
-
-    /**
      * Applies the Data Migrations that are pending
-     * @param array<string,class-string<DataMigration>> $migrations
      * @return bool
      */
     #[NotTested("It needs a Database")]
-    public static function applyMigrations(array $migrations): bool {
+    public static function applyDataMigrations(): bool {
+        $migrations = self::getMigrations(DataMigration::class);
         if (count($migrations) === 0) {
             print("- No data migrations found\n");
             return false;
@@ -253,34 +247,113 @@ class Migration {
             }
         }
 
-        if (count($pending) === 0) {
+        // Run the Migrations that are pending
+        $amount = count($pending);
+        if ($amount > 0) {
+            print("Running $amount migrations\n");
+
+            $db = Database::getInstance();
+            foreach ($pending as $name => $className) {
+                $title = $className::getTitle();
+
+                print("- $name: $title\n");
+                $className::migrate($db);
+                MigrationData::add($name, $title);
+            }
+        } else {
             print("- No data migrations required\n");
+        }
+        return $amount > 0;
+    }
+
+
+
+    /**
+     * Runs the Post Deploys of the Migrations, once the code is deployed
+     * @param string $envFile Optional.
+     * @return void
+     */
+    #[ConsoleCommand("postDeploy")]
+    #[NotTested("It needs a Database")]
+    public static function postDeploy(string $envFile = ""): void {
+        $timer = new Timer();
+        print("Running the post deploys...\n");
+
+        DiscoveryConfig::load();
+        if ($envFile !== "") {
+            print("Using ENV file: $envFile\n");
+            Configs::setFileName($envFile);
+        }
+
+        print("\n");
+        self::applyPostMigrations();
+
+        $time = $timer->getElapsedText();
+        print("\nPost deploys completed in $time\n");
+    }
+
+    /**
+     * Applies the Post Deploys of the Deploy Migrations that are pending
+     * @return bool
+     */
+    #[NotTested("It needs a Database")]
+    public static function applyPostMigrations(): bool {
+        $pending = self::getPendingDeploys();
+        if (count($pending) === 0) {
+            print("- No post deploys required\n");
             return false;
         }
 
-        // Run the Migrations that are pending
         $amount = count($pending);
-        print("Running $amount migrations\n");
+        print("Running $amount post deploys\n");
 
         $db = Database::getInstance();
         foreach ($pending as $name => $className) {
             $title = $className::getTitle();
 
             print("- $name: $title\n");
-            $className::migrate($db);
-            MigrationData::add($name, $title);
+            $className::postDeploy($db);
+            MigrationData::setDeployed($name, $title);
         }
         return true;
     }
 
     /**
-     * Returns all the Data Migrations in the given path, indexed and sorted by their Name
-     * @param string $appPath
-     * @return array<string,class-string<DataMigration>>
+     * Returns the Post Deploys that are pending, sorted by their Name
+     * @return array<string,class-string<DeployMigration>>
+     */
+    private static function getPendingDeploys(): array {
+        // A post deploy fills what the old code wrote after the migrate, so one that
+        // migrates too waits until that ran, which is when it is written down, while
+        // one that only deploys is due from the moment it is there
+        $migrations  = self::getMigrations(DeployMigration::class);
+        $applied     = MigrationData::getAppliedNames();
+        $notDeployed = MigrationData::getNotDeployedNames();
+        $result      = [];
+
+        foreach ($migrations as $name => $className) {
+            $isWaiting = Arrays::contains($notDeployed, $name);
+            $isNew     = !Arrays::contains($applied, $name) &&
+                !is_subclass_of($className, DataMigration::class);
+            if ($isWaiting || $isNew) {
+                $result[$name] = $className;
+            }
+        }
+        return $result;
+    }
+
+
+
+    /**
+     * Returns the Migrations of the given interface, indexed and sorted by their Name
+     * @template T of BaseMigration
+     * @param class-string<T> $interface
+     * @return array<string,class-string<T>>
      */
     #[NotTested("It needs a Database")]
-    public static function getMigrations(string $appPath): array {
-        $filePaths = Storage::getFilesInDir($appPath, recursive: true, skipVendor: true);
+    public static function getMigrations(string $interface): array {
+        $basePath  = Application::getBasePath(self::$migrationsPath);
+        $filePaths = Storage::getFilesInDir($basePath, recursive: true);
         $result    = [];
 
         foreach ($filePaths as $filePath) {
@@ -288,8 +361,10 @@ class Migration {
                 continue;
             }
 
+            // The source is read before the file is included, so only the ones that
+            // name the interface are loaded
             $content = Storage::readFile($filePath);
-            if (!Strings::contains($content, DataMigration::class) ||
+            if (!Strings::contains($content, $interface) ||
                 !Strings::contains($content, " implements ")
             ) {
                 continue;
@@ -297,7 +372,7 @@ class Migration {
 
             $className = Strings::trim(Strings::substringBetween($content, "class", "implements"));
             include_once $filePath;
-            if (!class_exists($className) || !is_subclass_of($className, DataMigration::class)) {
+            if (!class_exists($className) || !is_subclass_of($className, $interface)) {
                 continue;
             }
 
@@ -332,7 +407,8 @@ class Migration {
                 break;
             }
 
-            MigrationData::add($name, $className::getTitle());
+            // What ran by hand before this system was deployed by hand too
+            MigrationData::add($name, $className::getTitle(), isDeployed: true);
             $index += 1;
         }
 

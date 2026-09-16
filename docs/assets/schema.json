@@ -636,7 +636,15 @@
                 "type": "string"
             },
             {
+                "name": "deployedTime",
+                "type": "date"
+            },
+            {
                 "name": "createdTime",
+                "type": "date"
+            },
+            {
+                "name": "modifiedTime",
                 "type": "date"
             }
         ],

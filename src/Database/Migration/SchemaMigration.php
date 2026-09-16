@@ -1,5 +1,5 @@
 <?php
-namespace Framework\Database;
+namespace Framework\Database\Migration;
 
 use Framework\Database\Database;
 use Framework\Database\SchemaFactory;

@@ -4,12 +4,16 @@ namespace Tests\Database;
 use Framework\Application;
 use Framework\Core\Configs;
 use Framework\Core\MigrationData;
-use Framework\Database\Migration;
+use Framework\Database\Migration\Migration;
+use Framework\Database\Migration\DataMigration;
+use Framework\Database\Migration\DeployMigration;
 use Framework\File\Storage;
 
 use Tests\Database\Fixture\RanMigrations;
 use Tests\LiveTestCase;
 use Tests\TestHelpers;
+
+use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
  * The Data Migrations, the files of an App that run once and are written down
@@ -40,6 +44,7 @@ class DataMigrationLiveTest extends LiveTestCase {
         $this->query("DELETE FROM `migrations`");
         RanMigrations::reset();
         Storage::createDir($this->basePath());
+        Migration::setPath(self::FixtureDir);
     }
 
     protected function tearDown(): void {
@@ -64,6 +69,8 @@ class DataMigrationLiveTest extends LiveTestCase {
      * @param string $title Optional.
      * @param string $dir   Optional.
      * @param string $class Optional. The class it declares, unique of itself
+     * @param bool   $hasDeploy Optional. Whether it has a step for after the deploy
+     * @param bool   $hasMigrate Optional. Whether it has the step of the migrate
      * @return void
      */
     private function writeMigration(
@@ -71,6 +78,8 @@ class DataMigrationLiveTest extends LiveTestCase {
         string $title = "A migration",
         string $dir = "",
         string $class = "",
+        bool $hasDeploy = false,
+        bool $hasMigrate = true,
     ): void {
         if ($class === "") {
             $class = "M" . str_replace("-", "", Storage::getBaseName($name));
@@ -78,20 +87,45 @@ class DataMigrationLiveTest extends LiveTestCase {
         $path  = $this->basePath($dir);
         Storage::createDir($path);
 
+        // Each step is an interface of its own, with its own use, and a migration
+        // has one of them or both
+        $uses       = [];
+        $interfaces = [];
+        $methods    = [];
+        if ($hasMigrate) {
+            $uses[]       = "use Framework\\Database\\Migration\\DataMigration;";
+            $interfaces[] = "DataMigration";
+            $methods[]    = <<<PHP
+                public static function migrate(Database \$db): void {
+                    RanMigrations::add("$name");
+                }
+            PHP;
+        }
+        if ($hasDeploy) {
+            $uses[]       = "use Framework\\Database\\Migration\\DeployMigration;";
+            $interfaces[] = "DeployMigration";
+            $methods[]    = <<<PHP
+                public static function postDeploy(Database \$db): void {
+                    RanMigrations::addDeployed("$name");
+                }
+            PHP;
+        }
+        $useLines   = implode("\n", $uses);
+        $implements = implode(", ", $interfaces);
+        $body       = implode("\n\n", $methods);
+
         Storage::writeFile("$path/$name.php", <<<PHP
         <?php
-        use Framework\\Database\\DataMigration;
         use Framework\\Database\\Database;
+        $useLines
         use Tests\\Database\\Fixture\\RanMigrations;
 
-        class $class implements DataMigration {
+        class $class implements $implements {
             public static function getTitle(): string {
                 return "$title";
             }
 
-            public static function migrate(Database \$db): void {
-                RanMigrations::add("$name");
-            }
+        $body
         }
         PHP);
     }
@@ -134,22 +168,43 @@ class DataMigrationLiveTest extends LiveTestCase {
     }
 
     /**
-     * Finds the migrations written for the test
+     * Finds the data migrations written for the test
      * @return array<string,string>
      */
     private function find(): array {
-        return Migration::getMigrations($this->basePath());
+        return Migration::getMigrations(DataMigration::class);
     }
 
     /**
-     * Applies the given migrations, keeping what it printed
-     * @param array<string,string>|null $migrations Optional.
+     * Finds the deploy migrations written for the test
+     * @return array<string,string>
+     */
+    private function findDeploys(): array {
+        return Migration::getMigrations(DeployMigration::class);
+    }
+
+    /**
+     * Applies the migrations written for the test, keeping what it printed
      * @return string
      */
-    private function apply(?array $migrations = null): string {
+    private function apply(): string {
         ob_start();
         try {
-            Migration::applyMigrations($migrations ?? $this->find());
+            Migration::applyDataMigrations();
+        } finally {
+            $output = ob_get_clean();
+        }
+        return (string)$output;
+    }
+
+    /**
+     * Applies the post deploys of the migrations written for the test, keeping what it printed
+     * @return string
+     */
+    private function applyPostMigrations(): string {
+        ob_start();
+        try {
+            Migration::applyPostMigrations();
         } finally {
             $output = ob_get_clean();
         }
@@ -251,10 +306,134 @@ class DataMigrationLiveTest extends LiveTestCase {
     }
 
     public function testThereAreNoneToApply(): void {
-        $this->assertStringContainsString("No data migrations found", $this->apply([]));
+        $this->assertStringContainsString("No data migrations found", $this->apply());
     }
 
 
+
+    public function testAPostDeployIsRun(): void {
+        $this->writeMigration("2020-01-01-000040", "The first one", hasDeploy: true);
+        $this->apply();
+
+        $output = $this->applyPostMigrations();
+
+        $this->assertStringContainsString("Running 1 post deploys", $output);
+        $this->assertStringContainsString("2020-01-01-000040: The first one", $output);
+        $this->assertSame([ "2020-01-01-000040" ], RanMigrations::getDeployed());
+        $this->assertSame([], MigrationData::getNotDeployedNames());
+    }
+
+    public function testAPostDeployIsOnlyRunOnce(): void {
+        $this->writeMigration("2020-01-01-000041", hasDeploy: true);
+        $this->apply();
+        $this->applyPostMigrations();
+        RanMigrations::reset();
+
+        $this->assertStringContainsString("No post deploys required", $this->applyPostMigrations());
+        $this->assertSame([], RanMigrations::getDeployed());
+    }
+
+    public function testThePostDeploysAreRunInOrder(): void {
+        $this->writeMigration("2021-01-01-000042", hasDeploy: true);
+        $this->writeMigration("2020-01-01-000043", hasDeploy: true);
+        $this->apply();
+
+        $this->applyPostMigrations();
+
+        $this->assertSame([
+            "2020-01-01-000043",
+            "2021-01-01-000042",
+        ], RanMigrations::getDeployed());
+    }
+
+    /**
+     * A migration with nothing to run after the deploy, or not ready for it
+     * @param bool $hasDeploy
+     * @param bool $isApplied
+     * @return void
+     */
+    #[DataProvider("providerNoPostDeploy")]
+    public function testAPostDeployThatIsNotDueIsNotRun(bool $hasDeploy, bool $isApplied): void {
+        $this->writeMigration("2020-01-01-000044", hasDeploy: $hasDeploy);
+        if ($isApplied) {
+            $this->apply();
+        }
+
+        $output = $this->applyPostMigrations();
+
+        $this->assertStringContainsString("No post deploys required", $output);
+        $this->assertSame([], RanMigrations::getDeployed());
+    }
+
+    /**
+     * @return array<string,array{bool,bool}>
+     */
+    public static function providerNoPostDeploy(): array {
+        return [
+            // A migration that did not run yet has nothing to complete
+            "one that has no step"       => [ false, true  ],
+            "one that did not migrate"   => [ true,  false ],
+        ];
+    }
+
+    /**
+     * Each finder answers with the migrations of its own interface
+     * @param string       $name
+     * @param bool         $hasMigrate
+     * @param bool         $hasDeploy
+     * @param list<string> $expected
+     * @param list<string> $expectedDeploys
+     * @return void
+     */
+    #[DataProvider("providerFoundByStep")]
+    public function testTheyAreFoundByTheirStep(
+        string $name,
+        bool $hasMigrate,
+        bool $hasDeploy,
+        array $expected,
+        array $expectedDeploys,
+    ): void {
+        // Each case is a file of its own, as one already included is not read
+        // again and keeps the shape it was first given
+        $this->writeMigration($name, hasMigrate: $hasMigrate, hasDeploy: $hasDeploy);
+
+        $this->assertSame($expected, array_keys($this->find()));
+        $this->assertSame($expectedDeploys, array_keys($this->findDeploys()));
+    }
+
+    /**
+     * @return array<string,array{string,bool,bool,list<string>,list<string>}>
+     */
+    public static function providerFoundByStep(): array {
+        return [
+            "only the migrate" => [
+                "2020-01-01-000060", true, false, [ "2020-01-01-000060" ], [],
+            ],
+            "only the deploy" => [
+                "2020-01-01-000061", false, true, [], [ "2020-01-01-000061" ],
+            ],
+            "both steps" => [
+                "2020-01-01-000062", true, true, [ "2020-01-01-000062" ], [ "2020-01-01-000062" ],
+            ],
+        ];
+    }
+
+    public function testOneWithOnlyTheDeployStepWaitsForTheDeploy(): void {
+        // The migrate has nothing of it to run or to write down, and the post
+        // deploy is what stores it
+        $this->writeMigration("2020-01-01-000054", hasDeploy: true, hasMigrate: false);
+
+        $output = $this->apply();
+
+        $this->assertStringContainsString("No data migrations found", $output);
+        $this->assertSame([], RanMigrations::getAll());
+        $this->assertSame([], MigrationData::getAppliedNames());
+
+        $this->applyPostMigrations();
+        $this->assertSame([ "2020-01-01-000054" ], RanMigrations::getDeployed());
+        $this->assertSame([ "2020-01-01-000054" ], MigrationData::getAppliedNames());
+        $this->assertSame([], MigrationData::getNotDeployedNames());
+    }
 
     public function testTheOnesBeforeTheLastAreWrittenDown(): void {
         // An App that ran before this was written says which one it got to,
@@ -269,6 +448,19 @@ class DataMigrationLiveTest extends LiveTestCase {
         $this->assertStringContainsString("Stored 2 migrations that were already applied", $output);
         $this->assertSame([ "2021-01-01-000022" ], RanMigrations::getAll());
         $this->assertCount(3, MigrationData::getAppliedNames());
+    }
+
+    public function testTheOnesBeforeTheLastAreDeployed(): void {
+        // What ran by hand before this system was deployed by hand too, so it
+        // is not waiting for a post deploy that would fill nothing
+        $this->writeMigration("2020-01-01-000051", hasDeploy: true);
+        $this->writeMigration("2021-01-01-000052", hasDeploy: true);
+        $this->setPrivateStaticProperty(Migration::class, "lastApplied", "2020-01-01-000051");
+        $this->apply();
+
+        $this->applyPostMigrations();
+
+        $this->assertSame([ "2021-01-01-000052" ], RanMigrations::getDeployed());
     }
 
     public function testTheLastAppliedIsOnlyReadOnce(): void {
@@ -343,8 +535,9 @@ class DataMigrationLiveTest extends LiveTestCase {
 
     public function testThereAreNoneInTheRepository(): void {
         // Which is what the whole of it answers, since a Framework has none
+        Migration::setPath((string)$this->migrationsPath);
         ob_start();
-        $result = Migration::migrateData();
+        $result = Migration::applyDataMigrations();
         $output = (string)ob_get_clean();
 
         $this->assertFalse($result);
@@ -363,7 +556,6 @@ class DataMigrationLiveTest extends LiveTestCase {
     }
 
     public function testTheOneCreatedCarriesItsTitle(): void {
-        Migration::setPath(self::FixtureDir);
         $this->create("The new one");
 
         $name     = array_key_first($this->find());
@@ -375,7 +567,6 @@ class DataMigrationLiveTest extends LiveTestCase {
     public function testTheOneCreatedIsNamedAfterTheDate(): void {
         // They live in a directory per year and month, so the ones of every
         // branch can be told apart and still sort together
-        Migration::setPath(self::FixtureDir);
         $this->create("The new one");
 
         $name = array_key_first($this->find());
@@ -384,7 +575,6 @@ class DataMigrationLiveTest extends LiveTestCase {
     }
 
     public function testASecondOneTakesTheNextSecond(): void {
-        Migration::setPath(self::FixtureDir);
         $this->create("The first one");
         $this->create("The second one");
 
@@ -408,6 +598,19 @@ class DataMigrationLiveTest extends LiveTestCase {
         $this->assertStringContainsString("FRAMEWORK MIGRATIONS", $output);
         $this->assertStringContainsString("DATA MIGRATIONS", $output);
         $this->assertStringContainsString("Migrations completed in", $output);
+    }
+
+    public function testTheWholePostDeployIsRun(): void {
+        // Which is the postDeploy of the command line, run once the code is there
+        ob_start();
+        try {
+            Migration::postDeploy();
+        } finally {
+            $output = (string)ob_get_clean();
+        }
+
+        $this->assertStringContainsString("Running the post deploys", $output);
+        $this->assertStringContainsString("Post deploys completed in", $output);
     }
 
     public function testTheEnvFileIsNamed(): void {

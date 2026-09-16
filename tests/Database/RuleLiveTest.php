@@ -7,7 +7,7 @@ use Framework\Builder\Builder;
 use Framework\Database\Database;
 use Framework\Database\SchemaBuilder;
 use Framework\Database\SchemaFactory;
-use Framework\Database\SchemaMigration;
+use Framework\Database\Migration\SchemaMigration;
 use Framework\File\Storage;
 use Framework\IO\Request;
 use Framework\Utils\Strings;

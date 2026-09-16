@@ -3,7 +3,7 @@ namespace Tests\Database;
 
 use Framework\Database\SchemaFactory;
 use Framework\Database\SchemaModel;
-use Framework\Database\SchemaMigration;
+use Framework\Database\Migration\SchemaMigration;
 use Framework\Core\SettingData;
 
 use Tests\LiveTestCase;

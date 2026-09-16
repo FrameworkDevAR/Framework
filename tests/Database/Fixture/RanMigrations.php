@@ -13,6 +13,9 @@ class RanMigrations {
     /** @var list<string> */
     private static array $names = [];
 
+    /** @var list<string> */
+    private static array $deployed = [];
+
 
     /**
      * Writes down that the Migration of the given name ran
@@ -32,10 +35,28 @@ class RanMigrations {
     }
 
     /**
+     * Writes down that the Post Deploy of the Migration of the given name ran
+     * @param string $name
+     * @return void
+     */
+    public static function addDeployed(string $name): void {
+        self::$deployed[] = $name;
+    }
+
+    /**
+     * Returns the Migrations whose Post Deploy ran, in the order they did
+     * @return list<string>
+     */
+    public static function getDeployed(): array {
+        return self::$deployed;
+    }
+
+    /**
      * Forgets the ones that ran
      * @return void
      */
     public static function reset(): void {
-        self::$names = [];
+        self::$names    = [];
+        self::$deployed = [];
     }
 }

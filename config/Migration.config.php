@@ -1,5 +1,5 @@
 <?php
-use Framework\Database\Migration;
+use Framework\Database\Migration\Migration;
 
 // Migrations Examples
 // The table names can be in snake_case or PascalCase

@@ -5,6 +5,8 @@ use Framework\Core\MigrationData;
 
 use Tests\LiveTestCase;
 
+use PHPUnit\Framework\Attributes\DataProvider;
+
 /**
  * The Migration Data, the names of the data migrations already applied
  */
@@ -37,6 +39,57 @@ class MigrationDataLiveTest extends LiveTestCase {
         MigrationData::add("b-one", "The second");
 
         $this->assertSame([ "a-one", "b-one", "c-one" ], MigrationData::getAppliedNames());
+    }
+
+    /**
+     * One stored is waiting for its post deploy unless it is stored as deployed
+     * @param bool $isDeployed
+     * @param list<string> $expected
+     * @return void
+     */
+    #[DataProvider("providerNotDeployed")]
+    public function testOneAppliedWaitsForItsDeploy(bool $isDeployed, array $expected): void {
+        MigrationData::add("the-one", "The one", isDeployed: $isDeployed);
+
+        $this->assertSame($expected, MigrationData::getNotDeployedNames());
+    }
+
+    /**
+     * @return array<string,array{bool,list<string>}>
+     */
+    public static function providerNotDeployed(): array {
+        return [
+            "stored as applied"  => [ false, [ "the-one" ] ],
+            "stored as deployed" => [ true,  [] ],
+        ];
+    }
+
+    /**
+     * One set as deployed stops waiting, and is stored when the migrate never did
+     * @param bool $isStored
+     * @return void
+     */
+    #[DataProvider("providerSetDeployed")]
+    public function testOneSetDeployedStopsWaiting(bool $isStored): void {
+        MigrationData::add("b-one", "The second");
+        if ($isStored) {
+            MigrationData::add("a-one", "The first");
+        }
+
+        MigrationData::setDeployed("a-one", "The first");
+
+        $this->assertSame([ "b-one" ], MigrationData::getNotDeployedNames());
+        $this->assertSame([ "a-one", "b-one" ], MigrationData::getAppliedNames());
+    }
+
+    /**
+     * @return array<string,array{bool}>
+     */
+    public static function providerSetDeployed(): array {
+        return [
+            "stored by the migrate"  => [ true  ],
+            "never stored before it" => [ false ],
+        ];
     }
 
     public function testTheTitleIsKeptBesideTheName(): void {

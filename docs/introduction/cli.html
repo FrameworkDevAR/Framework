@@ -79,6 +79,13 @@ table and column renames and executes the data migrations. Pass an env file to f
 <pre><code class="language-bash">./framework migrate
 ./framework migrate .env.production   # force an environment</code></pre>
 
+<h3 id="postDeploy">postDeploy</h3>
+<p>Runs the <a href="../database/migrations.html#post-deploy">post deploy</a> step of the migrations that already ran, once
+the new code is live, so what the old code wrote in between is migrated too. Pass an env file the same way as
+<code>migrate</code>.</p>
+<pre><code class="language-bash">./framework postDeploy
+./framework postDeploy .env.production   # force an environment</code></pre>
+
 <h3 id="migration">migration</h3>
 <p>Scaffolds a new data <a href="../database/migrations.html#creating">migration</a> file, prompting for a title (or taking it as an
 argument) and opening it for editing. Files are grouped in folders by year and month.</p>

@@ -132,18 +132,18 @@ IntlConfig::addSourceDir(&quot;../desktop/src&quot;);</code></pre></figure>
 <p>The <a href="../database/migrations.html#running">migration</a> config is split across three files. The main one points the
 runner at your migrations folder and, when adopting it on an existing database, sets the last migration already
 applied:</p>
-<figure class="code"><figcaption class="code-tab">config/Migration.config.php</figcaption><pre><code class="language-php">use Framework\Database\Migration;
+<figure class="code"><figcaption class="code-tab">config/Migration.config.php</figcaption><pre><code class="language-php">use Framework\Database\Migration\Migration;
 
 Migration::setPath(&quot;migrations&quot;);
 Migration::setLastApplied(&quot;2024_01_initial&quot;);</code></pre></figure>
 <p>A second file lists the table renames and a third the column renames. Both run before the schema is synced,
 so the sync matches your models against the new names instead of dropping and recreating. Table names may be
 <code>snake_case</code> or <code>PascalCase</code>, ID columns <code>SNAKE_CASE</code>:</p>
-<figure class="code"><figcaption class="code-tab">config/MigrationTables.config.php</figcaption><pre><code class="language-php">use Framework\Database\Migration;
+<figure class="code"><figcaption class="code-tab">config/MigrationTables.config.php</figcaption><pre><code class="language-php">use Framework\Database\Migration\Migration;
 
 Migration::renameTable(&quot;old_table&quot;, &quot;new_table&quot;);
 Migration::renameTable(&quot;Client&quot;, &quot;Customer&quot;);</code></pre></figure>
-<figure class="code"><figcaption class="code-tab">config/MigrationColumns.config.php</figcaption><pre><code class="language-php">use Framework\Database\Migration;
+<figure class="code"><figcaption class="code-tab">config/MigrationColumns.config.php</figcaption><pre><code class="language-php">use Framework\Database\Migration\Migration;
 
 Migration::renameColumn(&quot;TableName&quot;, &quot;oldColumn&quot;, &quot;newColumn&quot;);
 Migration::renameColumn(&quot;Customer&quot;, &quot;CLIENT_ID&quot;, &quot;CUSTOMER_ID&quot;);</code></pre></figure>

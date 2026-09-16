@@ -1,6 +1,6 @@
 <?php
-use Framework\Database\DataMigration;
 use Framework\Database\Database;
+use Framework\Database\Migration\DataMigration;
 
 class {{class}} implements DataMigration {
 
