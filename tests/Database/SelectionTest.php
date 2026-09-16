@@ -228,6 +228,35 @@ class SelectionTest extends TestCase {
         $this->assertSame([ "brand" ], $this->joinedTables($selection));
     }
 
+    public function testAJoinWithAParamIsAlwaysAdded(): void {
+        $model = new SchemaModel(
+            name:       "Product",
+            mainFields: [
+                Field::create(name: "name", type: FieldType::String),
+            ],
+            relations:  [
+                Relation::create("StorePrice", "", "productID", "Product", "productID", " AND storeID = ?", [
+                    Field::create(name: "price", dbName: "price", prefixName: "storePrice", type: FieldType::Number),
+                ]),
+            ],
+        );
+
+        // The value of the On is given before the condition, as the Join is
+        // written before the Where, and both are bound by their position
+        $query = Query::select("products");
+        $query->addParam(5);
+        $query->where("name", "=", "Widget");
+
+        $selection = SelectionBuilder::create($model, $query);
+        $selection->addJoins(withSelects: false, onlyUsed: true);
+
+        // Nothing names the table, but leaving it out would hand its 5 to the name
+        $sql = $this->sql($selection);
+        $this->assertSame([ "store_price" ], $this->joinedTables($selection));
+        $this->assertStringContainsString("store_price.STORE_ID = 5)", $sql);
+        $this->assertStringContainsString("product.name = 'Widget'", $sql);
+    }
+
     public function testTheExtraJoinsAreAlwaysAdded(): void {
         $selection = SelectionBuilder::create($this->joinModel(), Query::select("products"));
         $selection->addJoins([ "INNER JOIN store ON (store.id = product.storeID)" ], onlyUsed: true);

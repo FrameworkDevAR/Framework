@@ -165,8 +165,13 @@ class SelectionBuilder {
                     continue;
                 }
 
+                // A Join whose On has a parameter is always added, as the values that the
+                // caller gave with addParam are bound by position, and leaving the Join
+                // out takes its parameter away and moves every other one
                 $isUsed = Arrays::contains($tables, $tableName)
-                    || Strings::contains($sql, "$tableName.");
+                    || Strings::contains($sql, "$tableName.")
+                    || Strings::contains($relation->getExpression(), "?");
+
                 foreach ($result as $usedRelation) {
                     if (SchemaModel::getDbTableName($usedRelation->ownerModelName) === $tableName) {
                         $isUsed = true;
