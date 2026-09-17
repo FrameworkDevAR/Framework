@@ -1,6 +1,7 @@
 <?php
 namespace Framework\Database\Query;
 
+use Framework\Database\Query\Exp;
 use Framework\Database\Query\Op;
 use Framework\Enum\Enum;
 use Framework\Date\Date;
@@ -13,28 +14,32 @@ use Framework\Utils\Strings;
  */
 class WhereBuilder {
 
-    private string $where         = "";
-    private bool   $addOperator   = false;
-    private string $nextOperator  = "AND";
+    private string $where = "";
+
+    private bool $addOperator = false;
+    private string $nextOperator = "AND";
 
     /** @var list<string> */
-    private array  $usedOperators = [];
+    private array $usedOperators = [];
 
-    private string $limit         = "";
-    private string $orderBy       = "";
-    private string $groupBy       = "";
+    private string $limit = "";
+    private string $orderBy = "";
+    private string $groupBy = "";
 
     /** @var list<float|int|string> */
-    private array  $params        = [];
+    private array $params = [];
+
+    /** @var list<float|int|string> */
+    private array $orderParams = [];
 
     /** @var list<string> */
-    private array  $columns       = [];
+    private array $columns = [];
 
     /** @var list<string> */
-    private array  $groups        = [];
+    private array $groups = [];
 
     /** @var list<string> */
-    private array  $orders        = [];
+    private array $orders = [];
 
 
 
@@ -54,6 +59,7 @@ class WhereBuilder {
         $this->groupBy       = $builder->groupBy;
 
         $this->params        = $builder->params;
+        $this->orderParams   = $builder->orderParams;
         $this->columns       = $builder->columns;
         $this->groups        = $builder->groups;
         $this->orders        = $builder->orders;
@@ -91,10 +97,11 @@ class WhereBuilder {
             withoutEmpty: true,
         );
 
-        $this->params  = Arrays::mergeLists($this->params, $builder->params);
-        $this->columns = Arrays::mergeLists($this->columns, $builder->columns);
-        $this->groups  = Arrays::mergeLists($this->groups, $builder->groups);
-        $this->orders  = Arrays::mergeLists($this->orders, $builder->orders);
+        $this->params      = Arrays::mergeLists($this->params, $builder->params);
+        $this->orderParams = Arrays::mergeLists($this->orderParams, $builder->orderParams);
+        $this->columns     = Arrays::mergeLists($this->columns, $builder->columns);
+        $this->groups      = Arrays::mergeLists($this->groups, $builder->groups);
+        $this->orders      = Arrays::mergeLists($this->orders, $builder->orders);
         return $this;
     }
 
@@ -584,6 +591,18 @@ class WhereBuilder {
     }
 
     /**
+     * Adds an Order By of an Expression
+     * @param Exp  $expression
+     * @param bool $isASC
+     * @return void
+     */
+    public function orderByExp(Exp $expression, bool $isASC): void {
+        $prefix            = $this->orderBy !== "" ? "," : "";
+        $this->orderBy    .= "$prefix {$expression->toSQL()} " . ($isASC ? "ASC" : "DESC");
+        $this->orderParams = Arrays::mergeLists($this->orderParams, $expression->getParams());
+    }
+
+    /**
      * Sets the Limit, removing it when there is nothing to limit
      * @param int      $from
      * @param int|null $to   Optional.
@@ -698,6 +717,7 @@ class WhereBuilder {
      * @return list<float|int|string>
      */
     public function getParams(): array {
-        return $this->params;
+        // The Order By is written after the Where, so its params go after them too
+        return Arrays::mergeLists($this->params, $this->orderParams);
     }
 }

@@ -190,6 +190,12 @@ Query::select(&quot;products&quot;)
     -&gt;limit(10)                  // the first 10
     -&gt;limit(20, 10)              // 10 rows from the 20th
     -&gt;paginate($page, $amount);  // the page a listing asked for</code></pre>
+<p>An expression can order too, with <code>orderByExp()</code>, and the values it binds go after the ones of the
+conditions, as the order is written after them. This puts the names that start with the text first:</p>
+<pre><code class="language-php">Query::select(&quot;products&quot;)
+    -&gt;where(&quot;name&quot;, Op::Like, $text)
+    -&gt;orderByExp(Exp::create(&quot;CASE WHEN name LIKE ? THEN 0 ELSE 1 END&quot;, &quot;{$text}%&quot;))
+    -&gt;orderBy(&quot;name&quot;, true);</code></pre>
 <p>Grouping with an aggregate is the usual reporting shape — the columns carry the expressions, and
 <code>groupBy()</code> the keys:</p>
 <pre><code class="language-php">$rows = Query::select(&quot;orders&quot;)

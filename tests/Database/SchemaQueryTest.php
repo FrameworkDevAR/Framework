@@ -142,6 +142,18 @@ class SchemaQueryTest extends TestCase {
         $this->assertStringContainsString("LIMIT 40, 20", $this->sql($paged));
     }
 
+    public function testItCanBeOrderedByAnExpression(): void {
+        $query = new CredentialQuery();
+        $query->email->equal("ada@example.com");
+        $query->orderByExp(Exp::create("CASE WHEN firstName LIKE ? THEN 0 ELSE 1 END", "Ada%"));
+
+        $this->assertStringContainsString(
+            "ORDER BY CASE WHEN firstName LIKE ? THEN 0 ELSE 1 END ASC",
+            $this->sql($query),
+        );
+        $this->assertEquals([ "ada@example.com", "Ada%" ], $query->getQuery()->getBindings());
+    }
+
     public function testItCanAskWhetherRowsExistElsewhere(): void {
         // A sub query is consumed by the call, so each one needs its own
         $forExists = new CredentialDeviceQuery();

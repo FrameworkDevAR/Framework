@@ -7,6 +7,7 @@ use Framework\Database\Query\QueryLike;
 use Framework\Database\Query\QueryMode;
 use Framework\Database\Query\QueryBuilder;
 use Framework\Database\Query\WhereBuilder;
+use Framework\Database\Query\Exp;
 use Framework\Database\Query\Op;
 use Framework\Utils\Arrays;
 use Framework\Utils\Dictionary;
@@ -503,6 +504,17 @@ class Query implements QueryLike {
      */
     public function orderBy(string $column, bool $isASC): Query {
         $this->whereBuilder->orderBy($column, $isASC);
+        return $this;
+    }
+
+    /**
+     * Adds an Order By of an Expression, which can bind params
+     * @param Exp  $expression
+     * @param bool $isASC      Optional.
+     * @return Query
+     */
+    public function orderByExp(Exp $expression, bool $isASC = true): Query {
+        $this->whereBuilder->orderByExp($expression, $isASC);
         return $this;
     }
 

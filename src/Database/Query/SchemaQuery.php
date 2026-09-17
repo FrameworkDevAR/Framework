@@ -1,6 +1,7 @@
 <?php
 namespace Framework\Database\Query;
 
+use Framework\Database\Query\Exp;
 use Framework\Database\Query\Query;
 use Framework\Database\Query\QueryLike;
 
@@ -196,6 +197,16 @@ class SchemaQuery implements QueryLike {
     }
 
 
+
+    /**
+     * Adds an Order By of an Expression, which can bind params
+     * @param Exp  $expression
+     * @param bool $isASC      Optional.
+     * @return void
+     */
+    public function orderByExp(Exp $expression, bool $isASC = true): void {
+        $this->query->orderByExp($expression, $isASC);
+    }
 
     /**
      * Adds a Limit

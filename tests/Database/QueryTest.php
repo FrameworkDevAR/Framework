@@ -231,6 +231,30 @@ class QueryTest extends TestCase {
     }
 
 
+    public function testAnExpressionCanOrderWithItsParamsAfterTheWhere(): void {
+        // The Order By is written after the Where, so a value it binds has to be bound
+        // after the ones of the conditions, or each would take the place of the other
+        $query = Query::select("t");
+        $query->where("status", "=", "Active");
+        $query->orderByExp(Exp::create("CASE WHEN name LIKE ? THEN 0 ELSE 1 END", "Ana%"));
+        $query->orderBy("name", true);
+        $query->limit(20);
+
+        $this->assertEquals(
+            "SELECT * FROM `t` WHERE status = ? ORDER BY CASE WHEN name LIKE ? THEN 0 ELSE 1 END ASC, name ASC LIMIT 20",
+            $this->sql($query),
+        );
+        $this->assertEquals([ "Active", "Ana%" ], $query->getBindings());
+    }
+
+    public function testAnExpressionCanOrderDescending(): void {
+        $query = Query::select("t");
+        $query->orderByExp(Exp::column("t.price"), false);
+
+        $this->assertEquals("SELECT * FROM `t` ORDER BY t.price DESC", $this->sql($query));
+        $this->assertEquals([], $query->getBindings());
+    }
+
     #[DataProvider("providerLimit")]
     public function testLimit(int $from, ?int $to, string $expected): void {
         $query = Query::select("t");
