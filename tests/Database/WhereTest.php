@@ -113,6 +113,9 @@ class WhereTest extends TestCase {
         return [
             "equal"          => [ fn(StringWhere $w) => $w->equal("bob"), "WHERE name = ?", [ "bob" ] ],
             "not equal"      => [ fn(StringWhere $w) => $w->notEqual("bob"), "WHERE name <> ?", [ "bob" ] ],
+            // A Text is created as null, and a row nobody wrote it for is as empty as ''
+            "is empty"       => [ fn(StringWhere $w) => $w->isEmpty(), "WHERE IFNULL(name, '') = ?", [ "" ] ],
+            "is not empty"   => [ fn(StringWhere $w) => $w->isNotEmpty(), "WHERE name <> ?", [ "" ] ],
             "like"           => [ fn(StringWhere $w) => $w->like("bo"), "WHERE name LIKE ?", [ "%bo%" ] ],
             "not like"       => [ fn(StringWhere $w) => $w->notLike("bo"), "WHERE name NOT LIKE ?", [ "%bo%" ] ],
             "starts with"    => [ fn(StringWhere $w) => $w->startsWith("bo"), "WHERE name LIKE ?", [ "bo%" ] ],

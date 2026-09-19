@@ -1,6 +1,7 @@
 <?php
 namespace Framework\Database\Where;
 
+use Framework\Database\Query\Exp;
 use Framework\Database\Query\Op;
 use Framework\Database\Where\BaseWhere;
 
@@ -94,6 +95,24 @@ class StringWhere extends BaseWhere {
      */
     public function equal(string $value, bool $caseSensitive = false): void {
         $this->compare(Op::Equal, $value, $caseSensitive);
+    }
+
+    /**
+     * Adds an Is Empty condition
+     * @return void
+     */
+    public function isEmpty(): void {
+        // A Text, a LongText and an Array are created as null, so a row nobody
+        // wrote one for holds a null, which is as empty as the empty string
+        $this->query->where(Exp::create("IFNULL({$this->column}, '')"), Op::Equal, "");
+    }
+
+    /**
+     * Adds an Is Not Empty condition
+     * @return void
+     */
+    public function isNotEmpty(): void {
+        $this->query->where($this->column, Op::NotEqual, "");
     }
 
     /**
