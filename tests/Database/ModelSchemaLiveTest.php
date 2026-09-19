@@ -240,6 +240,16 @@ class ModelSchemaLiveTest extends LiveTestCase {
         $this->assertSame([], $list[0]->parts);
     }
 
+    public function testOnlyTheNamedPartsAreSkipped(): void {
+        $testThingID = TestThings::add("The first");
+        TestParts::add($testThingID, "A part");
+
+        $list = TestThings::getAll(withoutSubRequests: [ "parts" ]);
+
+        $this->assertSame([], $list[0]->parts);
+        $this->assertSame([ "A part" ], array_keys($list[0]->partsByName));
+    }
+
     public function testWithNoRowsNothingIsAsked(): void {
         $this->assertSame([], TestThings::getAll());
     }

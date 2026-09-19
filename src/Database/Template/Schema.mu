@@ -584,6 +584,7 @@ class {{name}}Schema extends Schema {
      * @param list<string> $joins Optional.{{#hasEncrypt}}
      * @param bool $decrypted Optional.{{/hasEncrypt}}
      * @param bool $skipSubRequest Optional.
+     * @param list<string> $withoutSubRequests Optional.
      * @return list<{{entityClass}}>
      */
     protected static function getEntityList(
@@ -593,6 +594,7 @@ class {{name}}Schema extends Schema {
         array $joins = [],{{#hasEncrypt}}
         bool $decrypted = false,{{/hasEncrypt}}
         bool $skipSubRequest = false,
+        array $withoutSubRequests = [],
     ): array {
         $list = self::getSchemaEntities(
             query: $query,{{#hasRequest}}
@@ -601,6 +603,7 @@ class {{name}}Schema extends Schema {
             joins: $joins,{{#hasEncrypt}}
             decrypted: $decrypted,{{/hasEncrypt}}
             skipSubRequest: $skipSubRequest,
+            withoutSubRequests: $withoutSubRequests,
         );
         return self::constructEntities($list);
     }

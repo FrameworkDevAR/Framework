@@ -464,6 +464,13 @@ class ProductModel {
         <tr><td><code>orderBy</code> / <code>orderAsc</code></td><td>How the children are sorted.</td></tr>
     </tbody>
 </table>
+<p>Every sub request runs on every read of the model, so a property only one screen needs is still asked for by
+the list of a hundred rows. A read can leave one out by name, or all of them at once:</p>
+<pre><code class="language-php">// The list shows the tags, and nobody there looks at the images
+return self::getEntityList($query, withoutSubRequests: [ "images" ]);
+
+// Neither of them is needed here
+return self::getEntityList($query, skipSubRequest: true);</code></pre>
 
 <h2 id="validate">Validate</h2>
 <p><a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Database/Model/Validate.php" target="_blank" rel="noopener noreferrer"><code>Validate</code></a> declares the rules a value must satisfy, so the checks live next to the field instead of

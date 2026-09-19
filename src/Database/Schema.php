@@ -245,12 +245,13 @@ class Schema {
 
     /**
      * Returns an array of Entities Data
-     * @param QueryLike|null       $query          Optional.
-     * @param SchemaRequest|null   $sort           Optional.
-     * @param array<string,string> $selects        Optional.
-     * @param list<string>         $joins          Optional.
-     * @param bool                 $decrypted      Optional.
-     * @param bool                 $skipSubRequest Optional.
+     * @param QueryLike|null       $query              Optional.
+     * @param SchemaRequest|null   $sort               Optional.
+     * @param array<string,string> $selects            Optional.
+     * @param list<string>         $joins              Optional.
+     * @param bool                 $decrypted          Optional.
+     * @param bool                 $skipSubRequest     Optional.
+     * @param list<string>         $withoutSubRequests Optional.
      * @return Dictionary
      */
     protected static function getSchemaEntities(
@@ -260,19 +261,28 @@ class Schema {
         array $joins = [],
         bool $decrypted = false,
         bool $skipSubRequest = false,
+        array $withoutSubRequests = [],
     ): Dictionary {
         $query   = self::generateQuerySort($query, $sort);
-        $request = self::requestSchemaData($query, $selects, $joins, $decrypted, $skipSubRequest);
+        $request = self::requestSchemaData(
+            $query,
+            $selects,
+            $joins,
+            $decrypted,
+            $skipSubRequest,
+            $withoutSubRequests,
+        );
         return $request;
     }
 
     /**
      * Requests data to the database
      * @param QueryLike            $query
-     * @param array<string,string> $selects        Optional.
-     * @param list<string>         $joins          Optional.
-     * @param bool                 $decrypted      Optional.
-     * @param bool                 $skipSubRequest Optional.
+     * @param array<string,string> $selects            Optional.
+     * @param list<string>         $joins              Optional.
+     * @param bool                 $decrypted          Optional.
+     * @param bool                 $skipSubRequest     Optional.
+     * @param list<string>         $withoutSubRequests Optional.
      * @return Dictionary
      */
     private static function requestSchemaData(
@@ -281,6 +291,7 @@ class Schema {
         array $joins = [],
         bool $decrypted = false,
         bool $skipSubRequest = false,
+        array $withoutSubRequests = [],
     ): Dictionary {
         $request = SelectionBuilder::create(static::getModel(), $query)
             ->addFields($decrypted)
@@ -293,6 +304,9 @@ class Schema {
 
         if (!$skipSubRequest) {
             foreach (static::getSubRequests() as $subRequest) {
+                if (Arrays::contains($withoutSubRequests, $subRequest->name)) {
+                    continue;
+                }
                 $request = $subRequest->request($request);
             }
         }

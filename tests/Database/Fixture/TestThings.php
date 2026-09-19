@@ -36,11 +36,18 @@ class TestThings extends TestThingSchema {
 
     /**
      * Returns every Thing, each with its parts
-     * @param bool $skipSubRequest Optional.
+     * @param bool         $skipSubRequest     Optional.
+     * @param list<string> $withoutSubRequests Optional.
      * @return list<TestThingEntity>
      */
-    public static function getAll(bool $skipSubRequest = false): array {
-        return self::getEntityList(skipSubRequest: $skipSubRequest);
+    public static function getAll(
+        bool $skipSubRequest = false,
+        array $withoutSubRequests = [],
+    ): array {
+        return self::getEntityList(
+            skipSubRequest:     $skipSubRequest,
+            withoutSubRequests: $withoutSubRequests,
+        );
     }
 
     /**
