@@ -513,6 +513,26 @@ class StringsTest extends TestCase {
         ];
     }
 
+    #[DataProvider("providerRandomCodeSkipsSimilar")]
+    public function testRandomCodeSkipsTheSimilarChars(string $set, string $pattern): void {
+        // The chars are drawn at random, so many codes are made for a missing skip to show
+        for ($i = 0; $i < 200; $i += 1) {
+            $code = Strings::randomCode(30, $set, skipSimilar: true);
+            $this->assertEquals(30, strlen($code));
+            $this->assertMatchesRegularExpression($pattern, $code);
+            $this->assertDoesNotMatchRegularExpression('/[0Oo1Il]/', $code);
+        }
+    }
+
+    public static function providerRandomCodeSkipsSimilar(): array {
+        return [
+            "uppercase and digits" => [ "ud", '/^[A-Z2-9]+$/' ],
+            "letters and digits"   => [ "lud", '/^[a-zA-Z2-9]+$/' ],
+            "any case letters"     => [ "a", '/^[a-zA-Z]+$/' ],
+            "digits only"          => [ "d", '/^[2-9]+$/' ],
+        ];
+    }
+
 
     #[DataProvider("providerRandomIsNotSeeded")]
     public function testTheRandomValuesDoNotFollowTheMtSeed(callable $generate): void {

@@ -425,9 +425,14 @@ class Strings {
      * Generates a random String with the given options
      * @param int    $length        Optional.
      * @param string $availableSets Optional.
+     * @param bool   $skipSimilar   Optional.
      * @return string
      */
-    public static function randomCode(int $length = 8, string $availableSets = "lud"): string {
+    public static function randomCode(
+        int $length = 8,
+        string $availableSets = "lud",
+        bool $skipSimilar = false,
+    ): string {
         $sets   = [];
         $all    = "";
         $result = "";
@@ -447,6 +452,13 @@ class Strings {
         }
         if (self::contains($availableSets, "s")) {
             $sets[] = "!@#$%&*?";
+        }
+
+        // A code that is read and then typed by hand leaves out the chars that look alike
+        if ($skipSimilar) {
+            foreach ($sets as $index => $set) {
+                $sets[$index] = self::replace($set, [ "0", "O", "o", "1", "I", "l" ], "");
+            }
         }
 
         foreach ($sets as $set) {
