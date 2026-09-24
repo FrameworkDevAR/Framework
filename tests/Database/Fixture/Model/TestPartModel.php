@@ -3,6 +3,7 @@ namespace Tests\Database\Fixture\Model;
 
 use Framework\Database\Model\Model;
 use Framework\Database\Model\Field;
+use Framework\Database\Model\Index;
 use Framework\Database\Model\Requested;
 
 /**
@@ -16,6 +17,7 @@ use Framework\Database\Model\Requested;
     canCreate:   true,
     canEdit:     true,
 )]
+#[Index([ "name", "testThingID" ], name: "byName")]
 class TestPartModel {
 
     #[Field(isID: true)]

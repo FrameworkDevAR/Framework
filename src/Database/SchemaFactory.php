@@ -16,6 +16,7 @@ use Framework\Database\Model\Expression;
 use Framework\Database\Model\Count;
 use Framework\Database\Model\Relation;
 use Framework\Database\Model\SubRequest;
+use Framework\Database\Model\Index;
 use Framework\Database\Status\Status;
 use Framework\Database\Status\State;
 use Framework\File\Storage;
@@ -110,6 +111,11 @@ class SchemaFactory {
                 continue;
             }
 
+            // The Indexes are read from wherever the Model attribute was
+            $indexAttrs = $parent->isNotEmpty() ?
+                $parent->getAttributes(Index::class) :
+                $class->getAttributes(Index::class);
+
 
             // Get the Path
             $path  = Storage::getDirectory($fileName, 1);
@@ -132,6 +138,17 @@ class SchemaFactory {
             } catch (Throwable $e) {
                 $errors[] = "$modelName: Model attribute could not be instantiated ($fileName)";
                 continue;
+            }
+
+            // Instantiate the Indexes
+            $indexes = [];
+            foreach ($indexAttrs as $indexAttr) {
+                try {
+                    $indexes[] = $indexAttr->newInstance();
+                } catch (Throwable $e) {
+                    $errors[] = "$modelName: Index attribute could not be instantiated ($fileName)";
+                    continue 2;
+                }
             }
 
             // Get the Fantasy Name
@@ -342,6 +359,7 @@ class SchemaFactory {
                 relations:       $relations,
                 counts:          $counts,
                 subRequests:     $subRequests,
+                indexes:         $indexes,
                 states:          $states,
             );
             $schemaModels[$modelName] = $schemaModel;
@@ -360,6 +378,15 @@ class SchemaFactory {
 
         // Do the final parsing in the Relations
         self::parseRelations($schemaModels, $dbNames);
+
+        // Set the DB Names of the Index Columns, now that the Fields have theirs
+        foreach ($schemaModels as $schemaModel) {
+            foreach ($schemaModel->setIndexColumns() as $indexName => $columns) {
+                foreach ($columns as $column) {
+                    $errors[] = "{$schemaModel->name}: Index $indexName names no field $column";
+                }
+            }
+        }
 
 
         // Show the Models with Errors

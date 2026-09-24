@@ -282,6 +282,48 @@ class DatabaseLiveTest extends LiveTestCase {
         $this->assertSame("THING_ID", $db->getAutoIncrement(self::Table));
     }
 
+    public function testAnIndexIsCreatedReadAndDropped(): void {
+        $db = $this->connect();
+        $this->createTable();
+
+        $db->createIndex(self::Table, "name");
+        $db->createIndex(self::Table, "byBoth", [ "name", "THING_ID" ], isUnique: true);
+
+        // The primary key is not one of them, and the columns keep their order.
+        // The indexes come as the database lists them, the unique ones first,
+        // so they are matched by name rather than in that order
+        $this->assertEquals([
+            "name"   => [ "columns" => [ "name" ], "isUnique" => false ],
+            "byBoth" => [ "columns" => [ "name", "THING_ID" ], "isUnique" => true ],
+        ], $db->getTableIndexes(self::Table));
+        $this->assertCount(4, $db->getTableKeys(self::Table));
+
+        $db->dropIndex(self::Table, "byBoth");
+        $this->assertSame([ "name" ], array_keys($db->getTableIndexes(self::Table)));
+    }
+
+    public function testATableIsCreatedWithItsIndexes(): void {
+        $db  = $this->connect();
+        $sql = $db->createTable(
+            self::Table,
+            [
+                "THING_ID" => "int(10) unsigned NOT NULL AUTO_INCREMENT",
+                "name"     => "varchar(50) NOT NULL DEFAULT ''",
+                "code"     => "varchar(10) NOT NULL DEFAULT ''",
+            ],
+            [ "THING_ID" ],
+            [ "name" ],
+            [ [ "name" => "byCode", "columns" => [ "code", "name" ], "isUnique" => true ] ],
+        );
+
+        $this->assertStringContainsString("KEY `name` (`name`)", $sql);
+        $this->assertStringContainsString("UNIQUE KEY `byCode` (`code`, `name`)", $sql);
+        $this->assertEquals([
+            "name"   => [ "columns" => [ "name" ], "isUnique" => false ],
+            "byCode" => [ "columns" => [ "code", "name" ], "isUnique" => true ],
+        ], $db->getTableIndexes(self::Table));
+    }
+
     public function testTheFieldsOfATableAreRead(): void {
         $db = $this->connect();
         $this->createTable();

@@ -10,6 +10,7 @@ use Framework\Database\Model\Requested;
 use Framework\Database\Model\Count;
 use Framework\Database\Model\Relation;
 use Framework\Database\Model\SubRequest;
+use Framework\Database\Model\Index;
 use Framework\Database\Status\State;
 use Framework\Date\Type\DateType;
 use Framework\Utils\Arrays;
@@ -92,6 +93,9 @@ class SchemaModel {
     /** @var list<SubRequest> */
     public array $subRequests     = [];
 
+    /** @var list<Index> */
+    public array $indexes         = [];
+
     /** @var list<State> */
     public array $states          = [];
 
@@ -120,6 +124,7 @@ class SchemaModel {
      * @param list<Count>      $counts          Optional.
      * @param list<Relation>   $relations       Optional.
      * @param list<SubRequest> $subRequests     Optional.
+     * @param list<Index>      $indexes         Optional.
      * @param list<State>      $states          Optional.
      */
     public function __construct(
@@ -144,6 +149,7 @@ class SchemaModel {
         array $counts = [],
         array $relations = [],
         array $subRequests = [],
+        array $indexes = [],
         array $states = [],
     ) {
         $this->isEmpty         = count($mainFields) === 0;
@@ -172,6 +178,7 @@ class SchemaModel {
         $this->counts          = $counts;
         $this->relations       = $relations;
         $this->subRequests     = $subRequests;
+        $this->indexes         = $indexes;
         $this->states          = $states;
 
         $this->entityClass     = "{$this->name}Entity";
@@ -188,6 +195,31 @@ class SchemaModel {
             $this->mainFields,
             $this->extraFields,
         );
+    }
+
+    /**
+     * Sets the DB Names of the Columns of the Indexes, and keeps the ones every column
+     * of which is a Field. The others are returned, by the name of the Index. Only the
+     * Factory needs them, as an Index is for the table and never for a Query
+     * @return array<string,list<string>>
+     */
+    public function setIndexColumns(): array {
+        $result  = [];
+        $indexes = [];
+
+        // An Index naming a column the table has not would break the table, so
+        // it is left out rather than written
+        foreach ($this->indexes as $index) {
+            $missing = $index->setDbColumns($this->fields);
+            if (count($missing) > 0) {
+                $result[$index->name] = $missing;
+            } else {
+                $indexes[] = $index;
+            }
+        }
+
+        $this->indexes = $indexes;
+        return $result;
     }
 
     /**

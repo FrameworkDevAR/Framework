@@ -131,6 +131,16 @@ class DiscoveryClass {
     }
 
     /**
+     * Returns every attribute of the class of the given name, for the repeatable ones
+     * @template T of object
+     * @param class-string<T> $className
+     * @return list<ReflectionAttribute<T>>
+     */
+    public function getAttributes(string $className): array {
+        return $this->reflection?->getAttributes($className) ?? [];
+    }
+
+    /**
      * Returns the given Constant of the class as a string, or an empty one
      * @param string $name
      * @return string

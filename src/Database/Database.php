@@ -8,6 +8,7 @@ use Framework\Date\Timer;
 use Framework\Utils\Arrays;
 use Framework\Utils\Dictionary;
 use Framework\Utils\JSON;
+use Framework\Utils\Numbers;
 use Framework\Utils\Server;
 use Framework\Utils\Strings;
 
@@ -18,6 +19,7 @@ use Throwable;
 
 /**
  * The mysqli Database Wrapper
+ * @phpstan-type IndexData array{name:string,columns:list<string>,isUnique:bool}
  */
 class Database {
 
@@ -510,9 +512,32 @@ class Database {
      * @param string $tableName
      * @return list<array<string,mixed>>
      */
-    #[NotTested("It needs a Database")]
     public function getTableKeys(string $tableName): array {
         return $this->queryData("SHOW INDEXES IN `$tableName`");
+    }
+
+    /**
+     * Returns the Indexes of the Table but the primary one, with their columns in order
+     * @param string $tableName
+     * @return array<string,array{columns:list<string>,isUnique:bool}>
+     */
+    public function getTableIndexes(string $tableName): array {
+        $result = [];
+        foreach ($this->getTableKeys($tableName) as $row) {
+            $name = Strings::toString($row["Key_name"] ?? "");
+            if ($name === "" || $name === "PRIMARY") {
+                continue;
+            }
+            if (!isset($result[$name])) {
+                $result[$name] = [
+                    "columns"  => [],
+                    "isUnique" => Numbers::toInt($row["Non_unique"] ?? 1) === 0,
+                ];
+            }
+            // The rows come one per column, in the order of the index
+            $result[$name]["columns"][] = Strings::toString($row["Column_name"] ?? "");
+        }
+        return $result;
     }
 
     /**
@@ -564,6 +589,7 @@ class Database {
      * @param array<string,string> $fields
      * @param list<string>         $primary
      * @param list<string>         $keys
+     * @param list<IndexData>      $indexes   Optional.
      * @return string
      */
     public function createTable(
@@ -571,6 +597,7 @@ class Database {
         array $fields,
         array $primary,
         array $keys,
+        array $indexes = [],
     ): string {
         $charset = $this->charset !== "" ? $this->charset : "utf8";
         $sql     = "CREATE TABLE `$tableName` (\n";
@@ -582,6 +609,11 @@ class Database {
         $sql .= "  PRIMARY KEY (`" . Strings::join($primary, "`, `") . "`)";
         foreach ($keys as $key) {
             $sql .= ",\n  KEY `$key` (`$key`)";
+        }
+        foreach ($indexes as $index) {
+            $unique  = $index["isUnique"] ? "UNIQUE " : "";
+            $columns = Strings::join($index["columns"], "`, `");
+            $sql    .= ",\n  {$unique}KEY `{$index["name"]}` (`$columns`)";
         }
         $sql .= "\n) ENGINE=InnoDB DEFAULT CHARSET=$charset";
 
@@ -771,14 +803,36 @@ class Database {
     }
 
     /**
-     * Creates an Index on the Table
-     * @param string $tableName
-     * @param string $key
+     * Creates an Index on the Table, over its own column unless given others
+     * @param string       $tableName
+     * @param string       $name
+     * @param list<string> $columns   Optional.
+     * @param bool         $isUnique  Optional.
      * @return string
      */
-    #[NotTested("It needs a Database")]
-    public function createIndex(string $tableName, string $key): string {
-        $sql = "CREATE INDEX `$key` ON `$tableName`(`$key`)";
+    public function createIndex(
+        string $tableName,
+        string $name,
+        array $columns = [],
+        bool $isUnique = false,
+    ): string {
+        $columns = count($columns) > 0 ? $columns : [ $name ];
+        $unique  = $isUnique ? "UNIQUE " : "";
+        $list    = Strings::join($columns, "`, `");
+
+        $sql = "CREATE {$unique}INDEX `$name` ON `$tableName` (`$list`)";
+        $this->execute($sql);
+        return $sql;
+    }
+
+    /**
+     * Drops an Index of the Table
+     * @param string $tableName
+     * @param string $name
+     * @return string
+     */
+    public function dropIndex(string $tableName, string $name): string {
+        $sql = "ALTER TABLE `$tableName` DROP INDEX `$name`";
         $this->execute($sql);
         return $sql;
     }

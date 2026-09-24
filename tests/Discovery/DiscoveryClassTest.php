@@ -92,6 +92,7 @@ class DiscoveryClassTest extends TestCase {
         $this->assertSame("", $class->getConstant("Name"));
         $this->assertNull($class->getConstructor());
         $this->assertNull($class->getAttribute(Priority::class));
+        $this->assertSame([], $class->getAttributes(Priority::class));
         $this->assertNull($class->newInstance());
         $this->assertNull($class->newInstanceWithoutConstructor());
         $this->assertTrue($class->getParentClass()->isEmpty());
@@ -192,6 +193,12 @@ class DiscoveryClassTest extends TestCase {
      * @param bool   $hasAttribute
      * @return void
      */
+    public function testEveryAttributeOfANameIsRead(): void {
+        // A repeatable attribute is read whole, where getAttribute takes the first
+        $this->assertCount(1, (new DiscoveryClass(Thing::class))->getAttributes(Priority::class));
+        $this->assertSame([], (new DiscoveryClass(BaseThing::class))->getAttributes(Priority::class));
+    }
+
     #[DataProvider("providerPriority")]
     public function testThePriorityIsReadFromTheAttribute(
         string $className,

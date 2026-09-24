@@ -301,6 +301,27 @@ $product-&gt;metadata;   // [ &quot;color&quot; =&gt; &quot;red&quot;, … ]</co
 column in place. A field can also be typed as a <a href="../utilities/utils.html#dictionary">Dictionary</a>, which
 is what a sub-model relation returns.</p>
 
+<h2 id="index">Index</h2>
+<p>An index over one column is declared on the field, with <code>isKey</code>. One over several columns belongs
+to none of them, so it is declared on the class with the repeatable <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Database/Model/Index.php" target="_blank" rel="noopener noreferrer"><code>Index</code></a> attribute, naming
+the properties it covers in the order they are indexed:</p>
+<pre><code class="language-php">#[Model(canCreate: true, canEdit: true)]
+#[Index([ &quot;productID&quot;, &quot;storeID&quot; ], isUnique: true)]
+#[Index([ &quot;status&quot;, &quot;createdTime&quot; ], name: &quot;recent&quot;)]
+class ProductPriceModel {
+    // ...
+}</code></pre>
+<table class="api-table">
+    <thead><tr><th>Argument</th><th>Does</th></tr></thead>
+    <tbody>
+        <tr><td><code>columns</code></td><td>The properties the index covers, in order. The columns the flags add, as <code>status</code> and <code>createdTime</code>, can be named too. A name that is no field of the model is reported by the build, and that index is left out.</td></tr>
+        <tr><td><code>isUnique</code></td><td>No two rows may hold the same values. Unlike <code>isUnique</code> on a field, the table enforces this one.</td></tr>
+        <tr><td><code>name</code></td><td>The name of the index in the table. Defaults to the columns joined with an underscore, <code>productID_storeID</code>.</td></tr>
+    </tbody>
+</table>
+<p>The migration creates an index that is missing, and drops and creates again one whose columns or uniqueness
+changed, as an index cannot be altered in place. An index the model does not declare is left alone.</p>
+
 <h2 id="status">Status</h2>
 <p>Many rows have a lifecycle — active, paused, cancelled. Rather than a loose column, a model declares its states
 with the repeatable <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Database/Status/State.php" target="_blank" rel="noopener noreferrer"><code>State</code></a> attribute, each with a color for the interface:</p>

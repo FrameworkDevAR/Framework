@@ -186,7 +186,16 @@ class SchemaMigration {
             }
         }
 
-        $sql = $db->createTable($schemaModel->tableName, $fields, $primary, $keys);
+        $indexes = [];
+        foreach ($schemaModel->indexes as $index) {
+            $indexes[] = [
+                "name"     => $index->name,
+                "columns"  => $index->dbColumns,
+                "isUnique" => $index->isUnique,
+            ];
+        }
+
+        $sql = $db->createTable($schemaModel->tableName, $fields, $primary, $keys, $indexes);
         print("\n- Created table {$schemaModel->tableName} ... \n");
         print("$sql\n\n");
     }
@@ -374,6 +383,24 @@ class SchemaMigration {
             }
         }
 
+        // Update the Indexes over several columns. One that is there with other
+        // columns or another uniqueness cannot be altered, so it is dropped and
+        // created again, and one the Model does not declare is left alone
+        $tableIndexes = $db->getTableIndexes($schemaModel->tableName);
+        $dropIndexes  = [];
+        $addIndexes   = [];
+        foreach ($schemaModel->indexes as $index) {
+            if (isset($tableIndexes[$index->name])) {
+                $tableIndex = $tableIndexes[$index->name];
+                if ($index->isSame($tableIndex["columns"], $tableIndex["isUnique"])) {
+                    continue;
+                }
+                $dropIndexes[] = $index->name;
+            }
+            $addIndexes[] = $index;
+            $update       = true;
+        }
+
         // Nothing to change
         if (!$update) {
             print("- No changes for {$schemaModel->tableName}\n");
@@ -431,6 +458,20 @@ class SchemaMigration {
 
         foreach ($keys as $key) {
             $sql = $db->createIndex($schemaModel->tableName, $key);
+            print("$sql\n");
+        }
+
+        foreach ($dropIndexes as $name) {
+            $sql = $db->dropIndex($schemaModel->tableName, $name);
+            print("$sql\n");
+        }
+        foreach ($addIndexes as $index) {
+            $sql = $db->createIndex(
+                $schemaModel->tableName,
+                $index->name,
+                $index->dbColumns,
+                $index->isUnique,
+            );
             print("$sql\n");
         }
 

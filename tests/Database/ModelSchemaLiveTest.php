@@ -250,6 +250,51 @@ class ModelSchemaLiveTest extends LiveTestCase {
         $this->assertSame([ "A part" ], array_keys($list[0]->partsByName));
     }
 
+    public function testTheIndexOfTheModelIsInTheTable(): void {
+        // Declared over the properties, made over the columns of the table
+        $this->assertSame(
+            [ "columns" => [ "name", "TEST_THING_ID" ], "isUnique" => false ],
+            $this->db()->getTableIndexes("test_part")["byName"],
+        );
+    }
+
+    public function testAnIndexThatIsGoneIsCreatedAgain(): void {
+        $this->query("ALTER TABLE `test_part` DROP INDEX `byName`");
+        $this->assertArrayNotHasKey("byName", $this->db()->getTableIndexes("test_part"));
+
+        $output = $this->migrate();
+
+        $this->assertStringContainsString("CREATE INDEX `byName` ON `test_part` (`name`, `TEST_THING_ID`)", $output);
+        $this->assertArrayHasKey("byName", $this->db()->getTableIndexes("test_part"));
+        $this->assertStringContainsString("No changes for test_part", $this->migrate());
+    }
+
+    public function testAnIndexThatChangedIsReplaced(): void {
+        // The same name over one column, as an older Model would have left it
+        $this->query("ALTER TABLE `test_part` DROP INDEX `byName`");
+        $this->query("CREATE INDEX `byName` ON `test_part` (`name`)");
+
+        $output = $this->migrate();
+
+        $this->assertStringContainsString("ALTER TABLE `test_part` DROP INDEX `byName`", $output);
+        $this->assertSame(
+            [ "name", "TEST_THING_ID" ],
+            $this->db()->getTableIndexes("test_part")["byName"]["columns"],
+        );
+        $this->assertStringContainsString("No changes for test_part", $this->migrate());
+    }
+
+    public function testAnIndexOfTheTableAloneIsLeftAlone(): void {
+        $this->query("CREATE INDEX `byHand` ON `test_part` (`name`)");
+
+        try {
+            $this->assertStringContainsString("No changes for test_part", $this->migrate());
+            $this->assertArrayHasKey("byHand", $this->db()->getTableIndexes("test_part"));
+        } finally {
+            $this->query("ALTER TABLE `test_part` DROP INDEX `byHand`");
+        }
+    }
+
     public function testWithNoRowsNothingIsAsked(): void {
         $this->assertSame([], TestThings::getAll());
     }
