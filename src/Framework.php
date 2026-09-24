@@ -21,6 +21,7 @@ class Framework {
 
     private static ?Request  $request  = null;
     private static ?Response $response = null;
+    private static string    $route    = "";
 
 
 
@@ -52,6 +53,7 @@ class Framework {
         if ($route === "") {
             return false;
         }
+        self::$route = $route;
 
         // Try getting the Token from the Header
         if ($token === "") {
@@ -87,6 +89,14 @@ class Framework {
             print($e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Returns the Route of the Request being executed
+     * @return string
+     */
+    public static function getRoute(): string {
+        return self::$route;
     }
 
     /**

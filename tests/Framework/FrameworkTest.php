@@ -40,6 +40,7 @@ class FrameworkTest extends LiveTestCase {
         }
 
         $this->setPrivateStaticProperty(Framework::class, "request", null);
+        $this->setPrivateStaticProperty(Framework::class, "route", "");
         $this->setPrivateStaticProperty(Auth::class, "accessName", Access::General);
         $this->setPrivateStaticProperty(Auth::class, "apiToken", "");
         Framework::setResponse(null);
@@ -77,6 +78,14 @@ class FrameworkTest extends LiveTestCase {
 
         $this->assertFalse($result);
         $this->assertSame("", $output);
+    }
+
+    public function testTheRouteIsKept(): void {
+        $this->assertSame("", Framework::getRoute());
+
+        $this->useRequest([ "route" => "/job/messaging/flow", "token" => "secret" ]);
+        $this->execute();
+        $this->assertSame("/job/messaging/flow", Framework::getRoute());
     }
 
     public function testAnUnknownRouteIsAnswered(): void {

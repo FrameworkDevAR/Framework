@@ -1,6 +1,7 @@
 <?php
 namespace Tests\Log;
 
+use Framework\Framework;
 use Framework\Application;
 use Framework\Discovery\Package;
 use Framework\Log\ErrorLog;
@@ -32,6 +33,12 @@ class ErrorLogLiveTest extends LiveTestCase {
 
         $this->setPrivateStaticProperty(ErrorLog::class, "framePath", Package::getBasePath());
         $this->setPrivateStaticProperty(ErrorLog::class, "basePath", Application::getIndexPath());
+        $this->setPrivateStaticProperty(Framework::class, "route", "");
+    }
+
+    protected function tearDown(): void {
+        $this->setPrivateStaticProperty(Framework::class, "route", "");
+        parent::tearDown();
     }
 
     /**
@@ -249,5 +256,25 @@ class ErrorLogLiveTest extends LiveTestCase {
         $this->assertTrue(ErrorLog::shutdown());
 
         $this->assertStringContainsString("The last one", $this->onlyOne()->description);
+    }
+
+    public function testTheShutdownLogsTheRoute(): void {
+        // An error that ended the request has no backtrace to tell where it came
+        // from, so the Route of the request goes first in it
+        $this->setPrivateStaticProperty(Framework::class, "route", "/job/messaging/flow");
+        $this->runWithSuppressedWarnings(static function (): void {
+            trigger_error("Out of memory", E_USER_WARNING);
+        }, suppress: true);
+
+        $this->assertTrue(ErrorLog::shutdown());
+
+        $this->assertStringStartsWith("Route: /job/messaging/flow\n", $this->onlyOne()->backtrace);
+    }
+
+    public function testAnErrorKeepsItsBacktraceWithARoute(): void {
+        $this->setPrivateStaticProperty(Framework::class, "route", "/job/messaging/flow");
+        ErrorLog::handler(E_USER_WARNING, "It broke");
+
+        $this->assertStringNotContainsString("Route:", $this->onlyOne()->backtrace);
     }
 }

@@ -1,6 +1,7 @@
 <?php
 namespace Framework\Log;
 
+use Framework\Framework;
 use Framework\Application;
 use Framework\Analysis\Attr\NotTested;
 use Framework\Discovery\Package;
@@ -120,6 +121,7 @@ class ErrorLog extends LogErrorSchema {
             $error["message"],
             $error["file"],
             $error["line"],
+            route: Framework::getRoute(),
         );
     }
 
@@ -129,6 +131,7 @@ class ErrorLog extends LogErrorSchema {
      * @param string $description
      * @param string $filePath    Optional.
      * @param int    $line        Optional.
+     * @param string $route       Optional.
      * @return bool
      */
     public static function handler(
@@ -136,6 +139,7 @@ class ErrorLog extends LogErrorSchema {
         string $description,
         string $filePath = "",
         int $line = 0,
+        string $route = "",
     ): bool {
         if (!self::hasPrimaryKey()) {
             return false;
@@ -145,7 +149,7 @@ class ErrorLog extends LogErrorSchema {
 
         $filePath    = self::getFilePath($filePath);
         $description = self::getDescription($description);
-        [ $description, $backtrace ] = self::getBacktrace($description);
+        [ $description, $backtrace ] = self::getBacktrace($description, $route);
 
         $query = new LogErrorQuery();
         $query->errorCode->equal($errorCode);
@@ -254,9 +258,10 @@ class ErrorLog extends LogErrorSchema {
     /**
      * Parses and returns the Backtrace
      * @param string $description
+     * @param string $route       Optional.
      * @return array{string,string}
      */
-    private static function getBacktrace(string $description): array {
+    private static function getBacktrace(string $description, string $route = ""): array {
         if (Strings::contains($description, "Stack trace")) {
             $desParts    = Strings::split($description, "Stack trace:\n");
             $description = $desParts[0] ?? $description;
@@ -281,6 +286,14 @@ class ErrorLog extends LogErrorSchema {
         $trace     = debug_backtrace();
         $backtrace = "";
         $index     = 1;
+
+        // An error that ended the request, like running out of memory, is logged once
+        // the script stopped, so its backtrace is only the shutdown, and the Route of
+        // the request that the shutdown gives is what tells where it came from
+        if ($route !== "") {
+            $backtrace = "Route: $route\n";
+        }
+
         for ($i = count($trace) - 1; $i >= 2; $i -= 1) {
             $item     = $trace[$i] ?? [];
             $function = $item["function"] ?? "";
