@@ -157,7 +157,7 @@ class SchemaJSONTest extends TestCase {
         foreach ($fields as $field) {
             $byName[$field["name"]] = $field;
         }
-        $this->assertTrue($byName["SESSION_ID"]["isKey"]);
+        $this->assertTrue($byName["CREDENTIAL_ID"]["isKey"]);
         $this->assertArrayNotHasKey("isKey", $byName["module"]);
         $this->assertArrayNotHasKey("isPrimary", $byName["module"]);
     }

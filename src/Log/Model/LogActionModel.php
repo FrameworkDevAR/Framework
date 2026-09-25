@@ -6,6 +6,7 @@ use Framework\Log\Model\LogSessionModel;
 
 use Framework\Database\Model\Model;
 use Framework\Database\Model\Field;
+use Framework\Database\Model\Index;
 use Framework\Database\Model\Virtual;
 use Framework\Database\Model\Requested;
 use Framework\Database\Model\Relation;
@@ -18,12 +19,13 @@ use Framework\Database\Model\Relation;
     hasTimestamps: true,
     canCreate:     true,
 )]
+#[Index([ "sessionID", "credentialID", "currentUser" ], name: "idx_session_credential_user")]
 class LogActionModel {
 
     #[Field(isID: true)]
     public int $actionID = 0;
 
-    #[Field(isKey: true)]
+    #[Field]
     public int $sessionID = 0;
 
     #[Field(isKey: true), Requested]

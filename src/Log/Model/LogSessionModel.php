@@ -5,6 +5,7 @@ use Framework\Auth\Model\CredentialModel;
 
 use Framework\Database\Model\Model;
 use Framework\Database\Model\Field;
+use Framework\Database\Model\Index;
 use Framework\Database\Model\Relation;
 
 /**
@@ -16,12 +17,13 @@ use Framework\Database\Model\Relation;
     canCreate:     true,
     canEdit:       true,
 )]
+#[Index([ "credentialID", "currentUser" ], name: "idx_credential_user")]
 class LogSessionModel {
 
     #[Field(isID: true)]
     public int $sessionID = 0;
 
-    #[Field(isKey: true)]
+    #[Field]
     public int $credentialID = 0;
 
     #[Field]

@@ -371,8 +371,7 @@
             },
             {
                 "name": "SESSION_ID",
-                "type": "number",
-                "isKey": true
+                "type": "number"
             },
             {
                 "name": "CREDENTIAL_ID",
@@ -587,8 +586,7 @@
             },
             {
                 "name": "CREDENTIAL_ID",
-                "type": "number",
-                "isKey": true
+                "type": "number"
             },
             {
                 "name": "currentUser",
