@@ -381,10 +381,8 @@ class SchemaFactory {
 
         // Set the DB Names of the Index Columns, now that the Fields have theirs
         foreach ($schemaModels as $schemaModel) {
-            foreach ($schemaModel->setIndexColumns() as $indexName => $columns) {
-                foreach ($columns as $column) {
-                    $errors[] = "{$schemaModel->name}: Index $indexName names no field $column";
-                }
+            foreach ($schemaModel->setIndexColumns() as $error) {
+                $errors[] = "{$schemaModel->name}: $error";
             }
         }
 

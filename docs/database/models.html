@@ -316,7 +316,7 @@ class ProductPriceModel {
     <tbody>
         <tr><td><code>columns</code></td><td>The properties the index covers, in order. The columns the flags add, as <code>status</code> and <code>createdTime</code>, can be named too. A name that is no field of the model is reported by the build, and that index is left out.</td></tr>
         <tr><td><code>isUnique</code></td><td>No two rows may hold the same values. Unlike <code>isUnique</code> on a field, the table enforces this one.</td></tr>
-        <tr><td><code>name</code></td><td>The name of the index in the table. Defaults to the columns joined with an underscore, <code>productID_storeID</code>.</td></tr>
+        <tr><td><code>name</code></td><td>The name of the index in the table. Over one column it defaults to that column, as the key of a field is named. Over several it defaults to <code>idx_</code> and the columns in <code>snake_case</code> without their ID, <code>idx_product_store</code>, which the prefix sets apart from a column. A name longer than the 64 characters the database takes is reported by the build, and that index is left out.</td></tr>
     </tbody>
 </table>
 <p>The migration creates an index that is missing, and drops and creates again one whose columns or uniqueness

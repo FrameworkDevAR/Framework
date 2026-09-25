@@ -78,7 +78,7 @@ class ModelErrorTest extends TestCase {
     public function testAnIndexOverNoFieldIsNamedAndLeftOut(): void {
         // The Model is kept, with the Index it could make. The other would
         // break the table, so it is said rather than written
-        $this->assertStringContainsString("BadIndex: Index name_nothing names no field nothing", self::$output);
+        $this->assertStringContainsString("BadIndex: Index idx_name_nothing names no field nothing", self::$output);
         $this->assertContains("BadIndex", $this->names());
 
         foreach (self::$schemaModels as $schemaModel) {

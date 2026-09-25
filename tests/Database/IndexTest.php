@@ -62,7 +62,11 @@ class IndexTest extends TestCase {
         return [
             "several columns" => [
                 fn() => new Index([ "productID", "storeID" ]),
-                "productID_storeID", [ "productID", "storeID" ], false,
+                "idx_product_store", [ "productID", "storeID" ], false,
+            ],
+            "not IDs"         => [
+                fn() => new Index([ "status", "createdTime" ]),
+                "idx_status_created_time", [ "status", "createdTime" ], false,
             ],
             "one column"      => [
                 fn() => new Index("name"),
@@ -70,7 +74,7 @@ class IndexTest extends TestCase {
             ],
             "unique"          => [
                 fn() => new Index([ "productID", "storeID" ], isUnique: true),
-                "productID_storeID", [ "productID", "storeID" ], true,
+                "idx_product_store", [ "productID", "storeID" ], true,
             ],
             "with a name"     => [
                 fn() => new Index([ "productID", "storeID" ], name: "byStore"),
@@ -145,9 +149,55 @@ class IndexTest extends TestCase {
         );
 
         // The one naming a column the table has not is left out, and said
-        $this->assertSame([ "broken" => [ "color" ] ], $model->setIndexColumns());
+        $this->assertSame([ "Index broken names no field color" ], $model->setIndexColumns());
         $this->assertCount(1, $model->indexes);
         $this->assertSame("byStore", $model->indexes[0]->name);
         $this->assertSame([ "STORE_ID", "name" ], $model->indexes[0]->dbColumns);
+    }
+
+    public function testAnIndexWithANameTooLongIsLeftOut(): void {
+        $name  = str_repeat("a", Index::MaxNameLength + 1);
+        $model = new SchemaModel(
+            name:       "Product",
+            mainFields: self::fields(),
+            indexes:    [
+                Index::create("byStore", [ "storeID", "name" ]),
+                Index::create($name, [ "storeID", "name" ]),
+            ],
+        );
+
+        $this->assertSame([
+            "Index $name has a name of 65 characters, over the 64 it can have",
+        ], $model->setIndexColumns());
+        $this->assertCount(1, $model->indexes);
+        $this->assertSame("byStore", $model->indexes[0]->name);
+    }
+
+    /**
+     * The name an Index gets when none is given
+     * @param list<string> $columns
+     * @param string       $name
+     * @return void
+     */
+    #[DataProvider("providerDefaultName")]
+    public function testTheDefaultNameReadsAsTheColumns(array $columns, string $name): void {
+        $this->assertSame($name, Index::getDefaultName($columns));
+    }
+
+    /**
+     * @return array<string,array{list<string>,string}>
+     */
+    public static function providerDefaultName(): array {
+        return [
+            "one column"           => [ [ "createdTime" ], "createdTime" ],
+            "the IDs lose the ID"  => [ [ "productID", "storeID" ], "idx_product_store" ],
+            "the rest in snake"    => [ [ "clientID", "isDeleted", "fullName" ], "idx_client_is_deleted_full_name" ],
+            "an ID in constant"    => [ [ "WABA_ID", "name" ], "idx_waba_name" ],
+        ];
+    }
+
+    public function testANameIsTooLongOnlyPastTheLimit(): void {
+        $this->assertFalse(Index::create(str_repeat("a", Index::MaxNameLength), [ "name" ])->isNameTooLong());
+        $this->assertTrue(Index::create(str_repeat("a", Index::MaxNameLength + 1), [ "name" ])->isNameTooLong());
     }
 }

@@ -12,6 +12,9 @@ use Attribute;
 #[Attribute(Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE)]
 class Index {
 
+    // The longest name MySQL and MariaDB take for an index
+    public const MaxNameLength = 64;
+
     /** @var list<string> */
     public array $columns  = [];
 
@@ -37,7 +40,7 @@ class Index {
     ) {
         $this->columns  = Arrays::toStrings($columns, withoutEmpty: true);
         $this->isUnique = $isUnique;
-        $this->name     = $name !== "" ? $name : Strings::join($this->columns, "_");
+        $this->name     = $name !== "" ? $name : self::getDefaultName($this->columns);
     }
 
     /**
@@ -52,6 +55,34 @@ class Index {
     }
 
 
+
+    /**
+     * Returns the Name of an Index over the given Columns
+     * @param list<string> $columns
+     * @return string
+     */
+    public static function getDefaultName(array $columns): string {
+        // One column is named as the key of a Field would be, and several read as the
+        // columns they cover, with the ID of each one dropped: productID and storeID
+        // are idx_product_store, which the prefix sets apart from a column
+        if (count($columns) === 1) {
+            return $columns[0];
+        }
+
+        $parts = [];
+        foreach ($columns as $column) {
+            $parts[] = Strings::stripEnd(Strings::toSnakeCase($column), "_id");
+        }
+        return "idx_" . Strings::join($parts, "_");
+    }
+
+    /**
+     * Returns true if the Name is longer than the Database takes
+     * @return bool
+     */
+    public function isNameTooLong(): bool {
+        return Strings::length($this->name) > self::MaxNameLength;
+    }
 
     /**
      * Sets the DB Names of the Columns from the Fields, returning the columns no Field has
