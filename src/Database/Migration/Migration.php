@@ -40,6 +40,9 @@ class Migration {
     /** @var list<array{table:string,from:string,to:string}> */
     private static array $columnRenames = [];
 
+    /** @var list<array{table:string,from:string,to:string}> */
+    private static array $indexRenames  = [];
+
 
     /**
      * Sets the Directory where the Data Migrations are created
@@ -88,6 +91,22 @@ class Migration {
     #[NotTested("It needs a Database")]
     public static function renameColumn(string $table, string $from, string $to): void {
         self::$columnRenames[] = [
+            "table" => $table,
+            "from"  => $from,
+            "to"    => $to,
+        ];
+    }
+
+    /**
+     * Renames an Index
+     * @param string $table
+     * @param string $from
+     * @param string $to
+     * @return void
+     */
+    #[NotTested("It needs a Database")]
+    public static function renameIndex(string $table, string $from, string $to): void {
+        self::$indexRenames[] = [
             "table" => $table,
             "from"  => $from,
             "to"    => $to,
@@ -177,6 +196,7 @@ class Migration {
         SchemaMigration::migrateData(
             self::$tableRenames,
             self::$columnRenames,
+            self::$indexRenames,
             $canDelete,
         );
 

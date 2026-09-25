@@ -826,6 +826,51 @@ class Database {
     }
 
     /**
+     * Renames an Index, keeping its Columns
+     * @param string       $tableName
+     * @param string       $oldName
+     * @param string       $newName
+     * @param list<string> $columns
+     * @param bool         $isUnique  Optional.
+     * @return string
+     */
+    public function renameIndex(
+        string $tableName,
+        string $oldName,
+        string $newName,
+        array $columns,
+        bool $isUnique = false,
+    ): string {
+        // A rename only changes the name, where a drop and a create build the whole index
+        // again, but MariaDB added it in 10.5.2, so the older ones do both in a single step
+        if ($this->canRenameIndex()) {
+            $sql = "ALTER TABLE `$tableName` RENAME INDEX `$oldName` TO `$newName`";
+        } else {
+            $unique = $isUnique ? "UNIQUE " : "";
+            $list   = Strings::join($columns, "`, `");
+            $sql    = "ALTER TABLE `$tableName` DROP INDEX `$oldName`, " .
+                "ADD {$unique}INDEX `$newName` (`$list`)";
+        }
+        $this->execute($sql);
+        return $sql;
+    }
+
+    /**
+     * Returns true if the Server can rename an Index
+     * @return bool
+     */
+    private function canRenameIndex(): bool {
+        $request = $this->queryData("SELECT VERSION() AS version");
+        $version = Strings::toString($request[0]["version"] ?? "");
+        $number  = Strings::substringBefore($version, "-");
+
+        if (Strings::contains($version, "MariaDB", caseInsensitive: true)) {
+            return version_compare($number, "10.5.2", ">=");
+        }
+        return version_compare($number, "5.7.0", ">=");
+    }
+
+    /**
      * Drops an Index of the Table
      * @param string $tableName
      * @param string $name

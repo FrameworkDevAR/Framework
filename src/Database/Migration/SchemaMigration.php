@@ -17,12 +17,14 @@ class SchemaMigration {
      * Migrates the Tables
      * @param list<array{from:string,to:string}>              $tableRenames
      * @param list<array{table:string,from:string,to:string}> $columnRenames
+     * @param list<array{table:string,from:string,to:string}> $indexRenames  Optional.
      * @param bool                                            $canDelete     Optional.
      * @return void
      */
     public static function migrateData(
         array $tableRenames,
         array $columnRenames,
+        array $indexRenames = [],
         bool $canDelete = false,
     ): void {
         $db            = Database::getInstance();
@@ -40,6 +42,12 @@ class SchemaMigration {
         if (count($columnRenames) > 0) {
             $lastRename = self::renameColumns($db, $startRename, $columnRenames);
             SettingData::setCore("rename", $lastRename);
+        }
+
+        // Rename the Indexes before the Models are compared, as an Index with a new name
+        // would otherwise be built next to the old one, which is left as it is not declared
+        if (count($indexRenames) > 0) {
+            self::renameIndexes($db, $indexRenames);
         }
 
         // Migrate the Tables
@@ -130,6 +138,48 @@ class SchemaMigration {
 
         print("- No column renames required\n\n");
         return $lastRename;
+    }
+
+    /**
+     * Renames the Indexes
+     * @param Database                                        $db
+     * @param list<array{table:string,from:string,to:string}> $indexRenames
+     * @return void
+     */
+    private static function renameIndexes(Database $db, array $indexRenames): void {
+        $didRename = false;
+
+        // An Index is renamed only while the old name is there and the new one is not, so
+        // unlike the Tables and the Columns it needs no count of the renames already made
+        foreach ($indexRenames as $indexRename) {
+            $table = SchemaModel::getDbTableName($indexRename["table"]);
+            if (!$db->tableExists($table)) {
+                continue;
+            }
+
+            $tableIndexes = $db->getTableIndexes($table);
+            $fromName     = $indexRename["from"];
+            $toName       = $indexRename["to"];
+            if (!isset($tableIndexes[$fromName]) || isset($tableIndexes[$toName])) {
+                continue;
+            }
+
+            $db->renameIndex(
+                $table,
+                $fromName,
+                $toName,
+                $tableIndexes[$fromName]["columns"],
+                $tableIndexes[$fromName]["isUnique"],
+            );
+            print("- Renamed index $fromName -> $toName in $table\n");
+            $didRename = true;
+        }
+
+        if ($didRename) {
+            print("\n");
+            return;
+        }
+        print("- No index renames required\n\n");
     }
 
     /**

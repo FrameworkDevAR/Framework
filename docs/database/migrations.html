@@ -128,12 +128,16 @@ Migration::setPath(&quot;migrations&quot;);
 Migration::setLastApplied(&quot;2024_01_initial&quot;);</code></pre></figure>
 
 <h2 id="renames">Renames</h2>
-<p>Table and column renames live in their own config files — <code>MigrationTables.config.php</code> and
-<code>MigrationColumns.config.php</code> — and run <em>before</em> the schema is synced, so the sync matches
-your models against the new names instead of dropping and recreating. Table names may be <code>snake_case</code>
-or <code>PascalCase</code>, and ID columns <code>SNAKE_CASE</code>:</p>
+<p>Table, column and index renames live in their own config files — <code>MigrationTables.config.php</code>,
+<code>MigrationColumns.config.php</code> and <code>MigrationIndexes.config.php</code> — and run <em>before</em> the
+schema is synced, so the sync matches your models against the new names instead of dropping and recreating. Table
+names may be <code>snake_case</code> or <code>PascalCase</code>, and ID columns <code>SNAKE_CASE</code>:</p>
 <figure class="code"><figcaption class="code-tab">config/MigrationTables.config.php</figcaption><pre><code class="language-php">Migration::renameTable(&quot;old_table&quot;, &quot;new_table&quot;);</code></pre></figure>
 <figure class="code"><figcaption class="code-tab">config/MigrationColumns.config.php</figcaption><pre><code class="language-php">Migration::renameColumn(&quot;TableName&quot;, &quot;oldColumn&quot;, &quot;newColumn&quot;);</code></pre></figure>
+<p>An index is renamed only while the old name is there and the new one is not, so the line can stay once it
+ran. The server renames it in place when it can, and on MariaDB before 10.5.2, which has no rename, the index is
+dropped and built again with its columns in a single step:</p>
+<figure class="code"><figcaption class="code-tab">config/MigrationIndexes.config.php</figcaption><pre><code class="language-php">Migration::renameIndex(&quot;TableName&quot;, &quot;oldIndex&quot;, &quot;NEW_INDEX&quot;);</code></pre></figure>
 
 <h2 id="creating">Creating a data migration</h2>
 <p>For a one-off change to your data — backfilling a column, moving rows — scaffold a dated migration file. Pass

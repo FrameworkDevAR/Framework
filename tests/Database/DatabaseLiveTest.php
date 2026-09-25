@@ -302,6 +302,18 @@ class DatabaseLiveTest extends LiveTestCase {
         $this->assertSame([ "name" ], array_keys($db->getTableIndexes(self::Table)));
     }
 
+    public function testAnIndexIsRenamedWithItsColumns(): void {
+        $db = $this->connect();
+        $this->createTable();
+        $db->createIndex(self::Table, "byBoth", [ "name", "THING_ID" ], isUnique: true);
+
+        $db->renameIndex(self::Table, "byBoth", "NAME_THING", [ "name", "THING_ID" ], isUnique: true);
+
+        $this->assertEquals([
+            "NAME_THING" => [ "columns" => [ "name", "THING_ID" ], "isUnique" => true ],
+        ], $db->getTableIndexes(self::Table));
+    }
+
     public function testATableIsCreatedWithItsIndexes(): void {
         $db  = $this->connect();
         $sql = $db->createTable(

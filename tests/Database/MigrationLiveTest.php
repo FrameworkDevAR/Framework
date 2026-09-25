@@ -32,24 +32,31 @@ class MigrationLiveTest extends LiveTestCase {
      * @return string
      */
     private function migrate(bool $canDelete = false): string {
-        return $this->migrateWith([], [], $canDelete);
+        return $this->migrateWith([], [], canDelete: $canDelete);
     }
 
     /**
      * Migrates the schema with the given renames, and returns what it printed
      * @param list<array{from:string,to:string}>              $tableRenames
      * @param list<array{table:string,from:string,to:string}> $columnRenames
+     * @param list<array{table:string,from:string,to:string}> $indexRenames  Optional.
      * @param bool                                            $canDelete     Optional.
      * @return string
      */
     private function migrateWith(
         array $tableRenames,
         array $columnRenames,
+        array $indexRenames = [],
         bool $canDelete = false,
     ): string {
         ob_start();
         try {
-            SchemaMigration::migrateData($tableRenames, $columnRenames, canDelete: $canDelete);
+            SchemaMigration::migrateData(
+                $tableRenames,
+                $columnRenames,
+                $indexRenames,
+                canDelete: $canDelete,
+            );
         } finally {
             $result = ob_get_clean();
         }
@@ -428,5 +435,55 @@ class MigrationLiveTest extends LiveTestCase {
         $this->assertStringNotContainsString("No column renames required", $result);
         $this->assertSame(1, SettingData::getCore("rename"));
         $this->query("DROP TABLE IF EXISTS `$table`");
+    }
+
+    #[Depends("testTheTablesAreCreated")]
+    public function testAnIndexIsRenamedOnRequest(): void {
+        $table = self::StrayTable;
+        $this->query("DROP TABLE IF EXISTS `$table`");
+        $this->query("CREATE TABLE `$table` (`one` int NOT NULL, `two` int NOT NULL, KEY `oldIndex` (`one`, `two`))");
+
+        $result = $this->migrateWith([], [], [
+            [ "table" => $table, "from" => "oldIndex", "to" => "ONE_TWO" ],
+        ]);
+
+        $this->assertStringContainsString("Renamed index oldIndex -> ONE_TWO in $table", $result);
+        $this->assertEquals([
+            "ONE_TWO" => [ "columns" => [ "one", "two" ], "isUnique" => false ],
+        ], $this->db()->getTableIndexes($table));
+        $this->query("DROP TABLE IF EXISTS `$table`");
+    }
+
+    /**
+     * An index rename that has nothing to move, which is left alone
+     * @param string $table
+     * @param string $from
+     * @param string $to
+     * @return void
+     */
+    #[DataProvider("providerNoIndexRename")]
+    #[Depends("testTheTablesAreCreated")]
+    public function testAnIndexThatIsNotThereIsNotRenamed(string $table, string $from, string $to): void {
+        $this->query("DROP TABLE IF EXISTS `" . self::StrayTable . "`");
+        $this->query("CREATE TABLE `" . self::StrayTable . "` (`one` int NOT NULL, KEY `ONE` (`one`))");
+
+        $result = $this->migrateWith([], [], [
+            [ "table" => $table, "from" => $from, "to" => $to ],
+        ]);
+
+        $this->assertStringContainsString("No index renames required", $result);
+        $this->assertSame([ "ONE" ], array_keys($this->db()->getTableIndexes(self::StrayTable)));
+        $this->query("DROP TABLE IF EXISTS `" . self::StrayTable . "`");
+    }
+
+    /**
+     * @return array<string,array{string,string,string}>
+     */
+    public static function providerNoIndexRename(): array {
+        return [
+            "a table that is not there"   => [ "not_a_table_at_all", "ONE", "TWO" ],
+            "an index that is not there"  => [ self::StrayTable, "notAnIndex", "TWO" ],
+            "an index already renamed"    => [ self::StrayTable, "oldIndex", "ONE" ],
+        ];
     }
 }
