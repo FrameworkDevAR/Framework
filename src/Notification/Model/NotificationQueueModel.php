@@ -54,6 +54,9 @@ class NotificationQueueModel {
     #[Field]
     public string $externalID = "";
 
+    #[Field(isText: true)]
+    public string $providerError = "";
+
     #[Field]
     public ?JSON $playerIDs = null;
 

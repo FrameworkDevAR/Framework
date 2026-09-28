@@ -732,6 +732,10 @@
                 "type": "string"
             },
             {
+                "name": "providerError",
+                "type": "text"
+            },
+            {
                 "name": "playerIDs",
                 "type": "json"
             },

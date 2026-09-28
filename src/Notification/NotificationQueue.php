@@ -234,7 +234,7 @@ class NotificationQueue extends NotificationQueueSchema {
             $playerIDs = Device::getAllForCredential($elem->credentialID);
             $badge     = self::getUnreadAmount($elem->credentialID, $elem->currentUser);
 
-            [ $notificationResult, $externalID ] = Notification::sendToSome(
+            $output = Notification::sendToSome(
                 $elem->title,
                 $elem->message,
                 $elem->url,
@@ -246,8 +246,9 @@ class NotificationQueue extends NotificationQueueSchema {
 
             self::editEntity(
                 $elem->notificationQueueID,
-                notificationResult: $notificationResult,
-                externalID:         $externalID,
+                notificationResult: $output->result,
+                externalID:         $output->externalID,
+                providerError:      $output->error,
                 playerIDs:          $playerIDs,
                 sentTime:           Date::now(),
             );

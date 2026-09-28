@@ -2,6 +2,7 @@
 namespace Tests\Provider;
 
 use Framework\Date\Date;
+use Framework\Notification\NotificationResult;
 use Framework\Provider\Firebase;
 use Framework\Utils\Dictionary;
 
@@ -40,15 +41,22 @@ class FirebaseTest extends TestCase {
 
 
     public function testWithoutAServiceAccountNothingIsSent(): void {
-        $this->assertSame("", Firebase::sendToAll("A title", "A message", "", "", "order", 7));
-        $this->assertSame("", Firebase::sendToSome("A title", "A message", "", "", "order", 7, [ "a-token" ]));
+        $output = Firebase::sendToAll("A title", "A message", "", "", "order", 7);
+        $this->assertSame(NotificationResult::ProviderError, $output->result);
+        $this->assertSame("No access token", $output->error);
+
+        $output = Firebase::sendToSome("A title", "A message", "", "", "order", 7, [ "a-token" ]);
+        $this->assertSame(NotificationResult::ProviderError, $output->result);
+        $this->assertSame("No access token", $output->error);
     }
 
     public function testWithNoDeviceNothingIsPosted(): void {
         // A token is there, so a device to send to would have been posted to
         $this->keepToken(3600);
 
-        $this->assertSame("", Firebase::sendToSome("A title", "A message", "", "", "order", 7, []));
+        $output = Firebase::sendToSome("A title", "A message", "", "", "order", 7, []);
+        $this->assertSame(NotificationResult::ProviderError, $output->result);
+        $this->assertSame("", $output->error);
     }
 
     public function testTheTokenIsKeptWhileItIsFresh(): void {

@@ -1,6 +1,8 @@
 <?php
 namespace Framework\Notification;
 
+use Framework\Notification\NotificationOutput;
+
 /**
  * The Notification Sender
  *
@@ -14,10 +16,11 @@ namespace Framework\Notification;
  *         public const Name = "PushyMe";
  *     }
  *
- * Both sends answer with the ID the Provider gave the notification, or null
- * when it would not take it. The badge is the number the app icon shows, and
- * none means the Provider does what it does on its own. Everyone at once has
- * no number that is right for each of them, so only some devices take one.
+ * Both sends answer with an Output made from the ID the Provider gave the
+ * notification, empty when it would not take it, and the error it gave.
+ * The badge is the number the app icon shows, and none means the Provider
+ * does what it does on its own. Everyone at once has no number that is
+ * right for each of them, so only some devices take one.
  */
 interface NotificationSender {
 
@@ -29,7 +32,7 @@ interface NotificationSender {
      * @param string $icon
      * @param string $dataType
      * @param int    $dataID
-     * @return string
+     * @return NotificationOutput
      */
     public static function sendToAll(
         string $title,
@@ -38,7 +41,7 @@ interface NotificationSender {
         string $icon,
         string $dataType,
         int $dataID,
-    ): string;
+    ): NotificationOutput;
 
     /**
      * Sends the Notification to the given devices
@@ -50,7 +53,7 @@ interface NotificationSender {
      * @param int          $dataID
      * @param list<string> $playerIDs
      * @param int          $badge     Optional.
-     * @return string
+     * @return NotificationOutput
      */
     public static function sendToSome(
         string $title,
@@ -61,5 +64,5 @@ interface NotificationSender {
         int $dataID,
         array $playerIDs,
         int $badge = 0,
-    ): string;
+    ): NotificationOutput;
 }

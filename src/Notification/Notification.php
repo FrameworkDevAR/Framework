@@ -2,6 +2,7 @@
 namespace Framework\Notification;
 
 use Framework\Application;
+use Framework\Notification\NotificationOutput;
 use Framework\Notification\NotificationResult;
 use Framework\Notification\NotificationSender;
 use Framework\System\Config;
@@ -35,7 +36,7 @@ class Notification {
      * @param string $url
      * @param string $dataType
      * @param int    $dataID
-     * @return array{NotificationResult,string}
+     * @return NotificationOutput
      */
     public static function sendToAll(
         string $title,
@@ -43,17 +44,17 @@ class Notification {
         string $url,
         string $dataType,
         int $dataID,
-    ): array {
+    ): NotificationOutput {
         if (!Config::isNotificationActive()) {
-            return [ NotificationResult::InactiveSend, "" ];
+            return new NotificationOutput(NotificationResult::InactiveSend);
         }
 
         $sender = self::getSender();
         if ($sender === null) {
-            return [ NotificationResult::NoProvider, "" ];
+            return new NotificationOutput(NotificationResult::NoProvider);
         }
 
-        $externalID = $sender::sendToAll(
+        return $sender::sendToAll(
             $title,
             $message,
             self::getUrl($url),
@@ -61,7 +62,6 @@ class Notification {
             $dataType,
             $dataID,
         );
-        return self::getResult($externalID);
     }
 
     /**
@@ -73,7 +73,7 @@ class Notification {
      * @param int          $dataID
      * @param list<string> $playerIDs
      * @param int          $badge     Optional.
-     * @return array{NotificationResult,string}
+     * @return NotificationOutput
      */
     public static function sendToSome(
         string $title,
@@ -83,20 +83,20 @@ class Notification {
         int $dataID,
         array $playerIDs,
         int $badge = 0,
-    ): array {
+    ): NotificationOutput {
         if (!Config::isNotificationActive()) {
-            return [ NotificationResult::InactiveSend, "" ];
+            return new NotificationOutput(NotificationResult::InactiveSend);
         }
         if (count($playerIDs) === 0) {
-            return [ NotificationResult::NoDevices, "" ];
+            return new NotificationOutput(NotificationResult::NoDevices);
         }
 
         $sender = self::getSender();
         if ($sender === null) {
-            return [ NotificationResult::NoProvider, "" ];
+            return new NotificationOutput(NotificationResult::NoProvider);
         }
 
-        $externalID = $sender::sendToSome(
+        return $sender::sendToSome(
             $title,
             $message,
             self::getUrl($url),
@@ -106,7 +106,6 @@ class Notification {
             $playerIDs,
             $badge,
         );
-        return self::getResult($externalID);
     }
 
 
@@ -118,18 +117,6 @@ class Notification {
     private static function getSender(): ?string {
         $provider = NotificationProvider::fromValue(Config::getNotificationProvider());
         return self::$sender ?? $provider->getSender();
-    }
-
-    /**
-     * Turns what the Sender answered into a Result
-     * @param string $externalID
-     * @return array{NotificationResult,string}
-     */
-    private static function getResult(string $externalID): array {
-        if ($externalID === "") {
-            return [ NotificationResult::ProviderError, "" ];
-        }
-        return [ NotificationResult::Sent, $externalID ];
     }
 
     /**

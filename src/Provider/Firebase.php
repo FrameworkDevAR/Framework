@@ -3,10 +3,12 @@ namespace Framework\Provider;
 
 use Framework\Auth\Device;
 use Framework\Date\Date;
+use Framework\Notification\NotificationOutput;
 use Framework\Notification\NotificationSender;
 use Framework\Provider\Curl;
 use Framework\Provider\Type\CurlMethod;
 use Framework\System\Config;
+use Framework\Utils\Arrays;
 use Framework\Utils\Dictionary;
 use Framework\Utils\Strings;
 
@@ -36,7 +38,7 @@ class Firebase implements NotificationSender {
      * @param string $icon
      * @param string $dataType
      * @param int    $dataID
-     * @return string
+     * @return NotificationOutput
      */
     #[\Override]
     public static function sendToAll(
@@ -46,7 +48,7 @@ class Firebase implements NotificationSender {
         string $icon,
         string $dataType,
         int $dataID,
-    ): string {
+    ): NotificationOutput {
         $data = self::createMessage(
             $title,
             $message,
@@ -69,7 +71,7 @@ class Firebase implements NotificationSender {
      * @param int          $dataID
      * @param list<string> $playerIDs
      * @param int          $badge     Optional.
-     * @return string
+     * @return NotificationOutput
      */
     #[\Override]
     public static function sendToSome(
@@ -81,9 +83,10 @@ class Firebase implements NotificationSender {
         int $dataID,
         array $playerIDs,
         int $badge = 0,
-    ): string {
+    ): NotificationOutput {
         // A message goes to one token, so each device is its own send
-        $result = [];
+        $externalIDs = [];
+        $errors      = [];
         foreach ($playerIDs as $playerID) {
             $data = self::createMessage(
                 $title,
@@ -95,12 +98,18 @@ class Firebase implements NotificationSender {
                 $badge,
                 token: $playerID,
             );
-            $externalID = self::send($data, $playerID);
-            if ($externalID !== "") {
-                $result[] = $externalID;
+            $output = self::send($data, $playerID);
+            if ($output->externalID !== "") {
+                $externalIDs[] = $output->externalID;
+            }
+            if ($output->error !== "" && !Arrays::contains($errors, $output->error)) {
+                $errors[] = $output->error;
             }
         }
-        return Strings::join($result, ",");
+        return NotificationOutput::fromProvider(
+            Strings::join($externalIDs, ","),
+            Strings::join($errors, ", "),
+        );
     }
 
     /**
@@ -170,15 +179,15 @@ class Firebase implements NotificationSender {
 
 
     /**
-     * Posts the Message and returns the ID Firebase gave it
+     * Posts the Message and returns the ID Firebase gave it and its error
      * @param array<string,mixed> $message
      * @param string              $playerID Optional.
-     * @return string
+     * @return NotificationOutput
      */
-    private static function send(array $message, string $playerID = ""): string {
+    private static function send(array $message, string $playerID = ""): NotificationOutput {
         $accessToken = self::getAccessToken();
         if ($accessToken === "") {
-            return "";
+            return NotificationOutput::failed("No access token");
         }
 
         $url      = self::BaseUrl . Config::getFirebaseProjectId() . "/messages:send";
@@ -193,21 +202,22 @@ class Firebase implements NotificationSender {
             $headers,
             jsonBody: true,
         );
-        $data = new Dictionary($response);
+        $data  = new Dictionary($response);
+        $error = $data->getDict("error")->getString("message");
 
         // A token Firebase no longer knows is a device that is gone, so
         // the credential stops being sent to it
         if ($playerID !== "" && self::isUnregistered($data)) {
             Device::removeByPlayer($playerID);
-            return "";
+            return NotificationOutput::failed($error);
         }
 
         // The name is projects/<project>/messages/<id>
         $name = $data->getString("name");
         if ($name === "") {
-            return "";
+            return NotificationOutput::failed($error);
         }
-        return Strings::substringAfter($name, "/");
+        return NotificationOutput::sent(Strings::substringAfter($name, "/"));
     }
 
     /**

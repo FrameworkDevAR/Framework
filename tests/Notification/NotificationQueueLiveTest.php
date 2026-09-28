@@ -238,7 +238,26 @@ class NotificationQueueLiveTest extends LiveTestCase {
         $notification = NotificationQueue::getByID($notificationQueueID);
         $this->assertSame(NotificationResult::Sent, $notification->notificationResult);
         $this->assertSame("the-external-id", $notification->externalID);
+        $this->assertSame("", $notification->providerError);
         $this->assertSame("A title", TestNotificationSender::getLast()["title"]);
+    }
+
+    public function testTheErrorOfTheProviderIsKept(): void {
+        $this->setConfig("NOTIFICATION_ACTIVE", true);
+        Notification::setSender(TestNotificationSender::class);
+        TestNotificationSender::setExternalID("");
+        TestNotificationSender::setError("All included players are not subscribed");
+        Device::add(self::CredentialID, "a-player-id");
+        $notificationQueueID = $this->add();
+
+        NotificationQueue::sendAll();
+
+        $notification = NotificationQueue::getByID($notificationQueueID);
+        $this->assertSame(NotificationResult::ProviderError, $notification->notificationResult);
+        $this->assertSame(
+            "All included players are not subscribed",
+            $notification->providerError,
+        );
     }
 
     public function testOnlyTheDevicesOfTheProviderOfTheConfigArePushedTo(): void {

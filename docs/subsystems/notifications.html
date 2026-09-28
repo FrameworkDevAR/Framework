@@ -49,12 +49,13 @@ with unread counts, read state and localized copy.</p>
 registered device, while <code>sendToSome()</code> targets specific device <em>player ids</em>. Each carries a
 title, a message, a <code>url</code> to open, a <code>dataType</code> / <code>dataID</code> pair the app can
 route on. A send to some devices also takes an optional <code>badge</code>, the number the app icon shows,
-which a broadcast cannot, as no one number is right for everyone. Each answers with a <a href="#result"><code>NotificationResult</code></a> and the id the provider
-gave the push, which is empty when it did not go out:</p>
+which a broadcast cannot, as no one number is right for everyone. Each answers with a <code>NotificationOutput</code>, which holds
+the <a href="#result"><code>NotificationResult</code></a>, the <code>externalID</code> the provider gave the push, which is empty
+when it did not go out, and the <code>error</code> the provider gave, if any:</p>
 <pre><code class="language-php">use Framework\Notification\Notification;
 
 // Broadcast to every registered device
-[ $result, $externalID ] = Notification::sendToAll(
+$output = Notification::sendToAll(
     title:    &quot;New release&quot;,
     message:  &quot;Version 2 is out&quot;,
     url:      &quot;changelog&quot;,
@@ -63,7 +64,7 @@ gave the push, which is empty when it did not go out:</p>
 );
 
 // Or target specific devices by their player id
-[ $result, $externalID ] = Notification::sendToSome(
+$output = Notification::sendToSome(
     title:    &quot;Order shipped&quot;,
     message:  &quot;Your order is on its way&quot;,
     url:      &quot;orders/7&quot;,
@@ -74,7 +75,9 @@ gave the push, which is empty when it did not go out:</p>
 );</code></pre>
 
 <h2 id="result">Send results</h2>
-<p>Delivery records a <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Notification/NotificationResult.php" target="_blank" rel="noopener noreferrer"><code>NotificationResult</code></a> per user — <code>Sent</code>, or the reason it was skipped:</p>
+<p>Delivery records a <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Notification/NotificationResult.php" target="_blank" rel="noopener noreferrer"><code>NotificationResult</code></a> per user — <code>Sent</code>, or the reason it was skipped —
+and the error the provider gave in its <code>providerError</code>. A push that was sent can carry one too, when
+the provider took it but refused some of its devices:</p>
 <table class="api-table">
     <thead><tr><th>Result</th><th>Meaning</th></tr></thead>
     <tbody>
@@ -104,7 +107,8 @@ gave the push, which is empty when it did not go out:</p>
 <p><code>NOTIFICATION_PROVIDER</code> names a <code>NotificationProvider</code>. When you call a send, the
 <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Notification/Notification.php" target="_blank" rel="noopener noreferrer"><code>Notification</code></a> class works out the icon and the full url, hands the push
 to the matching provider, and answers <a href="#result"><code>Sent</code></a> with the id the provider gave it,
-or <a href="#result"><code>ProviderError</code></a> with an empty one if it would not take it.</p>
+or <a href="#result"><code>ProviderError</code></a> with an empty one if it would not take it, together with
+the error the provider gave.</p>
 <p>There is no provider to fall back on. A send with <code>NOTIFICATION_PROVIDER</code> unset returns
 <a href="#result"><code>NoProvider</code></a>, so a setup that was never finished says so.</p>
 <p>Each <a href="credentials.html#devices">device</a> records the provider that reaches it, and a push only goes
@@ -145,9 +149,11 @@ their names, the same way <a href="emails.html#senders">email</a> does. The clas
 constant on the class overrides that.</p>
 <p>Its keys are yours to name: add them to the <a href="../introduction/configuration.html">.env</a> and the
 build turns each into a typed <code>Config</code> getter. Both sends answer with the id the provider gave the
-push, or an empty string when it would not take it:</p>
+push, or an empty string when it would not take it, and the error the provider gave, as a
+<code>NotificationOutput</code>. Its <code>fromProvider()</code> works out whether the push was sent from the id:</p>
 <figure class="code"><figcaption class="code-tab">src/Provider/Pushy.php</figcaption><pre><code class="language-php">namespace MyApp\Provider;
 
+use Framework\Notification\NotificationOutput;
 use Framework\Notification\NotificationSender;
 
 class Pushy implements NotificationSender {
@@ -159,8 +165,8 @@ class Pushy implements NotificationSender {
         string $icon,
         string $dataType,
         int $dataID,
-    ): string {
-        return &quot;the-id-it-gave-back&quot;;
+    ): NotificationOutput {
+        return NotificationOutput::fromProvider(&quot;the-id-it-gave-back&quot;);
     }
 
     public static function sendToSome(
@@ -172,8 +178,8 @@ class Pushy implements NotificationSender {
         int $dataID,
         array $playerIDs,
         int $badge = 0,
-    ): string {
-        return &quot;the-id-it-gave-back&quot;;
+    ): NotificationOutput {
+        return NotificationOutput::fromProvider(&quot;the-id-it-gave-back&quot;);
     }
 }</code></pre></figure>
 
@@ -183,7 +189,7 @@ to <code>Notification::setSender()</code>. The send then runs the whole way and 
 <pre><code class="language-php">use Framework\Notification\Notification;
 
 Notification::setSender(TestNotificationSender::class);
-[ $result, $externalID ] = Notification::sendToAll(
+$output = Notification::sendToAll(
     &quot;New release&quot;, &quot;Version 2 is out&quot;, &quot;changelog&quot;, &quot;release&quot;, 42,
 );
 

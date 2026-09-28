@@ -2,6 +2,7 @@
 namespace Tests\Notification;
 
 use Framework\Notification\Notification;
+use Framework\Notification\NotificationOutput;
 use Framework\Notification\NotificationResult;
 
 use Tests\Notification\Fixture\TestNotificationSender;
@@ -50,9 +51,9 @@ class NotificationTest extends TestCase {
      * Sends to the one device of the tests
      * @param string $url   Optional.
      * @param int    $badge Optional.
-     * @return array{NotificationResult,string}
+     * @return NotificationOutput
      */
-    private function send(string $url = "orders/7", int $badge = 0): array {
+    private function send(string $url = "orders/7", int $badge = 0): NotificationOutput {
         return Notification::sendToSome(
             "A title",
             "A message",
@@ -64,19 +65,38 @@ class NotificationTest extends TestCase {
         );
     }
 
+    /**
+     * Asserts that the Output holds the given values
+     * @param NotificationResult $result
+     * @param string             $externalID
+     * @param string             $error
+     * @param NotificationOutput $output
+     * @return void
+     */
+    private function assertOutput(
+        NotificationResult $result,
+        string $externalID,
+        string $error,
+        NotificationOutput $output,
+    ): void {
+        $this->assertSame($result, $output->result);
+        $this->assertSame($externalID, $output->externalID);
+        $this->assertSame($error, $output->error);
+    }
+
 
 
     public function testNothingIsSentWhileThePushIsOff(): void {
         Notification::setSender(TestNotificationSender::class);
 
-        $this->assertSame([ NotificationResult::InactiveSend, "" ], $this->send());
+        $this->assertOutput(NotificationResult::InactiveSend, "", "", $this->send());
         $this->assertSame(0, TestNotificationSender::getCount());
     }
 
     public function testThereIsNothingToSendToNobody(): void {
         $this->sendForReal();
 
-        $this->assertSame([ NotificationResult::NoDevices, "" ], Notification::sendToSome(
+        $this->assertOutput(NotificationResult::NoDevices, "", "", Notification::sendToSome(
             "A title",
             "A message",
             "orders/7",
@@ -92,13 +112,13 @@ class NotificationTest extends TestCase {
         $this->setConfig("NOTIFICATION_ACTIVE", true);
         $this->setConfig("NOTIFICATION_PROVIDER", "");
 
-        $this->assertSame([ NotificationResult::NoProvider, "" ], $this->send());
+        $this->assertOutput(NotificationResult::NoProvider, "", "", $this->send());
     }
 
     public function testASendGoesThroughToTheProvider(): void {
         $this->sendForReal();
 
-        $this->assertSame([ NotificationResult::Sent, "the-external-id" ], $this->send());
+        $this->assertOutput(NotificationResult::Sent, "the-external-id", "", $this->send());
 
         $push = TestNotificationSender::getLast();
         $this->assertSame("A title", $push["title"]);
@@ -130,7 +150,7 @@ class NotificationTest extends TestCase {
     ): void {
         $this->setConfig("NOTIFICATION_ACTIVE", $isActive);
 
-        $this->assertSame([ $expected, "" ], Notification::sendToAll(
+        $this->assertOutput($expected, "", "", Notification::sendToAll(
             "A title",
             "A message",
             "changelog",
@@ -153,8 +173,10 @@ class NotificationTest extends TestCase {
     public function testASendToEveryoneCarriesNoDevices(): void {
         $this->sendForReal();
 
-        $this->assertSame(
-            [ NotificationResult::Sent, "the-external-id" ],
+        $this->assertOutput(
+            NotificationResult::Sent,
+            "the-external-id",
+            "",
             Notification::sendToAll("A title", "A message", "changelog", "release", 42),
         );
 
@@ -165,11 +187,20 @@ class NotificationTest extends TestCase {
         // A Provider that would not take the push gives no ID for it
         $this->sendForReal();
         TestNotificationSender::setExternalID("");
+        TestNotificationSender::setError("Not subscribed");
 
-        $this->assertSame([ NotificationResult::ProviderError, "" ], $this->send());
+        $this->assertOutput(NotificationResult::ProviderError, "", "Not subscribed", $this->send());
 
         // It was handed over just the same
         $this->assertSame(1, TestNotificationSender::getCount());
+    }
+
+    public function testASentPushKeepsTheErrorsOfSomeDevices(): void {
+        // A Provider can take the push and still refuse some of its devices
+        $this->sendForReal();
+        TestNotificationSender::setError("Invalid device");
+
+        $this->assertOutput(NotificationResult::Sent, "the-external-id", "Invalid device", $this->send());
     }
 
     public function testThePushCarriesTheIconOfTheConfig(): void {

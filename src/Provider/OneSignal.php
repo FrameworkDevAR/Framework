@@ -1,11 +1,14 @@
 <?php
 namespace Framework\Provider;
 
+use Framework\Notification\NotificationOutput;
 use Framework\Notification\NotificationSender;
 use Framework\Provider\Curl;
 use Framework\Provider\Type\CurlMethod;
 use Framework\System\Config;
 use Framework\Utils\Arrays;
+use Framework\Utils\Dictionary;
+use Framework\Utils\JSON;
 use Framework\Utils\Strings;
 
 /**
@@ -24,7 +27,7 @@ class OneSignal implements NotificationSender {
      * @param string $icon
      * @param string $dataType
      * @param int    $dataID
-     * @return string
+     * @return NotificationOutput
      */
     #[\Override]
     public static function sendToAll(
@@ -34,7 +37,7 @@ class OneSignal implements NotificationSender {
         string $icon,
         string $dataType,
         int $dataID,
-    ): string {
+    ): NotificationOutput {
         return self::send($title, $message, $url, $icon, $dataType, $dataID, 0, [
             "included_segments" => [ "All" ],
         ]);
@@ -50,7 +53,7 @@ class OneSignal implements NotificationSender {
      * @param int          $dataID
      * @param list<string> $playerIDs
      * @param int          $badge     Optional.
-     * @return string
+     * @return NotificationOutput
      */
     #[\Override]
     public static function sendToSome(
@@ -62,7 +65,7 @@ class OneSignal implements NotificationSender {
         int $dataID,
         array $playerIDs,
         int $badge = 0,
-    ): string {
+    ): NotificationOutput {
         $params = [
             "include_subscription_ids" => $playerIDs,
         ];
@@ -87,7 +90,7 @@ class OneSignal implements NotificationSender {
      * @param int                 $dataID
      * @param int                 $badge
      * @param array<string,mixed> $params
-     * @return string
+     * @return NotificationOutput
      */
     private static function send(
         string $title,
@@ -98,7 +101,7 @@ class OneSignal implements NotificationSender {
         int $dataID,
         int $badge,
         array $params,
-    ): string {
+    ): NotificationOutput {
         $data = [
             "app_id"         => Config::getOnesignalAppId(),
             "target_channel" => "push",
@@ -127,11 +130,28 @@ class OneSignal implements NotificationSender {
             jsonBody: true,
         );
 
-        if (!is_array($response) || !isset($response["id"]) ||
-            Arrays::isEmpty($response["id"])
-        ) {
-            return "";
+        // OneSignal answers with an empty ID when it would not take the push, and
+        // it can also give errors for some devices of a push that it did take
+        $data       = new Dictionary($response);
+        $externalID = $data->getString("id");
+        $error      = self::getError($data);
+        if ($externalID === "") {
+            return NotificationOutput::failed($error);
         }
-        return Strings::toString($response["id"]);
+        return NotificationOutput::sent($externalID, $error);
+    }
+
+    /**
+     * Returns the Errors of the response as a single text
+     * @param Dictionary $response
+     * @return string
+     */
+    private static function getError(Dictionary $response): string {
+        // The errors come as a list of texts, or as a map with the invalid devices
+        $errors = $response->get("errors");
+        if (Arrays::isList($errors)) {
+            return Strings::join($errors, ", ");
+        }
+        return JSON::encode($errors);
     }
 }

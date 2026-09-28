@@ -1,6 +1,7 @@
 <?php
 namespace Tests\Notification\Fixture;
 
+use Framework\Notification\NotificationOutput;
 use Framework\Notification\NotificationSender;
 
 /**
@@ -28,6 +29,8 @@ class TestNotificationSender implements NotificationSender {
 
     private static string $externalID = "the-external-id";
 
+    private static string $error = "";
+
 
     /**
      * Sets the ID the sends answer with, an empty one being a refusal
@@ -39,6 +42,15 @@ class TestNotificationSender implements NotificationSender {
     }
 
     /**
+     * Sets the error the sends answer with
+     * @param string $error
+     * @return void
+     */
+    public static function setError(string $error): void {
+        self::$error = $error;
+    }
+
+    /**
      * Sends the Notification to every device there is
      * @param string $title
      * @param string $message
@@ -46,7 +58,7 @@ class TestNotificationSender implements NotificationSender {
      * @param string $icon
      * @param string $dataType
      * @param int    $dataID
-     * @return string
+     * @return NotificationOutput
      */
     #[\Override]
     public static function sendToAll(
@@ -56,7 +68,7 @@ class TestNotificationSender implements NotificationSender {
         string $icon,
         string $dataType,
         int $dataID,
-    ): string {
+    ): NotificationOutput {
         return self::keep($title, $message, $url, $icon, $dataType, $dataID, [], 0);
     }
 
@@ -70,7 +82,7 @@ class TestNotificationSender implements NotificationSender {
      * @param int          $dataID
      * @param list<string> $playerIDs
      * @param int          $badge     Optional.
-     * @return string
+     * @return NotificationOutput
      */
     #[\Override]
     public static function sendToSome(
@@ -82,7 +94,7 @@ class TestNotificationSender implements NotificationSender {
         int $dataID,
         array $playerIDs,
         int $badge = 0,
-    ): string {
+    ): NotificationOutput {
         return self::keep($title, $message, $url, $icon, $dataType, $dataID, $playerIDs, $badge);
     }
 
@@ -96,7 +108,7 @@ class TestNotificationSender implements NotificationSender {
      * @param int          $dataID
      * @param list<string> $playerIDs
      * @param int          $badge
-     * @return string
+     * @return NotificationOutput
      */
     private static function keep(
         string $title,
@@ -107,7 +119,7 @@ class TestNotificationSender implements NotificationSender {
         int $dataID,
         array $playerIDs,
         int $badge,
-    ): string {
+    ): NotificationOutput {
         self::$notifications[] = [
             "title"     => $title,
             "message"   => $message,
@@ -120,7 +132,7 @@ class TestNotificationSender implements NotificationSender {
         ];
 
         // A refused push was handed over just the same, so it is kept
-        return self::$externalID;
+        return NotificationOutput::fromProvider(self::$externalID, self::$error);
     }
 
     /**
@@ -166,5 +178,6 @@ class TestNotificationSender implements NotificationSender {
     public static function reset(): void {
         self::$notifications = [];
         self::$externalID    = "the-external-id";
+        self::$error         = "";
     }
 }
