@@ -183,12 +183,12 @@ class Configs implements DiscoveryBuilder {
                 $value = false;
             } elseif (Strings::startsWith($value, "\"")) {
                 $value = Strings::replace($value, "\"", "");
-            } elseif (Strings::contains($value, ".")) {
-                $value = (float)$value;
             } elseif (Strings::startsWith($value, "[")) {
                 $value = Strings::substringBetween($value, "[", "]");
                 $value = Strings::replace($value, [ "\"", " " ], "");
                 $value = Strings::split($value, ",");
+            } elseif (Strings::contains($value, ".")) {
+                $value = (float)$value;
             } else {
                 $value = (int)$value;
             }
