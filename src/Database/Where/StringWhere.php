@@ -216,6 +216,27 @@ class StringWhere extends BaseWhere {
         $this->compare(Op::EndsWith, $value, $caseSensitive);
     }
 
+    /**
+     * Adds a condition over the text holding a JSON that contains the value, or any of the values
+     * @param list<int|string>|int|string $value
+     * @return void
+     */
+    public function jsonContains(array|int|string $value): void {
+        if (!is_array($value)) {
+            $this->query->where(Exp::jsonContains($this->column, $value));
+            return;
+        }
+        if (count($value) === 0) {
+            return;
+        }
+
+        $this->query->startOr();
+        foreach ($value as $item) {
+            $this->query->where(Exp::jsonContains($this->column, $item));
+        }
+        $this->query->endOr();
+    }
+
 
 
     /**

@@ -330,7 +330,8 @@ Query::select(&quot;products&quot;)
         <tr><td><code>Exp::concat(...$columns)</code></td><td>The columns joined into one value.</td></tr>
         <tr><td><code>Exp::json($column, $path)</code></td><td>A value read out of a JSON column by its path.</td></tr>
         <tr><td><code>Exp::jsonValid($column)</code></td><td>Whether the column holds a valid JSON. A condition on its own.</td></tr>
-        <tr><td><code>Exp::jsonSearch($column, $value)</code></td><td>The path the value sits at inside a JSON column, or null when it is not there.</td></tr>
+        <tr><td><code>Exp::jsonSearch($column, $value)</code></td><td>The path of the first place a JSON column holds the text, at any depth and with the wildcards of a like, or null when it is not there.</td></tr>
+        <tr><td><code>Exp::jsonContains($column, $value)</code></td><td>Whether the list or value of a JSON column holds exactly the given one, as a number or as a text. A condition on its own.</td></tr>
     </tbody>
 </table>
 <p>Two more are asked of an expression rather than made on their own, and each answers with a condition:</p>

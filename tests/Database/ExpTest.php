@@ -40,32 +40,40 @@ class ExpTest extends TestCase {
      */
     public static function providerExp(): array {
         return [
-            "create"     => [ fn() => Exp::create("a + ?", 1), "a + ?", [ 1 ] ],
-            "column"     => [ fn() => Exp::column("t.a"), "t.a", [] ],
-            "value"      => [ fn() => Exp::value("text"), "?", [ "text" ] ],
+            "create"            => [ fn() => Exp::create("a + ?", 1), "a + ?", [ 1 ] ],
+            "column"            => [ fn() => Exp::column("t.a"), "t.a", [] ],
+            "value"             => [ fn() => Exp::value("text"), "?", [ "text" ] ],
 
-            "count"      => [ fn() => Exp::count(), "COUNT(*)", [] ],
-            "count one"  => [ fn() => Exp::count("t.a"), "COUNT(t.a)", [] ],
-            "sum"        => [ fn() => Exp::sum("t.a"), "SUM(t.a)", [] ],
+            "count"             => [ fn() => Exp::count(), "COUNT(*)", [] ],
+            "count one"         => [ fn() => Exp::count("t.a"), "COUNT(t.a)", [] ],
+            "sum"               => [ fn() => Exp::sum("t.a"), "SUM(t.a)", [] ],
 
-            "lower"      => [ fn() => Exp::lower("t.a"), "LOWER(t.a)", [] ],
-            "concat"     => [ fn() => Exp::concat("t.a", "t.b"), "CONCAT(t.a, t.b)", [] ],
-            "ifNull"     => [ fn() => Exp::ifNull("t.a", 0), "IFNULL(t.a, ?)", [ 0 ] ],
-            "if"         => [
+            "lower"             => [ fn() => Exp::lower("t.a"), "LOWER(t.a)", [] ],
+            "concat"            => [ fn() => Exp::concat("t.a", "t.b"), "CONCAT(t.a, t.b)", [] ],
+            "ifNull"            => [ fn() => Exp::ifNull("t.a", 0), "IFNULL(t.a, ?)", [ 0 ] ],
+            "if"                => [
                 fn() => Exp::if(Exp::column("t.a")->isNull(), "none", "some"),
                 "IF(t.a IS NULL, ?, ?)", [ "none", "some" ],
             ],
-            "isNull"     => [ fn() => Exp::column("t.a")->isNull(), "t.a IS NULL", [] ],
-            "isNotNull"  => [ fn() => Exp::column("t.a")->isNotNull(), "t.a IS NOT NULL", [] ],
+            "isNull"            => [ fn() => Exp::column("t.a")->isNull(), "t.a IS NULL", [] ],
+            "isNotNull"         => [ fn() => Exp::column("t.a")->isNotNull(), "t.a IS NOT NULL", [] ],
 
-            "json"       => [
+            "json"              => [
                 fn() => Exp::json("t.d", "x"),
                 "JSON_UNQUOTE(JSON_EXTRACT(t.d, ?))", [ "\$.x" ],
             ],
-            "jsonValid"  => [ fn() => Exp::jsonValid("t.d"), "JSON_VALID(t.d)", [] ],
-            "jsonSearch" => [
+            "jsonValid"         => [ fn() => Exp::jsonValid("t.d"), "JSON_VALID(t.d)", [] ],
+            "jsonSearch"        => [
                 fn() => Exp::jsonSearch("t.d", "a.jpg"),
                 "JSON_SEARCH(t.d, 'one', ?)", [ "a.jpg" ],
+            ],
+            "jsonContains"      => [
+                fn() => Exp::jsonContains("t.d", 2),
+                "JSON_CONTAINS(t.d, ?)", [ "2" ],
+            ],
+            "jsonContains text" => [
+                fn() => Exp::jsonContains("t.d", "a"),
+                "JSON_CONTAINS(t.d, ?)", [ "\"a\"" ],
             ],
         ];
     }

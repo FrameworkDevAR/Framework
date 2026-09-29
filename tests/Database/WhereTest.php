@@ -120,6 +120,12 @@ class WhereTest extends TestCase {
             "not like"       => [ fn(StringWhere $w) => $w->notLike("bo"), "WHERE name NOT LIKE ?", [ "%bo%" ] ],
             "starts with"    => [ fn(StringWhere $w) => $w->startsWith("bo"), "WHERE name LIKE ?", [ "bo%" ] ],
             "ends with"      => [ fn(StringWhere $w) => $w->endsWith("ob"), "WHERE name LIKE ?", [ "%ob" ] ],
+            "json contains"  => [ fn(StringWhere $w) => $w->jsonContains(2), "WHERE JSON_CONTAINS(name, ?)", [ "2" ] ],
+            "json any"       => [
+                fn(StringWhere $w) => $w->jsonContains([ 1, 3 ]),
+                "WHERE ( JSON_CONTAINS(name, ?) OR JSON_CONTAINS(name, ?) )", [ "1", "3" ],
+            ],
+            "json any empty" => [ fn(StringWhere $w) => $w->jsonContains([]), "", [] ],
             "in"             => [ fn(StringWhere $w) => $w->in([ "a", "b" ]), "WHERE name IN (?,?)", [ "a", "b" ] ],
             "not in"         => [ fn(StringWhere $w) => $w->notIn([ "a", "b" ]), "WHERE name NOT IN (?,?)", [ "a", "b" ] ],
 

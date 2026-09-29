@@ -157,15 +157,31 @@ class Exp {
     }
 
     /**
-     * Creates an Expression with the path at which the given value sits inside a
-     * JSON column, which is null when it is not there at all, so what asks whether
-     * a JSON holds a value is an isNotNull around this one
+     * Creates an Expression with the path of the first place a JSON column holds the given text
      * @param string $column
      * @param string $value
      * @return Exp
      */
     public static function jsonSearch(string $column, string $value): Exp {
+        // It looks at every value at any depth, inside the lists and the objects, and
+        // compares them as texts, so a % or a _ in the value works as in a Like. It is
+        // null when no value matches, so asking whether it is there is an isNotNull
         return new Exp("JSON_SEARCH($column, 'one', ?)", [ $value ]);
+    }
+
+    /**
+     * Creates an Expression that is true when a JSON column holds the given value
+     * @param string     $column
+     * @param int|string $value
+     * @return Exp
+     */
+    public static function jsonContains(string $column, int|string $value): Exp {
+        // The value is compared as a JSON, so it is encoded, and a number is only found
+        // as a number and a text as a text. Unlike the search, it has no wildcards, and
+        // it looks inside the lists but not inside the objects. The escapes are compared
+        // as they are written, so it is encoded with the flags the JSON of a column has
+        $json = (string)json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        return new Exp("JSON_CONTAINS($column, ?)", [ $json ]);
     }
 
 
