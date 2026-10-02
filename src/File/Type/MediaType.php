@@ -11,6 +11,7 @@ class MediaType {
     public const Any   = "";
     public const Media = "media";
     public const Image = "image";
+    public const Logo  = "logo";
     public const Video = "video";
     public const Audio = "audio";
     public const PDF   = "pdf";
@@ -35,6 +36,9 @@ class MediaType {
             return true;
         }
         if ($type === self::Image && FileType::isImage($name)) {
+            return true;
+        }
+        if ($type === self::Logo && (FileType::isImage($name) || FileType::isSVG($name))) {
             return true;
         }
         if ($type === self::Video && FileType::isVideo($name)) {

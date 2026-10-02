@@ -45,6 +45,12 @@ class MediaTypeTest extends TestCase {
             "media video"        => [ MediaType::Media, "clip.mp4", "clip.mp4", true ],
             "media text"         => [ MediaType::Media, "notes.txt", "notes.txt", false ],
             "image"              => [ MediaType::Image, "photo.png", "photo.png", true ],
+            // A logo is drawn at any size, so it can be an SVG, which an image can not
+            "image svg"          => [ MediaType::Image, "logo.svg", "logo.svg", false ],
+            "logo image"         => [ MediaType::Logo, "photo.png", "photo.png", true ],
+            "logo svg"           => [ MediaType::Logo, "logo.svg", "logo.svg", true ],
+            "logo video"         => [ MediaType::Logo, "clip.mp4", "clip.mp4", false ],
+            "media svg"          => [ MediaType::Media, "logo.svg", "logo.svg", false ],
             "video"              => [ MediaType::Video, "clip.mp4", "clip.mp4", true ],
             "audio"              => [ MediaType::Audio, "track.mp3", "track.mp3", true ],
             "text"               => [ MediaType::Text, "notes.txt", "notes.txt", true ],

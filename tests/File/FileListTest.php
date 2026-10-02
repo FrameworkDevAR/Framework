@@ -129,6 +129,53 @@ class FileListTest extends TestCase {
     }
 
 
+    public function testAnSvgIsItsOwnThumb(): void {
+        $svgFile = sys_get_temp_dir() . DIRECTORY_SEPARATOR . "fl_test_" . uniqid() . ".svg";
+        file_put_contents($svgFile, '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>');
+
+        try {
+            // No thumb was made for it, as there is nothing to resize
+            $items = (new FileList())->add(
+                name:       "logo.svg",
+                path:       "/brand/logo.svg",
+                isDir:      false,
+                sourcePath: $svgFile,
+                sourceUrl:  "/files/brand/logo.svg",
+                thumbPath:  "/not/a/thumb.svg",
+                thumbUrl:   "/thumbs/brand/logo.svg",
+            )->get();
+        } finally {
+            unlink($svgFile);
+        }
+
+        $this->assertTrue($items[0]->isImage);
+        $this->assertFalse($items[0]->isFile);
+        $this->assertTrue($items[0]->isTransparent);
+        $this->assertSame("file-image", $items[0]->icon);
+        $this->assertSame("/files/brand/logo.svg", $items[0]->thumb);
+        $this->assertSame("/files/brand/logo.svg", $items[0]->source);
+        // Its size is not one that can be read
+        $this->assertSame(0, $items[0]->width);
+        $this->assertSame(0, $items[0]->height);
+    }
+
+    public function testAnSvgFolderIsStillAFolder(): void {
+        $items = (new FileList())->add(
+            name:       "icons.svg",
+            path:       "/brand/icons.svg",
+            isDir:      true,
+            sourcePath: $this->tmpDir,
+            sourceUrl:  "/files/brand/icons.svg",
+            thumbPath:  "",
+            thumbUrl:   "",
+        )->get();
+
+        $this->assertTrue($items[0]->isDir);
+        $this->assertFalse($items[0]->isImage);
+        $this->assertSame("", $items[0]->thumb);
+    }
+
+
     #[DataProvider("providerAddBack")]
     public function testAddBack(string $path, array $expected): void {
         $list = new FileList();

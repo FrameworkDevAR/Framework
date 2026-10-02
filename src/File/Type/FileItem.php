@@ -57,6 +57,8 @@ class FileItem {
         string $thumbPath,
         string $thumbUrl,
     ): FileItem {
+        // An SVG has no thumb, as it can not be resized, and it is drawn at any size anyway
+        $isSVG   = !$isDir && FileType::isSVG($name);
         $isImage = !$isDir && FileType::isImage($name) && Storage::fileExists($thumbPath);
         [ $imgWidth, $imgHeight ] = Image::getSize($sourcePath);
 
@@ -69,9 +71,9 @@ class FileItem {
         $item->canSelect     = !$isDir;
         $item->isBack        = false;
         $item->isDir         = $isDir;
-        $item->isImage       = $isImage;
-        $item->isTransparent = Image::hasTransparency($sourcePath);
-        $item->isFile        = !$isImage;
+        $item->isImage       = $isImage || $isSVG;
+        $item->isTransparent = $isSVG || Image::hasTransparency($sourcePath);
+        $item->isFile        = !$isImage && !$isSVG;
         $item->isPDF         = FileType::isPDF($name);
         $item->isAudio       = FileType::isAudio($name);
         $item->isDocument    = FileType::isDocument($name);
@@ -80,7 +82,7 @@ class FileItem {
         $item->color         = FileType::getColor($item->icon);
         $item->source        = $sourceUrl;
         $item->url           = $sourceUrl;
-        $item->thumb         = $thumbUrl;
+        $item->thumb         = $isSVG ? $sourceUrl : $thumbUrl;
         $item->width         = $imgWidth;
         $item->height        = $imgHeight;
 

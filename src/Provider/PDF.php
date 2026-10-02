@@ -2,6 +2,7 @@
 namespace Framework\Provider;
 
 use Framework\File\FilePath;
+use Framework\File\FileType;
 use Framework\File\Image;
 use Framework\File\Storage;
 use Framework\Utils\Strings;
@@ -69,8 +70,11 @@ class PDF {
             return "";
         }
 
+        // The size of an SVG can not be read, so its type is known from its extension
         $mimeType = Image::getMimeType($url);
-        if ($mimeType === "") {
+        if (FileType::isSVG($url)) {
+            $mimeType = FileType::getMimeType($url);
+        } elseif ($mimeType === "") {
             $mimeType = "image/png";
         }
 
@@ -85,6 +89,12 @@ class PDF {
      * @return string
      */
     public static function getCroppedImageData(string $url, int $padding = 8): string {
+        // An SVG is not an image that can be opened, so it is given whole
+        // rather than tried, which would warn on every one
+        if (FileType::isSVG($url)) {
+            return self::getImageData($url);
+        }
+
         $content = Storage::readUrl($url);
         if ($content === "") {
             return "";

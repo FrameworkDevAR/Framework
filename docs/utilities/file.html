@@ -123,7 +123,7 @@ into a payload for forwarding it to another API.</p>
 only what it should:</p>
 <pre><code class="language-php">use Framework\File\FileType;
 
-FileType::isImage($path);          // and isPDF, isPNG, isICO
+FileType::isImage($path);          // and isPDF, isPNG, isICO, isSVG
 FileType::isVideo($path);          // and isAudio
 FileType::isDocument($path);       // and isSpreadsheet, isPresentation
 FileType::isText($path);           // and isCode
@@ -231,6 +231,9 @@ and urls it carries the flags a file browser needs — <code>isDir</code>, <code
 <code>isBack</code> — plus the <code>icon</code> for its <a href="#types">type</a> and the image
 <code>width</code> and <code>height</code>. The companion <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/File/Type/MediaType.php" target="_blank" rel="noopener noreferrer"><code>MediaType</code></a> enum names the kind of
 media being browsed.</p>
+<p>An SVG is not one of the images, as it cannot be resized and so has no thumb. It is still shown as one:
+its <code>FileItem</code> is an <code>isImage</code> whose <code>thumb</code> is the file itself. Only the
+<code>MediaType::Logo</code> kind takes one beside the images, for what is drawn at any size.</p>
 
 <h2 id="registered">Registered paths</h2>
 <p><a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/File/FilePath.php" target="_blank" rel="noopener noreferrer"><code>FilePath</code></a> owns the storage layout. The framework ships the <code>source</code>,

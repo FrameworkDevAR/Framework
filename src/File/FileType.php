@@ -27,6 +27,9 @@ class FileType {
     private static array $icoExts = [ "ico" ];
 
     /** @var list<string> */
+    private static array $svgExts = [ "svg" ];
+
+    /** @var list<string> */
     private static array $videoExts = [
         "mov", "mpeg", "m4v", "mp4", "avi", "mpg", "wma", "flv", "webm",
     ];
@@ -97,6 +100,15 @@ class FileType {
      */
     public static function isPNG(string $file): bool {
         return Storage::hasExtension($file, self::$pngExts);
+    }
+
+    /**
+     * Returns true if the given file is an SVG
+     * @param string $file
+     * @return bool
+     */
+    public static function isSVG(string $file): bool {
+        return Storage::hasExtension($file, self::$svgExts);
     }
 
     /**
@@ -211,7 +223,7 @@ class FileType {
      * @return string
      */
     public static function getIcon(string $name): string {
-        if (self::isImage($name)) {
+        if (self::isImage($name) || self::isSVG($name)) {
             return "file-image";
         }
         if (self::isVideo($name)) {

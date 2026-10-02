@@ -83,6 +83,8 @@ class FileTypeTest extends TestCase {
             "ico"    => [ "icon.ico", true ],
             "avif"   => [ "picture.avif", true ],
             "webp"   => [ "image.webp", true ],
+            // An SVG is drawn rather than resized, so it is not one of the images
+            "svg"    => [ "logo.svg", false ],
 
             "pdf"    => [ "document.pdf", false ],
             "zip"    => [ "archive.zip", false ],
@@ -103,6 +105,24 @@ class FileTypeTest extends TestCase {
             "jpg"    => [ "image.jpg", false ],
             "no ext" => [ "file", false ],
             "empty"  => [ "", false ],
+        ];
+    }
+
+
+    #[DataProvider("providerIsSVG")]
+    public function testIsSVG(string $input, bool $expected): void {
+        $this->assertSame($expected, FileType::isSVG($input));
+    }
+
+    public static function providerIsSVG(): array {
+        return [
+            "svg"       => [ "logo.svg", true ],
+            "uppercase" => [ "LOGO.SVG", true ],
+            "in a path" => [ "/files/brand/logo.svg", true ],
+            "png"       => [ "photo.png", false ],
+            "svg first" => [ "logo.svg.png", false ],
+            "no ext"    => [ "svg", false ],
+            "empty"     => [ "", false ],
         ];
     }
 
@@ -336,6 +356,7 @@ class FileTypeTest extends TestCase {
     public static function providerGetIcon(): array {
         return [
             "image"        => [ "photo.png", "file-image" ],
+            "svg"          => [ "logo.svg", "file-image" ],
             "video"        => [ "movie.mp4", "file-video" ],
             "audio"        => [ "music.mp3", "file-audio" ],
             "code"         => [ "index.html", "file-code" ],
