@@ -458,6 +458,7 @@ class OpenAI {
      * @param string                                  $allowedDomain    Optional.
      * @param bool                                    $store            Optional.
      * @param bool                                    $removeReferences Optional.
+     * @param bool                                    $forceFileSearch  Optional.
      * @return OpenAIOutput
      */
     public static function createResponse(
@@ -471,6 +472,7 @@ class OpenAI {
         string $allowedDomain = "",
         bool $store = true,
         bool $removeReferences = true,
+        bool $forceFileSearch = true,
     ): OpenAIOutput {
         $timer = new Timer();
 
@@ -525,7 +527,10 @@ class OpenAI {
         // Parse the required tools
         $tools = [];
         if ($vectorStoreID !== "") {
-            $params["tool_choice"] = "required";
+            // Without forcing it, the model searches the files only when it needs them
+            if ($forceFileSearch) {
+                $params["tool_choice"] = "required";
+            }
             $tools[] = [
                 "type"             => "file_search",
                 "vector_store_ids" => [ $vectorStoreID ],
