@@ -362,6 +362,21 @@ class Date implements JsonSerializable {
     }
 
     /**
+     * Returns a new Date moving the current one from Server Time to the given Time Zone
+     * @param float|string $timeZone
+     * @return Date
+     */
+    public function toTimeZone(float|string $timeZone): Date {
+        // An empty Time Zone is one that was never set, so the time of the server is kept
+        if ($this->isEmpty() || $timeZone === "") {
+            return $this;
+        }
+        $timeDiff  = TimeZone::calcTimeDiff(Numbers::toFloat($timeZone));
+        $timestamp = $this->timestamp - (int)round($timeDiff * 3600);
+        return new Date($timestamp, $this->hour);
+    }
+
+    /**
      * Returns a Date instance for the given Day Moment
      * @param DateType $dateType
      * @return Date

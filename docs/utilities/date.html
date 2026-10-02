@@ -180,6 +180,10 @@ TimeZone::toString(-3);             // &quot;-03:00&quot;</code></pre>
 <p>To run a block in another zone — rendering a report for a different account, say — <code>pushTimeZone()</code>
 swaps the offset and <code>popTimeZone()</code> restores the previous one, so nothing leaks into the rest of the
 request.</p>
+<p>A single date can be moved without touching the current offset. <code>toTimeZone()</code> takes the offset
+of whoever the date is for, and one that was never set leaves the date in server time:</p>
+<pre><code class="language-php">$date-&gt;toTimeZone(1);    // the same moment, read at +1
+$date-&gt;toTimeZone(&quot;&quot;);   // not set, so the server time is kept</code></pre>
 
 <h2 id="timer">Timer</h2>
 <p>A stopwatch for measuring how long something took — the <a href="../core/build.html#how">build</a> and

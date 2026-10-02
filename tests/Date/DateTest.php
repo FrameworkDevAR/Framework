@@ -232,6 +232,7 @@ class DateTest extends TestCase {
         $garbage = Date::create("not-a-date");
 
         $this->assertFalse($garbage->toServerTime()->isValid());
+        $this->assertFalse($garbage->toTimeZone(1)->isValid());
         $this->assertFalse($garbage->set(hour: 0)->isValid());
         $this->assertTrue($garbage->toServerTime()->isEmpty());
     }
@@ -243,6 +244,33 @@ class DateTest extends TestCase {
         $this->assertTrue($empty->toServerTime()->isValid());
         $this->assertTrue($empty->set(hour: 0)->isValid());
         $this->assertTrue($empty->toServerTime()->isEmpty());
+        $this->assertTrue($empty->toTimeZone(1)->isEmpty());
+    }
+
+    #[DataProvider("providerToTimeZone")]
+    public function testTheDateMovesToTheTimeZone(float|string $timeZone, string $expected): void {
+        // The server is at -3, so a Time Zone ahead of it can already be the next day
+        $date   = Date::create("2026-10-01 21:10:00");
+        $result = $date->toTimeZone($timeZone)->toString(DateFormat::ReverseSeconds);
+        $this->assertSame($expected, $result);
+    }
+
+    /**
+     * @return array<string,array{float|string,string}>
+     */
+    public static function providerToTimeZone(): array {
+        return [
+            "the server"   => [ -3,     "2026-10-01 21:10:00" ],
+            "behind it"    => [ -5,     "2026-10-01 19:10:00" ],
+            "the next day" => [ 1,      "2026-10-02 01:10:00" ],
+            "a half hour"  => [ 5.5,    "2026-10-02 05:40:00" ],
+            "a string"     => [ "1",    "2026-10-02 01:10:00" ],
+            "a negative"   => [ "-5",   "2026-10-01 19:10:00" ],
+            "not set"      => [ "",     "2026-10-01 21:10:00" ],
+            // UTC is a Time Zone like any other, and not one that was never set
+            "utc"          => [ 0,      "2026-10-02 00:10:00" ],
+            "utc as text"  => [ "0",    "2026-10-02 00:10:00" ],
+        ];
     }
 
     public function testABadHourKeepsItsText(): void {
