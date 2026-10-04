@@ -40,9 +40,10 @@ class BaseRulesTest extends RuleTestCase {
      * @return array<string,array{string,list<string>,list<array{string,int}>}>
      */
     public static function providerRules(): array {
-        $marked  = "which is marked with #[MustOverride].";
-        $missing = "Tests\\Analysis\\Fixture\\Base\\MustOverrideMissing";
-        $deep    = "Tests\\Analysis\\Fixture\\Base\\MustOverrideMissingDeep";
+        $marked   = "which is marked with #[MustOverride].";
+        $missing  = "Tests\\Analysis\\Fixture\\Base\\MustOverrideMissing";
+        $deep     = "Tests\\Analysis\\Fixture\\Base\\MustOverrideMissingDeep";
+        $property = "Tests\\Analysis\\Fixture\\Base\\MustOverridePropertyMissing";
 
         return [
             "one that does not override"  => [ MustOverrideRule::class,
@@ -58,6 +59,11 @@ class BaseRulesTest extends RuleTestCase {
             ],
             "the base and nothing else"   => [ MustOverrideRule::class,
                 [ "MustOverrideBase" ], [],
+            ],
+            "a property"                  => [ MustOverrideRule::class,
+                [ "MustOverridePropertyBase", "MustOverridePropertyDone", "MustOverridePropertyMissing" ], [
+                    [ "Class $property does not override \$label of MustOverridePropertyBase, $marked", 4 ],
+                ],
             ],
         ];
     }

@@ -191,6 +191,16 @@ class EmailSender extends Sender {
 class SmsSender extends Sender {}             // ✗ still sends nothing</code></pre>
 <p>Only the classes you can build are asked for it. An <code>abstract</code> class in between hands the obligation
 down without answering it, and a class that inherits an override from its parent has one already.</p>
+<p>A property can be marked too, and every class below it declares it again:</p>
+<pre><code class="language-php">class Sender {
+    #[MustOverride]
+    public static string $name = &quot;&quot;;
+}
+
+class SmsSender extends Sender {
+    public static string $name = &quot;SMS&quot;;   // ✓ declared again
+}</code></pre>
+
 
 <h3 id="rules-logs">Logs</h3>
 <p><code>ActionSection</code> — a class with a <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Log/Attr/Section.php" target="_blank" rel="noopener noreferrer"><code>#[Section]</code></a> has at least one <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Log/Attr/Action.php" target="_blank" rel="noopener noreferrer"><code>#[Action]</code></a> method.</p>
