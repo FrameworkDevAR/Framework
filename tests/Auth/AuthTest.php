@@ -78,6 +78,7 @@ class AuthTest extends TestCase {
     public function testTheTokenOfAnAccessIsRead(Access $accessName): void {
         $this->assertSame("", Access::getTokenKey($accessName));
         $this->assertSame("", Auth::getTokenFor($accessName));
+        $this->assertSame([], Auth::getTokensFor($accessName));
     }
 
     /**

@@ -162,6 +162,9 @@ Access::getTokenAccesses();           // [Access::Zapier]</code></pre>
 one of the config. A match sets the access of the request to that role, and from there it is treated as an API call:
 it may send a JSON body, and it is answered without tokens. An empty token is refused rather than compared, so an
 app with none configured does not let in a request that brings none either.</p>
+<p>The key of a role can hold several tokens separated by commas, and any of them is that role. That lets an
+integration move to a new token while the old one still works, or keeps the keys of an older API apart:</p>
+<figure class="code"><figcaption class="code-tab">.env</figcaption><pre><code class="language-bash">ZAPIER_TOKEN = &quot;the-new-value,the-old-value&quot;</code></pre></figure>
 <p>Where the role sits decides what the token reaches. Registered in the <code>API</code> group, as above, it reaches
 every route of that group and of <code>General</code>. Registered anywhere else, it reaches what its level reaches,
 the way a signed-in user of that role would:</p>

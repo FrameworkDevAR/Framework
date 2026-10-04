@@ -152,6 +152,28 @@ class Auth {
     }
 
     /**
+     * Returns the Tokens that grant the given Access, as its key can hold several
+     * separated by commas
+     * @param Access $accessName
+     * @return list<string>
+     */
+    public static function getTokensFor(Access $accessName): array {
+        $tokenKey = Access::getTokenKey($accessName);
+        if ($tokenKey === "") {
+            return [];
+        }
+
+        $result = [];
+        foreach (Configs::getList($tokenKey) as $accessToken) {
+            $accessToken = Strings::trim($accessToken);
+            if ($accessToken !== "") {
+                $result[] = $accessToken;
+            }
+        }
+        return $result;
+    }
+
+    /**
      * Validates and Sets the auth as API
      * @param string $token
      * @return bool
@@ -165,11 +187,12 @@ class Auth {
 
         // An Access of its own, reached with the token the environment gives it
         foreach (Access::getTokenAccesses() as $accessName) {
-            $accessToken = self::getTokenFor($accessName);
-            if ($accessToken !== "" && hash_equals($accessToken, $token)) {
-                self::$apiToken   = $token;
-                self::$accessName = $accessName;
-                return true;
+            foreach (self::getTokensFor($accessName) as $accessToken) {
+                if (hash_equals($accessToken, $token)) {
+                    self::$apiToken   = $token;
+                    self::$accessName = $accessName;
+                    return true;
+                }
             }
         }
 
