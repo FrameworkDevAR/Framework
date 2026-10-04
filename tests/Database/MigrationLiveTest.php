@@ -11,6 +11,8 @@ use Tests\LiveTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Depends;
 
+use ReflectionMethod;
+
 /**
  * The Schema Migration, against a database it is allowed to rewrite
  *
@@ -238,6 +240,111 @@ class MigrationLiveTest extends LiveTestCase {
 
         $this->migrateUntilSettled();
         $this->assertFalse($this->db()->columnExists($table, $column));
+    }
+
+    #[Depends("testTheTablesAreCreated")]
+    public function testAStrayColumnMovesNoOther(): void {
+        $table  = $this->model("Credential")->tableName;
+        $column = self::StrayColumn;
+        $this->query("ALTER TABLE `$table` ADD COLUMN `$column` varchar(64) NOT NULL DEFAULT '' AFTER `name`");
+
+        // It stays where it is until it can be deleted, in the middle of the table, and
+        // it is not what the columns after it are compared with, or each run would move
+        // the next one over it and the migration would never be done
+        try {
+            $first  = $this->migrate();
+            $second = $this->migrate();
+
+            $this->assertStringNotContainsString("MODIFY COLUMN", $first);
+            $this->assertStringNotContainsString("MODIFY COLUMN", $second);
+            $this->assertTrue($this->db()->columnExists($table, $column));
+        } finally {
+            $this->migrateUntilSettled();
+        }
+        $this->assertFalse($this->db()->columnExists($table, $column));
+    }
+
+    #[Depends("testTheTablesAreCreated")]
+    public function testAColumnOutOfPlaceIsPutBack(): void {
+        $model = $this->model("Credential");
+        $table = $model->tableName;
+        $this->query("ALTER TABLE `$table` MODIFY COLUMN `email` varchar(255) NOT NULL DEFAULT '' AFTER `name`");
+
+        $result   = $this->migrateUntilSettled();
+        $expected = [];
+        foreach ($model->fields as $field) {
+            $expected[] = $field->dbName;
+        }
+
+        // The two columns it was put before are moved back over it, which leaves it
+        // and everything after it in place, so nothing else is touched
+        $this->assertSame($expected, array_keys($this->db()->getTableFields($table)));
+        $this->assertSame(2, substr_count($result, "MODIFY COLUMN"));
+    }
+
+    /**
+     * A column moved in the order of a table
+     * @param list<string> $columns
+     * @param string       $column
+     * @param string       $after
+     * @param list<string> $expected
+     * @return void
+     */
+    #[DataProvider("providerMoveColumn")]
+    public function testAColumnIsMovedInTheOrder(
+        array $columns,
+        string $column,
+        string $after,
+        array $expected,
+    ): void {
+        $method = new ReflectionMethod(SchemaMigration::class, "moveColumn");
+
+        $this->assertSame($expected, $method->invoke(null, $columns, $column, $after));
+    }
+
+    /**
+     * @return array<string,array{list<string>,string,string,list<string>}>
+     */
+    public static function providerMoveColumn(): array {
+        return [
+            "after another"        => [ [ "a", "b", "c" ], "c", "a", [ "a", "c", "b" ] ],
+            "to the first place"   => [ [ "a", "b", "c" ], "c", "", [ "c", "a", "b" ] ],
+            "where it already is"  => [ [ "a", "b", "c" ], "b", "a", [ "a", "b", "c" ] ],
+            "a new one"            => [ [ "a", "b" ], "x", "a", [ "a", "x", "b" ] ],
+            "after one not there"  => [ [ "a", "b" ], "x", "z", [ "a", "b", "x" ] ],
+        ];
+    }
+
+    /**
+     * A column, and the one of the Model that sits before it in the table
+     * @param list<string> $columns
+     * @param string       $column
+     * @param list<string> $modelNames
+     * @param string       $expected
+     * @return void
+     */
+    #[DataProvider("providerPrevColumn")]
+    public function testTheColumnBeforeIsOneOfTheModel(
+        array $columns,
+        string $column,
+        array $modelNames,
+        string $expected,
+    ): void {
+        $method = new ReflectionMethod(SchemaMigration::class, "getPrevColumn");
+
+        $this->assertSame($expected, $method->invoke(null, $columns, $column, $modelNames));
+    }
+
+    /**
+     * @return array<string,array{list<string>,string,list<string>,string}>
+     */
+    public static function providerPrevColumn(): array {
+        return [
+            "the one before"       => [ [ "a", "b", "c" ], "c", [ "a", "b", "c" ], "b" ],
+            "past a stray one"     => [ [ "a", "x", "b" ], "b", [ "a", "b" ], "a" ],
+            "the first"            => [ [ "a", "b" ], "a", [ "a", "b" ], "" ],
+            "only a stray before"  => [ [ "x", "a" ], "a", [ "a" ], "" ],
+        ];
     }
 
     #[Depends("testTheTablesAreCreated")]

@@ -364,32 +364,40 @@ class SchemaMigration {
             $prev = $field->dbName;
         }
 
-        // Modify Columns
+        // Modify Columns. The order is followed in a copy of the columns of the table, and a
+        // modified column is moved there too, as the columns after it must be compared with
+        // where it ends up, or moving it would leave them out of place on every run
+        $modelNames = [];
+        foreach ($schemaModel->fields as $field) {
+            $modelNames[] = $field->dbName;
+        }
+        $columns = self::getColumnOrder($tableNames, $renames, $adds);
         $newPrev = "";
         foreach ($schemaModel->fields as $field) {
-            $oldPrev = "";
-            foreach ($tableFields as $tableKey => $oldData) {
-                if ($field->dbName === $tableKey) {
-                    // A column the database reports without a length, like a text, is
-                    // compared without one too, or it would look changed on every run
-                    $hasLength = Strings::contains($oldData, "(");
-                    $newData   = $field->getType($hasLength);
+            if (!isset($tableFields[$field->dbName])) {
+                $newPrev = $field->dbName;
+                continue;
+            }
 
-                    if ($newData !== $oldData || $newPrev !== $oldPrev) {
-                        $update     = true;
-                        $modifies[] = [
-                            "key"    => $field->dbName,
-                            // The comparison can drop the length, the ALTER can not, as a
-                            // text that becomes a varchar needs it to be valid SQL
-                            "type"   => $field->getType(),
-                            "after"  => $newPrev,
-                            "toInts" => Strings::contains($newData, "int") &&
-                                Strings::contains($oldData, "varchar"),
-                        ];
-                    }
-                    break;
-                }
-                $oldPrev = $tableKey;
+            // A column the database reports without a length, like a text, is
+            // compared without one too, or it would look changed on every run
+            $oldData   = $tableFields[$field->dbName];
+            $oldPrev   = self::getPrevColumn($columns, $field->dbName, $modelNames);
+            $hasLength = Strings::contains($oldData, "(");
+            $newData   = $field->getType($hasLength);
+
+            if ($newData !== $oldData || $newPrev !== $oldPrev) {
+                $update     = true;
+                $columns    = self::moveColumn($columns, $field->dbName, $newPrev);
+                $modifies[] = [
+                    "key"    => $field->dbName,
+                    // The comparison can drop the length, the ALTER can not, as a
+                    // text that becomes a varchar needs it to be valid SQL
+                    "type"   => $field->getType(),
+                    "after"  => $newPrev,
+                    "toInts" => Strings::contains($newData, "int") &&
+                        Strings::contains($oldData, "varchar"),
+                ];
             }
             $newPrev = $field->dbName;
         }
@@ -530,5 +538,85 @@ class SchemaMigration {
             print("$sql\n");
         }
         print("\n");
+    }
+
+
+    /**
+     * Returns the order of the columns of the table once the renames and the new columns are in
+     * @param list<string>                                     $tableNames
+     * @param list<array{key:string,new:string,type:string}>   $renames
+     * @param list<array{key:string,type:string,after:string}> $adds
+     * @return list<string>
+     */
+    private static function getColumnOrder(array $tableNames, array $renames, array $adds): array {
+        $result = [];
+        foreach ($tableNames as $tableName) {
+            $newName = $tableName;
+            foreach ($renames as $rename) {
+                if ($rename["key"] === $tableName) {
+                    $newName = $rename["new"];
+                }
+            }
+            $result[] = $newName;
+        }
+        foreach ($adds as $add) {
+            $result = self::moveColumn($result, $add["key"], $add["after"]);
+        }
+        return $result;
+    }
+
+    /**
+     * Moves the given column right after the other one, or first when there is no other one
+     * @param list<string> $columns
+     * @param string       $column
+     * @param string       $after
+     * @return list<string>
+     */
+    private static function moveColumn(array $columns, string $column, string $after): array {
+        $result = [];
+        $placed = false;
+        if ($after === "") {
+            $result[] = $column;
+            $placed   = true;
+        }
+        foreach ($columns as $name) {
+            if ($name === $column) {
+                continue;
+            }
+            $result[] = $name;
+            if ($name === $after) {
+                $result[] = $column;
+                $placed   = true;
+            }
+        }
+        if (!$placed) {
+            $result[] = $column;
+        }
+        return $result;
+    }
+
+    /**
+     * Returns the column of the Model right before the given one, skipping the columns that
+     * the Model does not have, as those stay where they are until they are deleted
+     * @param list<string> $columns
+     * @param string       $column
+     * @param list<string> $modelNames
+     * @return string
+     */
+    private static function getPrevColumn(
+        array $columns,
+        string $column,
+        array $modelNames,
+    ): string {
+        $result = "";
+        foreach ($columns as $name) {
+            if ($name === $column) {
+                break;
+            }
+            if (Arrays::contains($modelNames, $name)) {
+                $result = $name;
+            }
+        }
+        return $result;
     }
 }
