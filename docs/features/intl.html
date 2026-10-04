@@ -50,8 +50,8 @@ sets the default language and points at your strings directory:</p>
 <figure class="code"><figcaption class="code-tab">config/Intl.config.php</figcaption><pre><code class="language-php">use Framework\Intl\IntlConfig;
 
 IntlConfig::setDefaultLanguage(&quot;en&quot;);
-IntlConfig::setStringsDir(&quot;nls/strings&quot;);</code></pre></figure>
-<p>The default is that same <code>nls/strings</code> path, so you only call the setter to move it. The default
+IntlConfig::setStringsDir(&quot;nls&quot;);</code></pre></figure>
+<p>The default is that same <code>nls</code> path, so you only call the setter to move it. The default
 language is the fallback used whenever no language is set on the request.</p>
 <p>Two more take the directories the check reads: <code>addScriptDir()</code> for the ones where your own apps keep
 their <a href="#scripts">strings</a>, and <code>addSourceDir()</code> for the ones where the strings are
@@ -62,14 +62,14 @@ their <a href="#scripts">strings</a>, and <code>addSourceDir()</code> for the on
 file named by its code, and the code is the file name: <code>en.json</code> is the language
 <code>en</code>. The <code>NAME</code> key holds the name of the language, the one a picker shows, and the
 rest of the keys are shared across the files — you translate the values:</p>
-<figure class="code"><figcaption class="code-tab">nls/strings/en.json</figcaption><pre><code class="language-json">{
+<figure class="code"><figcaption class="code-tab">nls/en.json</figcaption><pre><code class="language-json">{
     &quot;NAME&quot;:                   &quot;English&quot;,
     &quot;GENERAL_ACCEPT&quot;:         &quot;Accept&quot;,
     &quot;PRODUCT_CREATED&quot;:        &quot;The product was created&quot;,
     &quot;PRODUCT_COUNT_SINGULAR&quot;: &quot;{0} product&quot;,
     &quot;PRODUCT_COUNT_PLURAL&quot;:   &quot;{0} products&quot;
 }</code></pre></figure>
-<figure class="code"><figcaption class="code-tab">nls/strings/es.json</figcaption><pre><code class="language-json">{
+<figure class="code"><figcaption class="code-tab">nls/es.json</figcaption><pre><code class="language-json">{
     &quot;NAME&quot;:                   &quot;Español&quot;,
     &quot;GENERAL_ACCEPT&quot;:         &quot;Aceptar&quot;,
     &quot;PRODUCT_CREATED&quot;:        &quot;El producto fue creado&quot;,
@@ -242,7 +242,7 @@ language.</p>
 <p>No file is taken to be the right one. The error is reported for the files that are on their own, against the ones
 that agree, and when only two of them disagree the file of the default language is the one taken to be right. There
 is a section per directory, naming the path it read, and a directory with no files is left out:</p>
-<pre><code class="language-bash">Strings: nls/strings
+<pre><code class="language-bash">Strings: nls
 - Found 2 errors in es.json
   - GENERAL_ACCEPT is missing, and is in en.json and pt.json
   - SELECT_STATUS is a string, and a Select in en.json and pt.json
@@ -284,7 +284,7 @@ key — <code>action=&quot;DELETE&quot;</code> — and a bare word is not enough
 start a family of its own is the price of that, and it shows up as an unused key on the other side instead.</p>
 <p>The keys nothing uses are reported under the directory that defines them, and the ones nothing defines under the
 sources that ask for them, with the file and line of the first one:</p>
-<pre><code class="language-bash">Strings: nls/strings
+<pre><code class="language-bash">Strings: nls
 - Found 2 keys that no source uses
   - CAMPAIGN_ERROR_EXTERNAL_ID
   - GENERAL_APPLY

@@ -74,7 +74,7 @@ class IntlConfigTest extends TestCase {
 
     public static function providerGetStringsPath(): array {
         return [
-            "default"    => [ "nls/strings" ],
+            "default"    => [ "nls" ],
             "custom"     => [ "custom/lang" ],
             "single dir" => [ "strings" ],
         ];

@@ -382,7 +382,7 @@ class NLSTest extends TestCase {
     }
 
     protected function assertPostConditions(): void {
-        IntlConfig::setStringsDir("nls/strings");
+        IntlConfig::setStringsDir("nls");
         Storage::deleteDir(Application::getBasePath("tests/.tmp_nls"));
     }
 

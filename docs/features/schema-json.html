@@ -51,7 +51,7 @@ Database — that one describes your tables. These validate the config files as 
 <table class="api-table">
     <thead><tr><th>Schema</th><th>Validates</th></tr></thead>
     <tbody>
-        <tr><td><code>strings.schema.json</code></td><td>The <a href="../features/intl.html#files">translation</a> files in <code>nls/strings</code>.</td></tr>
+        <tr><td><code>strings.schema.json</code></td><td>The <a href="../features/intl.html#files">translation</a> files in <code>nls</code>.</td></tr>
         <tr><td><code>icons.schema.json</code></td><td>The <a href="icons.html#mapping">icon mapping</a> read by <a href="../introduction/cli.html#icons"><code>./framework icons</code></a>.</td></tr>
     </tbody>
 </table>
@@ -62,7 +62,7 @@ resolve inside <code>vendor</code>, so they update with the package:</p>
 <figure class="code"><figcaption class="code-tab">.vscode/settings.json</figcaption><pre><code class="language-json">{
     &quot;json.schemas&quot;: [
         {
-            &quot;fileMatch&quot;: [ &quot;/nls/strings/*.json&quot; ],
+            &quot;fileMatch&quot;: [ &quot;/nls/*.json&quot; ],
             &quot;url&quot;: &quot;./vendor/frameworkdevar/framework/schemas/strings.schema.json&quot;
         },
         {
