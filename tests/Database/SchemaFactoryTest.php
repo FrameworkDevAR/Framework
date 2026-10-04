@@ -1,8 +1,11 @@
 <?php
 namespace Tests\Database;
 
+use Framework\Discovery\Type\ComposerData;
 use Framework\Database\SchemaFactory;
 use Framework\Database\SchemaModel;
+
+use Tests\TestHelpers;
 
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -11,6 +14,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
  * The Schema Factory, which reads the Models of the Framework and of the App
  */
 class SchemaFactoryTest extends TestCase {
+    use TestHelpers;
 
     /**
      * Returns the names of the given Models, in the order they come back
@@ -112,5 +116,51 @@ class SchemaFactoryTest extends TestCase {
 
         $this->assertNotEmpty($names);
         $this->assertSame($names, array_values(array_unique($names)));
+    }
+
+    /**
+     * A Model of the App relating to the Credential of the Framework, which it does not extend
+     * @param bool         $withFramework
+     * @param list<string> $fieldNames
+     * @param string       $dbName
+     * @return void
+     */
+    #[DataProvider("providerRelationToFramework")]
+    public function testTheAppCanRelateToAFrameworkModel(
+        bool $withFramework,
+        array $fieldNames,
+        string $dbName,
+    ): void {
+        $frameModels = $withFramework ? SchemaFactory::buildData(forFramework: true) : [];
+        $composerWas = $this->swapComposer(new ComposerData(
+            namespace: "Tests\\Database\\Linked\\",
+            sourceDir: "tests/Database/Linked",
+        ));
+
+        try {
+            $appModels = SchemaFactory::buildData(baseModels: $frameModels);
+        } finally {
+            $this->swapComposer($composerWas);
+        }
+
+        $this->assertSame([ "LinkedNote" ], $this->names($appModels));
+        $relation = $appModels[0]->relations[0];
+        $names    = [];
+        foreach ($relation->fields as $field) {
+            $names[] = $field->prefixName;
+        }
+        $this->assertSame($fieldNames, $names);
+        $this->assertSame($dbName, $relation->relationFieldDbName);
+    }
+
+    /**
+     * Without the Models of the Framework the Relation has nothing to read its fields from
+     * @return array<string,array{bool,list<string>,string}>
+     */
+    public static function providerRelationToFramework(): array {
+        return [
+            "with the framework"    => [ true, [ "credentialName", "credentialEmail" ], "CREDENTIAL_ID" ],
+            "without the framework" => [ false, [], "" ],
+        ];
     }
 }

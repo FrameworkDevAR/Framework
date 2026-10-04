@@ -41,7 +41,7 @@ class SchemaFactory {
      */
     public static function getData(): array {
         $frameModels = self::buildData(forFramework: true);
-        $appModels   = self::buildData(forFramework: false);
+        $appModels   = self::buildData(forFramework: false, baseModels: $frameModels);
         return self::mergeModels($frameModels, $appModels);
     }
 
@@ -74,16 +74,31 @@ class SchemaFactory {
 
     /**
      * Builds the Schema Models for the Framework or the Application
-     * @param bool $forFramework Optional.
+     * @param bool              $forFramework Optional.
+     * @param list<SchemaModel> $baseModels   Optional.
      * @return list<SchemaModel>
      */
-    #[NotTested("It needs a Database")]
-    public static function buildData(bool $forFramework = false): array {
+    public static function buildData(bool $forFramework = false, array $baseModels = []): array {
         $classes      = Discovery::findClasses(forFramework: $forFramework);
         $errors       = [];
         $schemaModels = [];
         $modelIDs     = [];
         $dbNames      = [];
+
+        // The Base Models are the ones of the Framework, which the App can relate to
+        // without extending them. Its own Models replace them by name below
+        $knownModels = [];
+        foreach ($baseModels as $baseModel) {
+            $knownModels[$baseModel->name] = $baseModel;
+            if ($baseModel->hasID) {
+                $modelIDs[$baseModel->idName] = $baseModel->name;
+            }
+            foreach ($baseModel->mainFields as $field) {
+                if ($field->isSchemaID()) {
+                    $dbNames[$field->name] = $field->dbName;
+                }
+            }
+        }
 
         // Parse the Reflections
         foreach ($classes as $class) {
@@ -371,7 +386,7 @@ class SchemaFactory {
 
 
         // Set the Models in the Relations, Counts and SubRequests
-        self::setModels($schemaModels);
+        self::setModels($schemaModels, array_merge($knownModels, $schemaModels));
 
         // Set the BelongsTo and the DB Names of the Main Fields
         self::parseMainFields($schemaModels, $modelIDs, $dbNames);
@@ -464,23 +479,25 @@ class SchemaFactory {
     /**
      * Set the Models in the Relations, Counts and SubRequests
      * @param array<string,SchemaModel> $schemaModels
+     * @param array<string,SchemaModel> $knownModels
      * @return void
      */
-    private static function setModels(array $schemaModels): void {
+    private static function setModels(array $schemaModels, array $knownModels): void {
+        // Only the Models being built are set, the known ones were set in their own build
         foreach ($schemaModels as $schemaModel) {
             foreach ($schemaModel->relations as $relation) {
-                if (isset($schemaModels[$relation->relationModelName])) {
-                    $relation->setModels($schemaModels[$relation->relationModelName], $schemaModel);
+                if (isset($knownModels[$relation->relationModelName])) {
+                    $relation->setModels($knownModels[$relation->relationModelName], $schemaModel);
                 }
             }
             foreach ($schemaModel->counts as $count) {
-                if (isset($schemaModels[$count->modelName])) {
-                    $count->setModel($schemaModels[$count->modelName], $schemaModel);
+                if (isset($knownModels[$count->modelName])) {
+                    $count->setModel($knownModels[$count->modelName], $schemaModel);
                 }
             }
             foreach ($schemaModel->subRequests as $subRequest) {
-                if (isset($schemaModels[$subRequest->modelName])) {
-                    $subRequest->setModel($schemaModels[$subRequest->modelName], $schemaModel);
+                if (isset($knownModels[$subRequest->modelName])) {
+                    $subRequest->setModel($knownModels[$subRequest->modelName], $schemaModel);
                 }
             }
         }
