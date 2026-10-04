@@ -19,6 +19,8 @@ class Response {
 
     private int $statusCode = 200;
 
+    private ?string $text = null;
+
 
 
     /**
@@ -68,6 +70,14 @@ class Response {
     }
 
     /**
+     * Returns the Text to print instead of the Data, or null when it is printed as JSON
+     * @return string|null
+     */
+    public function getText(): ?string {
+        return $this->text;
+    }
+
+    /**
      * Returns the Data as an Object
      * @return array<string,mixed>
      */
@@ -104,6 +114,17 @@ class Response {
      */
     public static function exit(int $exitCode): Response {
         return new Response([ "result" => $exitCode ], false);
+    }
+
+    /**
+     * Creates a Text Response, printed as it is instead of as JSON
+     * @param string $text
+     * @return Response
+     */
+    public static function text(string $text): Response {
+        $result = new Response(withTokens: false);
+        $result->text = $text;
+        return $result;
     }
 
     /**

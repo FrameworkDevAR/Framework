@@ -168,6 +168,29 @@ class ResponseTest extends TestCase {
     }
 
 
+    #[DataProvider("providerText")]
+    public function testText(string $text): void {
+        $response = Response::text($text);
+
+        // The Text is printed in place of the Data, which takes no tokens
+        $response->addTokens("a", "b");
+        $this->assertSame($text, $response->getText());
+        $this->assertSame([], $response->toArray());
+    }
+
+    public static function providerText(): array {
+        return [
+            "a word"  => [ "OK" ],
+            "nothing" => [ "" ],
+        ];
+    }
+
+    public function testOnlyATextResponseHasText(): void {
+        $this->assertNull(Response::empty()->getText());
+        $this->assertNull(Response::result([ "data" => "OK" ])->getText());
+    }
+
+
     #[DataProvider("providerResult")]
     public function testResult(array $result): void {
         $this->assertSame($result, Response::result($result)->toArray());

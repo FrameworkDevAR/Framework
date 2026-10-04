@@ -92,6 +92,7 @@ matches the outcome and the framework prints the JSON:</p>
         <tr><td><code>Response::error($key, $data)</code></td><td>The same, as an error — or an <a href="#errors">Errors</a> bag.</td></tr>
         <tr><td><code>Response::invalid()</code></td><td>The request was not valid.</td></tr>
         <tr><td><code>Response::logout()</code></td><td>The session is over; the client should sign out.</td></tr>
+        <tr><td><code>Response::text($text)</code></td><td>A text printed as it is instead of JSON, for a client that expects one.</td></tr>
         <tr><td><code>Response::exit($code)</code></td><td>End a <a href="../introduction/cli.html#commands">command</a> with an exit code.</td></tr>
     </tbody>
 </table>
