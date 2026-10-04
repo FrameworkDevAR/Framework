@@ -45,12 +45,11 @@ class NLSCheck {
     public static function check(): void {
         DiscoveryConfig::load();
 
-        // The strings are written to mirror each other line for line, while an
-        // email or a notification is a block of its own, so only its place among
-        // the others can be compared
+        // The strings are written to mirror each other line for line, while a
+        // notification is a block of its own, so only its place among the others
+        // can be compared
         $sections = [
             [ "Strings", IntlConfig::getStringsPath(), true ],
-            [ "Emails", IntlConfig::getEmailsPath(), false ],
             [ "Notifications", IntlConfig::getNotificationsPath(), false ],
         ];
 

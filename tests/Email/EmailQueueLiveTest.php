@@ -2,6 +2,7 @@
 namespace Tests\Email;
 
 use Framework\Email\Email;
+use Framework\Email\EmailContent;
 use Framework\Email\EmailQueue;
 use Framework\Email\EmailResult;
 use Tests\Email\Fixture\TestEmail;
@@ -34,6 +35,7 @@ class EmailQueueLiveTest extends LiveTestCase {
         $this->migrateOnce();
 
         $this->query("DELETE FROM `email_queue`");
+        $this->query("DELETE FROM `email_content`");
     }
 
     protected function tearDown(): void {
@@ -41,6 +43,7 @@ class EmailQueueLiveTest extends LiveTestCase {
         $this->setConfig("EMAIL_ACTIVE", false);
         Email::setSender();
         TestEmailSender::reset();
+        TestEmail::$version = 0;
     }
 
     /**
@@ -82,6 +85,46 @@ class EmailQueueLiveTest extends LiveTestCase {
         $this->assertSame("Hello John", $emails[0]->subject);
         $this->assertSame(TestEmail::getBody("en", [ "name" => "John" ]), $emails[0]->message);
         $this->assertSame([ self::SendTo ], $emails[0]->sendTo->toStrings());
+    }
+
+    /**
+     * The version of the class and whether its Content was edited, and the subject that is sent
+     * @param int    $version
+     * @param bool   $isEdited
+     * @param string $subject
+     * @return void
+     */
+    #[DataProvider("providerContents")]
+    public function testAnEmailWithAVersionIsSentWithItsContent(
+        int $version,
+        bool $isEdited,
+        string $subject,
+    ): void {
+        TestEmail::$version = $version;
+        if ($isEdited) {
+            ob_start();
+            EmailContent::migrateContents([ "Test" => TestEmail::class ]);
+            ob_end_clean();
+            $this->query("UPDATE `email_content` SET `subject` = 'Edited {{name}}', `message` = 'Bye'");
+        }
+
+        $this->assertTrue(TestEmail::send(self::SendTo, "en", "John", 7));
+
+        $emails = EmailQueue::getAllUnsent();
+        $this->assertSame($subject, $emails[0]->subject);
+        $this->assertSame($isEdited && $version > 0, $emails[0]->message === "Bye");
+        $this->assertSame(7, $emails[0]->dataID);
+    }
+
+    /**
+     * @return array<string,array{int,bool,string}>
+     */
+    public static function providerContents(): array {
+        return [
+            "with a version the content is sent"      => [ 2, true, "Edited John" ],
+            "with no content the class is sent"       => [ 2, false, "Hello John" ],
+            "with no version the content is not used" => [ 0, true, "Hello John" ],
+        ];
     }
 
     public function testAnEmailThatCanNotWaitIsSentNow(): void {

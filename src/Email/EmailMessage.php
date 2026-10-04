@@ -21,6 +21,8 @@ use ReflectionClass;
  */
 abstract class EmailMessage {
 
+    public static int $version = 0;
+
     #[MustOverride]
     public static string $description = "";
 
@@ -75,7 +77,7 @@ abstract class EmailMessage {
      * @return string
      */
     public static function getSubject(string $language, array $data): string {
-        return Mustache::render(static::getSubjectText($language), self::addSite($data));
+        return self::renderSubject(static::getSubjectText($language), $data);
     }
 
     /**
@@ -85,17 +87,11 @@ abstract class EmailMessage {
      * @return string
      */
     public static function getBody(string $language, array $data): string {
-        $data = self::addSite($data);
-        $body = static::getBodyText($language);
-
-        // Without a Template the body is made of paragraphs, like the Email Contents
-        if (static::$template === null) {
-            return EmailContent::render($body, $data);
-        }
-
-        $data["subject"] = static::getSubject($language, $data);
-        $data["body"]    = Mustache::render($body, $data);
-        return static::$template->render($data, self::getPartials());
+        return self::renderBody(
+            static::getSubjectText($language),
+            static::getBodyText($language),
+            $data,
+        );
     }
 
     /**
@@ -103,16 +99,66 @@ abstract class EmailMessage {
      * @param string              $sendTo
      * @param string              $language
      * @param array<string,mixed> $data
+     * @param int                 $dataID   Optional.
      * @return bool
      */
-    protected static function queue(string $sendTo, string $language, array $data): bool {
+    protected static function queue(
+        string $sendTo,
+        string $language,
+        array $data,
+        int $dataID = 0,
+    ): bool {
+        $subject = static::getSubjectText($language);
+        $body    = static::getBodyText($language);
+
+        // An Email with a version can be edited, so the texts of its Content are the ones
+        // sent, as it might hold a later version than the class
+        if (static::$version > 0) {
+            $content = EmailContent::get(static::getCode(), $language);
+            if ($content->exists()) {
+                $subject = $content->subject;
+                $body    = $content->message;
+            }
+        }
+
         return EmailQueue::addEmail(
             emailCode: static::getCode(),
             sendTo:    $sendTo,
-            subject:   static::getSubject($language, $data),
-            message:   static::getBody($language, $data),
+            subject:   self::renderSubject($subject, $data),
+            message:   self::renderBody($subject, $body, $data),
             sendNow:   static::$sendNow,
+            dataID:    $dataID,
         );
+    }
+
+    /**
+     * Renders the given Subject with the given Data
+     * @param string              $subject
+     * @param array<string,mixed> $data
+     * @return string
+     */
+    private static function renderSubject(string $subject, array $data): string {
+        return Mustache::render($subject, self::addSite($data));
+    }
+
+    /**
+     * Renders the given Body with the given Data, inside the Template when there is one
+     * @param string              $subject
+     * @param string              $body
+     * @param array<string,mixed> $data
+     * @return string
+     */
+    private static function renderBody(string $subject, string $body, array $data): string {
+        $data = self::addSite($data);
+
+        // Without a Template the body is made of paragraphs, like the Email Contents
+        if (static::$template === null) {
+            return EmailContent::render($body, $data);
+        }
+
+        $data["subject"] = self::renderSubject($subject, $data);
+        $data["body"]    = Mustache::render($body, $data);
+        return static::$template->render($data, self::getPartials());
     }
 
     /**

@@ -12,6 +12,7 @@ use Framework\System\EmailCode;
 #[Model(
     description: "The subject and body of every email, one row per code and language.",
     canCreate:   true,
+    canEdit:     true,
 )]
 class EmailContentModel {
 
@@ -26,6 +27,9 @@ class EmailContentModel {
 
     #[Field]
     public string $languageName = "";
+
+    #[Field]
+    public int $version = 0;
 
     #[Field]
     public string $description = "";

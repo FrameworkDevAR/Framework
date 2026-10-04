@@ -84,48 +84,48 @@ class NLSCheckTest extends TestCase {
     export default strings;
     JS;
 
-    // An emails file holds one block per code, and both of them the same blocks
-    private const RootEmail = <<<JSON
+    // A notifications file holds one block per code, and both of them the same blocks
+    private const RootNotification = <<<JSON
     {
         "Welcome" : {
             "description" : "Sent when a user is created",
-            "subject"     : "Welcome to [site]",
+            "title"       : "Welcome to [site]",
             "message"     : [ "Hello {{name}}", "Your account is ready" ]
         },
         "Reset"   : {
             "description" : "Sent when a password is reset",
-            "subject"     : "Your new password",
+            "title"       : "Your new password",
             "message"     : [ "Hello {{name}}" ]
         }
     }
     JSON;
 
-    private const LangEmail = <<<JSON
+    private const LangNotification = <<<JSON
     {
         "Welcome" : {
             "description" : "Se envía al crear un usuario",
-            "subject"     : "Bienvenido a [site]",
+            "title"       : "Bienvenido a [site]",
             "message"     : [ "Hola {{name}}", "Su cuenta está lista" ]
         },
         "Reset"   : {
             "description" : "Se envía al reiniciar la clave",
-            "subject"     : "Su nueva clave",
+            "title"       : "Su nueva clave",
             "message"     : [ "Hola {{name}}" ]
         }
     }
     JSON;
 
-    // The same two emails, with the one that used to be first written last
-    private const SwappedEmail = <<<JSON
+    // The same two notifications, with the one that used to be first written last
+    private const SwappedNotification = <<<JSON
     {
         "Reset"   : {
             "description" : "Se envía al reiniciar la clave",
-            "subject"     : "Su nueva clave",
+            "title"       : "Su nueva clave",
             "message"     : [ "Hola {{name}}" ]
         },
         "Welcome" : {
             "description" : "Se envía al crear un usuario",
-            "subject"     : "Bienvenido a [site]",
+            "title"       : "Bienvenido a [site]",
             "message"     : [ "Hola {{name}}", "Su cuenta está lista" ]
         }
     }
@@ -320,7 +320,7 @@ class NLSCheckTest extends TestCase {
 
 
     /**
-     * The emails and the notifications, which are compared by their order
+     * The notifications, which are compared by their order
      * @param array<string,string> $files
      * @param int                  $errors
      * @param string               $message
@@ -328,7 +328,7 @@ class NLSCheckTest extends TestCase {
      */
     #[DataProvider("providerCheckOrder")]
     public function testTheOrderIsCompared(array $files, int $errors, string $message): void {
-        [ $found, $output ] = $this->runCheck($files, "Emails", byLine: false);
+        [ $found, $output ] = $this->runCheck($files, "Notifications", byLine: false);
 
         $this->assertSame($errors, $found, $output);
         $this->assertStringContainsString($message, $output);
@@ -340,7 +340,7 @@ class NLSCheckTest extends TestCase {
     public static function providerCheckOrder(): array {
         return [
             "a translation" => [
-                [ "en.json" => self::RootEmail, "es.json" => self::LangEmail ],
+                [ "en.json" => self::RootNotification, "es.json" => self::LangNotification ],
                 0,
                 "- Compared 2 files, there are no errors",
             ],
@@ -348,9 +348,9 @@ class NLSCheckTest extends TestCase {
             // than its translation is no problem at all
             "a longer message" => [
                 [
-                    "en.json" => self::RootEmail,
+                    "en.json" => self::RootNotification,
                     "es.json" => Strings::replace(
-                        self::LangEmail,
+                        self::LangNotification,
                         "\"Hola {{name}}\", \"Su cuenta está lista\"",
                         "\"Hola {{name}}\",\n            \"Su cuenta está lista\"",
                     ),
@@ -360,18 +360,18 @@ class NLSCheckTest extends TestCase {
             ],
             // Only the first key out of place is named, since the one that moved
             // pushes every key after it out of place as well
-            "a moved email" => [
-                [ "en.json" => self::RootEmail, "es.json" => self::SwappedEmail ],
+            "a moved notification" => [
+                [ "en.json" => self::RootNotification, "es.json" => self::SwappedNotification ],
                 1,
                 "- Found 1 error in es.json\n  - position 1 holds Reset, and Welcome in en.json\n",
             ],
             "a missing part" => [
                 [
-                    "en.json" => self::RootEmail,
-                    "es.json" => Strings::replace(self::LangEmail, "\"subject\"     : \"Su nueva clave\",\n", ""),
+                    "en.json" => self::RootNotification,
+                    "es.json" => Strings::replace(self::LangNotification, "\"title\"       : \"Su nueva clave\",\n", ""),
                 ],
                 1,
-                "- Found 1 error in es.json\n  - the subject key of Reset is missing, and is in en.json\n",
+                "- Found 1 error in es.json\n  - the title key of Reset is missing, and is in en.json\n",
             ],
         ];
     }
