@@ -40,6 +40,31 @@ class EmailContent extends EmailContentSchema implements DiscoveryMigration {
     }
 
     /**
+     * Edits the texts of the given Email Content and gives it a new version, when it has one
+     * @param int    $emailContentID
+     * @param string $subject
+     * @param string $message
+     * @return bool
+     */
+    public static function edit(int $emailContentID, string $subject, string $message): bool {
+        $content = self::getByID($emailContentID);
+        if ($content->isEmpty() || $content->version === 0) {
+            return false;
+        }
+
+        // The version is only raised by an edit that changes something
+        if ($content->subject === $subject && $content->message === $message) {
+            return true;
+        }
+        return self::editEntity(
+            $emailContentID,
+            version: $content->version + 1,
+            subject: $subject,
+            message: $message,
+        );
+    }
+
+    /**
      * Renders the Email Content message with Mustache
      * @param string              $message
      * @param array<string,mixed> $data    Optional.

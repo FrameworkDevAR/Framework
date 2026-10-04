@@ -111,6 +111,49 @@ class EmailContentLiveTest extends LiveTestCase {
         ];
     }
 
+    /**
+     * The version of the class and the texts given, and what the row holds after the edit
+     * @param int    $classVersion
+     * @param string $subject
+     * @param bool   $isEdited
+     * @param string $expected
+     * @param int    $version
+     * @return void
+     */
+    #[DataProvider("providerEdit")]
+    public function testAContentWithAVersionIsEdited(
+        int $classVersion,
+        string $subject,
+        bool $isEdited,
+        string $expected,
+        int $version,
+    ): void {
+        TestEmail::$version = $classVersion;
+        $this->migrateMessages();
+        $content = EmailContent::get(EmailCode::Test, "en");
+
+        $this->assertSame($isEdited, EmailContent::edit($content->id, $subject, $content->message));
+
+        $content = EmailContent::get(EmailCode::Test, "en");
+        $this->assertSame($expected, $content->subject);
+        $this->assertSame($version, $content->version);
+    }
+
+    /**
+     * @return array<string,array{int,string,bool,string,int}>
+     */
+    public static function providerEdit(): array {
+        return [
+            "one with no version is left alone" => [ 0, "Edited", false, "Hello {{name}}", 0 ],
+            "a change raises the version"       => [ 2, "Edited", true, "Edited", 3 ],
+            "the same texts leave it as it was" => [ 2, "Hello {{name}}", true, "Hello {{name}}", 2 ],
+        ];
+    }
+
+    public function testAContentThatIsNotThereIsNotEdited(): void {
+        $this->assertFalse(EmailContent::edit(0, "Edited", "Edited"));
+    }
+
     public function testAnEmailThatIsGoneIsRemoved(): void {
         $this->migrateMessages();
         $this->migrateMessages([]);
