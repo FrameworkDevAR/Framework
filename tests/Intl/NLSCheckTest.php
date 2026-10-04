@@ -84,8 +84,8 @@ class NLSCheckTest extends TestCase {
     export default strings;
     JS;
 
-    // A notifications file holds one block per code, and both of them the same blocks
-    private const RootNotification = <<<JSON
+    // A file of blocks holds one per code, and both of them the same blocks
+    private const RootBlocks = <<<JSON
     {
         "Welcome" : {
             "description" : "Sent when a user is created",
@@ -100,7 +100,7 @@ class NLSCheckTest extends TestCase {
     }
     JSON;
 
-    private const LangNotification = <<<JSON
+    private const LangBlocks = <<<JSON
     {
         "Welcome" : {
             "description" : "Se envía al crear un usuario",
@@ -115,8 +115,8 @@ class NLSCheckTest extends TestCase {
     }
     JSON;
 
-    // The same two notifications, with the one that used to be first written last
-    private const SwappedNotification = <<<JSON
+    // The same two blocks, with the one that used to be first written last
+    private const SwappedBlocks = <<<JSON
     {
         "Reset"   : {
             "description" : "Se envía al reiniciar la clave",
@@ -320,7 +320,7 @@ class NLSCheckTest extends TestCase {
 
 
     /**
-     * The notifications, which are compared by their order
+     * The files of blocks, which are compared by their order
      * @param array<string,string> $files
      * @param int                  $errors
      * @param string               $message
@@ -328,7 +328,7 @@ class NLSCheckTest extends TestCase {
      */
     #[DataProvider("providerCheckOrder")]
     public function testTheOrderIsCompared(array $files, int $errors, string $message): void {
-        [ $found, $output ] = $this->runCheck($files, "Notifications", byLine: false);
+        [ $found, $output ] = $this->runCheck($files, "Blocks", byLine: false);
 
         $this->assertSame($errors, $found, $output);
         $this->assertStringContainsString($message, $output);
@@ -340,7 +340,7 @@ class NLSCheckTest extends TestCase {
     public static function providerCheckOrder(): array {
         return [
             "a translation" => [
-                [ "en.json" => self::RootNotification, "es.json" => self::LangNotification ],
+                [ "en.json" => self::RootBlocks, "es.json" => self::LangBlocks ],
                 0,
                 "- Compared 2 files, there are no errors",
             ],
@@ -348,9 +348,9 @@ class NLSCheckTest extends TestCase {
             // than its translation is no problem at all
             "a longer message" => [
                 [
-                    "en.json" => self::RootNotification,
+                    "en.json" => self::RootBlocks,
                     "es.json" => Strings::replace(
-                        self::LangNotification,
+                        self::LangBlocks,
                         "\"Hola {{name}}\", \"Su cuenta está lista\"",
                         "\"Hola {{name}}\",\n            \"Su cuenta está lista\"",
                     ),
@@ -360,15 +360,15 @@ class NLSCheckTest extends TestCase {
             ],
             // Only the first key out of place is named, since the one that moved
             // pushes every key after it out of place as well
-            "a moved notification" => [
-                [ "en.json" => self::RootNotification, "es.json" => self::SwappedNotification ],
+            "a moved block" => [
+                [ "en.json" => self::RootBlocks, "es.json" => self::SwappedBlocks ],
                 1,
                 "- Found 1 error in es.json\n  - position 1 holds Reset, and Welcome in en.json\n",
             ],
             "a missing part" => [
                 [
-                    "en.json" => self::RootNotification,
-                    "es.json" => Strings::replace(self::LangNotification, "\"title\"       : \"Su nueva clave\",\n", ""),
+                    "en.json" => self::RootBlocks,
+                    "es.json" => Strings::replace(self::LangBlocks, "\"title\"       : \"Su nueva clave\",\n", ""),
                 ],
                 1,
                 "- Found 1 error in es.json\n  - the title key of Reset is missing, and is in en.json\n",

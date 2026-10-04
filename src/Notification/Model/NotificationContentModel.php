@@ -11,6 +11,7 @@ use Framework\Database\Model\Requested;
 #[Model(
     description: "The title and message of every push, one row per code and language.",
     canCreate:   true,
+    canEdit:     true,
 )]
 class NotificationContentModel {
 
@@ -27,12 +28,15 @@ class NotificationContentModel {
     public string $languageName = "";
 
     #[Field]
-    public string $description = "";
+    public int $version = 0;
 
     #[Field]
+    public string $description = "";
+
+    #[Field, Requested]
     public string $title = "";
 
-    #[Field(isText: true)]
+    #[Field(isText: true), Requested]
     public string $message = "";
 
     #[Field(isPosition: true)]

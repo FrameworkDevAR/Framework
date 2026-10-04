@@ -4,11 +4,13 @@ namespace Tests\Notification;
 use Framework\Auth\Device;
 use Framework\Date\Date;
 use Framework\Notification\Notification;
+use Framework\Notification\NotificationContent;
 use Framework\Notification\NotificationQueue;
 use Framework\Notification\NotificationResult;
 use Framework\Notification\Schema\NotificationQueueRequest;
 use Framework\System\NotificationProvider;
 
+use Tests\Notification\Fixture\TestNotification;
 use Tests\Notification\Fixture\TestNotificationSender;
 use Tests\LiveTestCase;
 use Tests\TestHelpers;
@@ -33,6 +35,7 @@ class NotificationQueueLiveTest extends LiveTestCase {
         $this->migrateOnce();
 
         $this->query("DELETE FROM `notification_queue`");
+        $this->query("DELETE FROM `notification_content`");
         $this->query("DELETE FROM `credential_device`");
     }
 
@@ -42,6 +45,7 @@ class NotificationQueueLiveTest extends LiveTestCase {
         $this->setConfig("NOTIFICATION_PROVIDER", "");
         Notification::setSender();
         TestNotificationSender::reset();
+        TestNotification::$version = 0;
     }
 
     /**
@@ -80,6 +84,50 @@ class NotificationQueueLiveTest extends LiveTestCase {
         $this->assertSame("order", $notification->dataType);
         $this->assertSame(42, $notification->dataID);
         $this->assertSame(NotificationResult::NotProcessed, $notification->notificationResult);
+    }
+
+    /**
+     * The version of the class and whether its Content was edited, and the title that is queued
+     * @param int    $version
+     * @param bool   $isEdited
+     * @param string $title
+     * @return void
+     */
+    #[DataProvider("providerContents")]
+    public function testANotificationWithAVersionIsQueuedWithItsContent(
+        int $version,
+        bool $isEdited,
+        string $title,
+    ): void {
+        TestNotification::$version = $version;
+        if ($isEdited) {
+            ob_start();
+            NotificationContent::migrateContents([ "Test" => TestNotification::class ]);
+            ob_end_clean();
+            $this->query("UPDATE `notification_content` SET `title` = 'Edited {{name}}', `message` = 'Bye'");
+        }
+
+        $notificationQueueID = TestNotification::send(self::CredentialID, "en", "John");
+
+        $notification = NotificationQueue::getByID($notificationQueueID);
+        $this->assertSame($title, $notification->title);
+        $this->assertSame($isEdited && $version > 0, $notification->message === "Bye");
+        $this->assertSame(self::CredentialID, $notification->credentialID);
+        $this->assertSame(3, $notification->currentUser);
+        $this->assertSame("https://framework.test/inbox", $notification->url);
+        $this->assertSame("message", $notification->dataType);
+        $this->assertSame(7, $notification->dataID);
+    }
+
+    /**
+     * @return array<string,array{int,bool,string}>
+     */
+    public static function providerContents(): array {
+        return [
+            "with a version the content is queued"    => [ 2, true, "Edited John" ],
+            "with no content the class is queued"     => [ 2, false, "Hello John" ],
+            "with no version the content is not used" => [ 0, true, "Hello John" ],
+        ];
     }
 
     public function testANotificationBelongsToItsCredential(): void {

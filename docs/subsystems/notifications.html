@@ -244,28 +244,68 @@ class NotificationCommands {
 * * * * *   cd /srv/app &amp;&amp; ./framework sendNotifications
 0 4 * * *   cd /srv/app &amp;&amp; ./framework cleanNotifications</code></pre>
 
-<h2 id="content">Localized content</h2>
-<p>Repeated notifications keep their copy in the translation files, exactly like
-<a href="../subsystems/emails.html#content">email content</a>. Each message lives per language under
-<code>nls/notifications</code>, keyed by a code, with a <code>title</code>, a <code>message</code>, and a
-<code>description</code> — a note for whoever edits the copy:</p>
-<figure class="code"><figcaption class="code-tab">nls/notifications/en.json</figcaption><pre><code class="language-json">{
-    &quot;OrderShipped&quot;: {
-        &quot;description&quot;: &quot;Sent when an order ships&quot;,
-        &quot;title&quot;: &quot;Order shipped&quot;,
-        &quot;message&quot;: &quot;Your order {{orderID}} is on its way&quot;
+<h2 id="messages">Notifications as classes</h2>
+<p>A notification that goes out again and again is a class extending
+<a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Notification/NotificationMessage.php" target="_blank" rel="noopener noreferrer"><code>NotificationMessage</code></a>. Its own static <code>send()</code> takes the data as typed
+parameters, so PHPStan checks every send, and its texts are written in the class, the <code>$title</code> and the
+<code>$message</code> with a text per language, so the whole notification in every language reads in one file:</p>
+<figure class="code"><figcaption class="code-tab">src/Order/Notification/OrderShippedNotification.php</figcaption><pre><code class="language-php">namespace MyApp\Order\Notification;
+
+use Framework\Notification\NotificationMessage;
+
+class OrderShippedNotification extends NotificationMessage {
+
+    public static string $description = &quot;Sent when an order ships&quot;;
+
+    public static array $title = [
+        &quot;en&quot; =&gt; &quot;Order shipped&quot;,
+        &quot;es&quot; =&gt; &quot;Pedido enviado&quot;,
+    ];
+
+    public static array $message = [
+        &quot;en&quot; =&gt; &quot;Your order {{orderID}} is on its way&quot;,
+        &quot;es&quot; =&gt; &quot;Su pedido {{orderID}} está en camino&quot;,
+    ];
+
+
+    public static function send(int $credentialID, string $language, int $orderID): int {
+        return self::queue($credentialID, 0, $language, [
+            &quot;orderID&quot; =&gt; $orderID,
+        ], url: &quot;/orders/$orderID&quot;, dataType: &quot;order&quot;, dataID: $orderID);
     }
 }</code></pre></figure>
-<p>Add the matching <code>es.json</code>, with the same keys in the same order —
-<a href="../features/intl.html#check">nlsCheck</a> says whether they still match. At <a href="../core/build.html#how">build</a> time the
-<a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Notification/NotificationBuilder.php" target="_blank" rel="noopener noreferrer"><code>NotificationBuilder</code></a> turns each key into a typed <code>NotificationCode</code>, while a
-<a href="../database/migrations.html#discovery">migration</a> loads the copy into the database. Fetch it by language:</p>
+<p>The texts are <a href="../core/build.html#templates">Mustache</a> with the data, and a language that is not in the
+class uses the root one. The <code>send()</code> of the notification gives the credential, the user, the language and
+the data to <code>queue()</code>, which renders it and adds it to the <a href="#queue">queue</a>, with the
+<code>url</code>, the <code>dataType</code> and the <code>dataID</code> when they are given, and returns the ID it was
+queued with:</p>
+<pre><code class="language-php">OrderShippedNotification::send(
+    credentialID: $credentialID,
+    language:     &quot;en&quot;,
+    orderID:      1234,
+);</code></pre>
+<p>The <a href="../core/build.html">build</a> adds the code of every class, its name without the suffix, to the
+<code>NotificationCode</code> enum, and <code>NotificationCode::getMessages()</code> returns the classes by their code.
+The <a href="../features/phpstan.html#rules-notifications">PHPStan rules</a> check that every Notification has a
+<code>$description</code>, a <code>$title</code>, a <code>$message</code>, a <code>send()</code> and a text for each
+language. A class can also describe the variables its <code>send()</code> gives in a
+<code>public static array $variables</code>, for a screen that edits it to show them.</p>
+
+<h2 id="content">The stored content</h2>
+<p>A <a href="../database/migrations.html#discovery">migration</a> writes the texts of every class into the
+<code>notification_content</code> table, one row per code and language, which is what an admin screen lists, and the
+row of a class that is gone is removed. A class is written again on every migration, unless it sets a
+<code>public static int $version</code>, which is what lets its texts be edited in the table: the row is then only
+written again when the class has a higher version than the one the row holds, and <code>queue()</code> sends the texts
+of the row rather than the ones of the class.</p>
+<p>An admin screen saves its changes with <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Notification/NotificationContent.php" target="_blank" rel="noopener noreferrer"><code>NotificationContent::edit()</code></a>,
+which takes the title and the message and raises the version of the row, and does nothing to a row with no version.
+<code>NotificationContent::get()</code> returns the row of a code in a language, or in the root one when it has none
+in that language:</p>
 <pre><code class="language-php">use Framework\Notification\NotificationContent;
 use Framework\System\NotificationCode;
 
 $content = NotificationContent::get(NotificationCode::OrderShipped, &quot;en&quot;);</code></pre>
-<p><a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Notification/NotificationContent.php" target="_blank" rel="noopener noreferrer"><code>NotificationContent::render()</code></a> fills its <code>{{placeholders}}</code> — like
-<code>{{orderID}}</code> above — with per-send data before the title and message are <a href="#queue">queued</a>.</p>
 
                 <div class="page-nav"><a href="../subsystems/emails.html"><span class="dir">← Previous</span><span class="ttl">Emails</span></a><a class="next" href="../features/enums.html"><span class="dir">Next →</span><span class="ttl">Enums</span></a></div>
                 </article>

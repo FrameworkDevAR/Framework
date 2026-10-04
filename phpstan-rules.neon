@@ -119,6 +119,12 @@ services:
             requiredLanguages: %framework.emailLanguages%
         tags:
             - phpstan.rules.rule
+    -
+        class: Framework\Analysis\Notification\NotificationMessageRule
+        arguments:
+            requiredLanguages: %framework.notificationLanguages%
+        tags:
+            - phpstan.rules.rule
 
 
 parameters:
@@ -139,6 +145,7 @@ parameters:
         requireReturnType: false
         actionLogLanguages: []
         emailLanguages: []
+        notificationLanguages: []
 
 parametersSchema:
     framework: structure([
@@ -158,4 +165,5 @@ parametersSchema:
         requireReturnType: bool()
         actionLogLanguages: listOf(string())
         emailLanguages: listOf(string())
+        notificationLanguages: listOf(string())
     ])

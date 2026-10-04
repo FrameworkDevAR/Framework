@@ -1,97 +1,42 @@
 <?php
 namespace Tests\Notification;
 
-use Framework\Application;
-use Framework\File\Storage;
-use Framework\Intl\IntlConfig;
 use Framework\Notification\NotificationContent;
-use Framework\System\NotificationCode;
+use Framework\Notification\NotificationMessage;
 
+use Tests\Notification\Fixture\TestNotification;
 use Tests\LiveTestCase;
-use Tests\TestHelpers;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
  * The Notification Contents, the text of each push in each language
  *
- * The strings live in a JSON per language, which this writes into a directory
- * of its own so the migration has something to find. This repository ships
- * none, and the one code it knows is None.
+ * The texts come from the Notification Messages, and the build of this repository
+ * has none, so the migration is given the one of the tests, whose code is Test.
  */
 class NotificationContentLiveTest extends LiveTestCase {
-    use TestHelpers;
-
-    private const FixtureDir = "tests/Notification/.tmp_content";
-
-    private string $fixtureBase      = "";
-    private mixed  $notificationsDir = null;
-
 
     protected function setUp(): void {
         parent::setUp();
         $this->migrateOnce();
 
-        $this->notificationsDir = $this->getPrivateStaticProperty(
-            IntlConfig::class,
-            "notificationsDir",
-        );
-        $this->fixtureBase = Application::getBasePath(self::FixtureDir);
-        Storage::createDir($this->fixtureBase);
-        IntlConfig::setNotificationsDir(self::FixtureDir);
-
         $this->query("DELETE FROM `notification_content`");
     }
 
     protected function tearDown(): void {
-        $this->setPrivateStaticProperty(
-            IntlConfig::class,
-            "notificationsDir",
-            $this->notificationsDir,
-        );
-        Storage::deleteDir($this->fixtureBase);
+        TestNotification::$version = 0;
     }
 
     /**
-     * Writes the strings of a language, the way an app ships them
-     * @param string              $langCode
-     * @param array<string,mixed> $notifications
-     * @return void
-     */
-    private function writeNotifications(string $langCode, array $notifications): void {
-        Storage::writeFile(
-            $this->fixtureBase . DIRECTORY_SEPARATOR . $langCode . ".json",
-            (string)json_encode($notifications),
-        );
-    }
-
-    /**
-     * Writes the one notification this repository has a code for
-     * @param string $title   Optional.
-     * @param string $message Optional.
-     * @return void
-     */
-    private function writeNotification(
-        string $title = "A title",
-        string $message = "A message",
-    ): void {
-        $this->writeNotifications("en", [
-            "None" => [
-                "description" => "The push of the tests",
-                "title"       => $title,
-                "message"     => $message,
-            ],
-        ]);
-    }
-
-    /**
-     * Runs the migration, which prints what it did
+     * Runs the migration with the given Notification Messages, which prints what it did
+     * @param array<string,class-string<NotificationMessage>> $messages Optional.
      * @return string
      */
-    private function migrate(): string {
+    private function migrateMessages(array $messages = [ "Test" => TestNotification::class ]): string {
         ob_start();
         try {
-            NotificationContent::migrateData();
+            NotificationContent::migrateContents($messages);
         } finally {
             $output = ob_get_clean();
         }
@@ -100,61 +45,127 @@ class NotificationContentLiveTest extends LiveTestCase {
 
 
 
-    public function testTheStringsBecomeRows(): void {
-        $this->writeNotification();
+    public function testANotificationMessageBecomesARow(): void {
+        $this->assertStringContainsString("Updated 1 notifications", $this->migrateMessages());
 
-        $this->assertStringContainsString("Updated 1 notifications", $this->migrate());
-
-        $content = NotificationContent::get(NotificationCode::None, "en");
-        $this->assertSame("A title", $content->title);
-        $this->assertSame("A message", $content->message);
-        $this->assertSame("The push of the tests", $content->description);
+        $content = NotificationContent::get("Test", "en");
+        $this->assertSame("Hello {{name}}", $content->title);
+        $this->assertSame("You have a new message, {{name}}.", $content->message);
+        $this->assertSame("A notification of the tests", $content->description);
         $this->assertSame("English", $content->languageName);
+        $this->assertSame(0, $content->version);
         $this->assertSame(1, $content->position);
     }
 
     public function testThereIsNothingToUpdate(): void {
-        $this->assertStringContainsString("No notifications updated", $this->migrate());
+        // The migration of the build finds no Notification Messages here
+        ob_start();
+        try {
+            NotificationContent::migrateData();
+        } finally {
+            $output = (string)ob_get_clean();
+        }
 
-        $this->assertFalse(NotificationContent::get(NotificationCode::None, "en")->exists());
+        $this->assertStringContainsString("No notifications updated", $output);
+        $this->assertFalse(NotificationContent::get("Test", "en")->exists());
     }
 
-    public function testTheRowsAreWrittenAgain(): void {
-        $this->writeNotification();
-        $this->migrate();
+    /**
+     * The version of the class and the one its row was left with, and what the row holds
+     * after the class is migrated again
+     * @param int    $classVersion
+     * @param int    $rowVersion
+     * @param string $title
+     * @param int    $version
+     * @return void
+     */
+    #[DataProvider("providerVersions")]
+    public function testTheVersionSaysWhichTextIsKept(
+        int $classVersion,
+        int $rowVersion,
+        string $title,
+        int $version,
+    ): void {
+        TestNotification::$version = $classVersion;
+        $this->migrateMessages();
+        $this->query("UPDATE `notification_content` SET `title` = 'Edited', `version` = $rowVersion");
 
-        $this->writeNotification("Another title");
-        $this->migrate();
+        $this->migrateMessages();
 
+        $content = NotificationContent::get("Test", "en");
+        $this->assertSame($title, $content->title);
+        $this->assertSame($version, $content->version);
         $this->assertSame(1, NotificationContent::getEntityTotal());
-        $this->assertSame(
-            "Another title",
-            NotificationContent::get(NotificationCode::None, "en")->title,
-        );
     }
 
-    public function testEachCodeIsARowOfItsOwn(): void {
-        $this->writeNotifications("en", [
-            "None"  => [ "title" => "The first" ],
-            "Other" => [ "title" => "The second" ],
-        ]);
+    /**
+     * @return array<string,array{int,int,string,int}>
+     */
+    public static function providerVersions(): array {
+        return [
+            "with no version the class is written again" => [ 0, 3, "Hello {{name}}", 0 ],
+            "a lower one is replaced by the class"       => [ 2, 1, "Hello {{name}}", 2 ],
+            "the same one is kept"                       => [ 2, 2, "Edited", 2 ],
+            "a higher one is kept"                       => [ 2, 3, "Edited", 3 ],
+        ];
+    }
 
-        $this->assertStringContainsString("Updated 2 notifications", $this->migrate());
+    /**
+     * The version of the class and the title given, and what the row holds after the edit
+     * @param int    $classVersion
+     * @param string $title
+     * @param bool   $isEdited
+     * @param string $expected
+     * @param int    $version
+     * @return void
+     */
+    #[DataProvider("providerEdit")]
+    public function testAContentWithAVersionIsEdited(
+        int $classVersion,
+        string $title,
+        bool $isEdited,
+        string $expected,
+        int $version,
+    ): void {
+        TestNotification::$version = $classVersion;
+        $this->migrateMessages();
+        $content = NotificationContent::get("Test", "en");
 
-        $this->assertSame(2, NotificationContent::getEntityTotal());
-        $this->assertSame("The first", NotificationContent::get(NotificationCode::None)->title);
+        $this->assertSame($isEdited, NotificationContent::edit($content->id, $title, $content->message));
+
+        $content = NotificationContent::get("Test", "en");
+        $this->assertSame($expected, $content->title);
+        $this->assertSame($version, $content->version);
+    }
+
+    /**
+     * @return array<string,array{int,string,bool,string,int}>
+     */
+    public static function providerEdit(): array {
+        return [
+            "one with no version is left alone" => [ 0, "Edited", false, "Hello {{name}}", 0 ],
+            "a change raises the version"       => [ 2, "Edited", true, "Edited", 3 ],
+            "the same texts leave it as it was" => [ 2, "Hello {{name}}", true, "Hello {{name}}", 2 ],
+        ];
+    }
+
+    public function testAContentThatIsNotThereIsNotEdited(): void {
+        $this->assertFalse(NotificationContent::edit(0, "Edited", "Edited"));
+    }
+
+    public function testANotificationThatIsGoneIsRemoved(): void {
+        $this->migrateMessages();
+        $this->migrateMessages([]);
+
+        $this->assertSame(0, NotificationContent::getEntityTotal());
     }
 
     public function testALanguageFallsBackToTheRoot(): void {
-        $this->writeNotification();
-        $this->migrate();
+        $this->migrateMessages();
 
         // Only en is set up here, and it is the root, so asking in any other
         // language comes back with it rather than with nothing
-        $this->assertSame(
-            "A title",
-            NotificationContent::get(NotificationCode::None, "pt")->title,
-        );
+        $this->assertSame("Hello {{name}}", NotificationContent::get("Test", "pt")->title);
     }
 
 
