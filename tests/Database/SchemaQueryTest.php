@@ -6,8 +6,21 @@ use Framework\Auth\Schema\CredentialDeviceQuery;
 use Framework\Database\Query\Query;
 use Framework\Database\Query\Exp;
 use Framework\Database\Query\Op;
+use Framework\Auth\Schema\CredentialSchema;
+use Framework\Database\Model\Count;
+use Framework\Database\Model\Expression;
+use Framework\Database\Model\Field;
+use Framework\Database\Model\FieldType;
+use Framework\Database\Model\Relation;
+use Framework\Database\SchemaModel;
+use Framework\Database\Type\SchemaRequest;
+use Framework\IO\Request;
+use Framework\Utils\Strings;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
+
+use ReflectionMethod;
 
 class SchemaQueryTest extends TestCase {
 
@@ -207,5 +220,88 @@ class SchemaQueryTest extends TestCase {
         $query->email->equal("ada@example.com");
 
         $this->assertStringContainsString("'ada@example.com'", $query->toDebugSQL());
+    }
+
+
+
+    /**
+     * A column asked by a request, and whether the Model can sort the list by it
+     * @param string $column
+     * @param bool   $expected
+     * @return void
+     */
+    #[DataProvider("providerCanSortBy")]
+    public function testTheListIsSortedOnlyByTheColumnsOfTheModel(string $column, bool $expected): void {
+        $model = new SchemaModel(
+            name:          "Seller",
+            hasTimestamps: true,
+            canCreate:     true,
+            mainFields:    [
+                Field::create(name: "sellerID", dbName: "SELLER_ID", type: FieldType::Number, isID: true),
+                Field::create(name: "sellerCode", type: FieldType::String),
+            ],
+            expressions:   [
+                Expression::create("fullName", FieldType::String, "CONCAT(firstName, lastName)"),
+            ],
+            counts:        [
+                Count::create("orderCount", "Seller", "Order", "sellerID", "", false),
+            ],
+            relations:     [
+                Relation::create("Store", "", "storeID", "Seller", "storeID", "", [
+                    Field::create(name: "title", dbName: "title", prefixName: "storeTitle", type: FieldType::String),
+                ]),
+            ],
+        );
+
+        $this->assertSame($expected, $model->canSortBy($column));
+    }
+
+    /**
+     * @return array<string,array{string,bool}>
+     */
+    public static function providerCanSortBy(): array {
+        return [
+            "the name of a field"   => [ "sellerCode", true ],
+            "the name of the id"    => [ "sellerID", true ],
+            "the column of the id"  => [ "SELLER_ID", true ],
+            "a column a flag adds"  => [ "createdTime", true ],
+            "a field of a relation" => [ "storeTitle", true ],
+            "an expression"         => [ "fullName", true ],
+            "a count"               => [ "orderCount", true ],
+            "an unknown column"     => [ "assistant", false ],
+            // Only a name is taken, so one written with its table is not one of them
+            "a column with a table" => [ "seller.sellerCode", false ],
+            "nothing"               => [ "", false ],
+            "an injected statement" => [ "sellerCode, (SELECT SLEEP(5))", false ],
+        ];
+    }
+
+    /**
+     * The order a request asks for, and what of it reaches the SQL of the list
+     * @param string $orderBy
+     * @param string $expected
+     * @return void
+     */
+    #[DataProvider("providerRequestSort")]
+    public function testTheSortOfARequestIsChecked(string $orderBy, string $expected): void {
+        $sort   = new SchemaRequest(new Request([ "orderBy" => $orderBy, "orderAsc" => 1 ]));
+        $method = new ReflectionMethod(CredentialSchema::class, "generateQuerySort");
+        $query  = $method->invoke(null, null, $sort);
+
+        // What is not a column of the Model is left out, and the list comes unsorted
+        $this->assertSame($expected, trim(Strings::substringAfter($query->toSQL(), "= ?")));
+    }
+
+    /**
+     * @return array<string,array{string,string}>
+     */
+    public static function providerRequestSort(): array {
+        return [
+            "a column of the model" => [ "email", "ORDER BY email ASC" ],
+            "an unknown column"     => [ "nothing", "" ],
+            "no column"             => [ "", "" ],
+            "an injected statement" => [ "email, (SELECT SLEEP(5))", "" ],
+            "a second statement"    => [ "email; DROP TABLE credential", "" ],
+        ];
     }
 }

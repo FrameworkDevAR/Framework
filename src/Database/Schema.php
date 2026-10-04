@@ -676,7 +676,9 @@ class Schema {
         $query = self::generateQuery($query);
 
         if ($sort !== null) {
-            if ($sort->orderBy !== "") {
+            // The order comes from the request, so it goes into the SQL only when it names a
+            // column of the Model, or it could break the query or inject another one
+            if (static::getModel()->canSortBy($sort->orderBy)) {
                 $query->orderBy($sort->orderBy, $sort->orderAsc);
             }
             if ($sort->page !== -1 && $sort->amount > 0) {

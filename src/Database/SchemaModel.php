@@ -366,6 +366,41 @@ class SchemaModel {
     }
 
     /**
+     * Returns true if the Model can sort by the given column, which is a name or a column of a
+     * Field, of a Field of a Relation, of an Expression or of a Count
+     * @param string $column
+     * @return bool
+     */
+    public function canSortBy(string $column): bool {
+        if ($column === "") {
+            return false;
+        }
+        foreach ($this->fields as $field) {
+            if ($column === $field->name || $column === $field->dbName) {
+                return true;
+            }
+        }
+        foreach ($this->relations as $relation) {
+            foreach ($relation->fields as $field) {
+                if ($column === $field->prefixName || $column === $field->dbName) {
+                    return true;
+                }
+            }
+        }
+        foreach ($this->expressions as $expression) {
+            if ($column === $expression->name) {
+                return true;
+            }
+        }
+        foreach ($this->counts as $count) {
+            if ($column === $count->name) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Returns true if there is an Encrypt Field in the Model
      * @return bool
      */
