@@ -150,6 +150,36 @@ class DiscoveryConfigTest extends TestCase {
         });
     }
 
+    public function testASingleConfigIsNotLoadedInsideTheFramework(): void {
+        $this->assertTrue(Package::isFramework());
+        $this->assertFalse(DiscoveryConfig::loadFile("Access"));
+    }
+
+    public function testAnAppLoadsASingleConfigFromItsConfigDirectory(): void {
+        $appDir     = "tests/Discovery/.tmp_app";
+        $configPath = Application::getBasePath($appDir, Package::ConfigDir);
+        Storage::createDir($configPath);
+        Storage::writeFile("$configPath/Sample.config.php", '<?php $GLOBALS["sampleConfigLoaded"] = true;');
+
+        try {
+            $this->withApp($appDir, function (): void {
+                $this->assertFalse(DiscoveryConfig::loadFile("Missing"));
+                $this->assertTrue(DiscoveryConfig::loadFile("Sample"));
+                $this->assertTrue($GLOBALS["sampleConfigLoaded"] ?? false);
+            });
+        } finally {
+            Storage::deleteDir(Application::getBasePath($appDir));
+            unset($GLOBALS["sampleConfigLoaded"]);
+        }
+    }
+
+    public function testASingleConfigIsNotLoadedAgainOnceAllAre(): void {
+        $this->withApp(Package::DocsDir, function (): void {
+            DiscoveryConfig::load();
+            $this->assertFalse(DiscoveryConfig::loadFile("Access"));
+        });
+    }
+
     /**
      * Runs the given callback with the Application rooted at another directory
      * @param string   $baseDir
