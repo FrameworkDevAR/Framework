@@ -15,7 +15,6 @@ class IntlConfigTest extends TestCase {
     private const FixtureDir = "tests/Intl/.tmp_intl_config";
 
     private const Strings       = [ "HELLO" => "Hola", "BYE" => "Chau" ];
-    private const Notifications = [ "ALERT" => "Alert!" ];
 
     private string $fixtureBase = "";
 
@@ -25,7 +24,7 @@ class IntlConfigTest extends TestCase {
 
     protected function setUp(): void {
         $props = [
-            "defaultLanguage", "stringsDir", "notificationsDir",
+            "defaultLanguage", "stringsDir",
             "scriptDirs", "sourceDirs",
         ];
         foreach ($props as $prop) {
@@ -34,10 +33,8 @@ class IntlConfigTest extends TestCase {
 
         $this->fixtureBase = Application::getBasePath(self::FixtureDir);
         $this->writeFixture("strings", "en", self::Strings);
-        $this->writeFixture("notifications", "en", self::Notifications);
 
         IntlConfig::setStringsDir(self::FixtureDir . "/strings");
-        IntlConfig::setNotificationsDir(self::FixtureDir . "/notifications");
     }
 
     protected function tearDown(): void {
@@ -115,20 +112,6 @@ class IntlConfigTest extends TestCase {
     }
 
 
-    #[DataProvider("providerGetNotificationsPath")]
-    public function testGetNotificationsPath(string $dir): void {
-        IntlConfig::setNotificationsDir($dir);
-        $this->assertSame(Application::getBasePath($dir), IntlConfig::getNotificationsPath());
-    }
-
-    public static function providerGetNotificationsPath(): array {
-        return [
-            "default" => [ "nls/notifications" ],
-            "custom"  => [ "custom/notifications" ],
-        ];
-    }
-
-
     // The directories the strings are used in, which only the check reads
     #[DataProvider("providerGetSourcePaths")]
     public function testGetSourcePaths(array $dirs, array $expected): void {
@@ -166,21 +149,6 @@ class IntlConfigTest extends TestCase {
     public static function providerLoadStrings(): array {
         return [
             "existing"     => [ "en", self::Strings, false ],
-            "missing lang" => [ "zz", [], true ],
-        ];
-    }
-
-
-    #[DataProvider("providerLoadNotifications")]
-    public function testLoadNotifications(string $langCode, array $expected, bool $isEmpty): void {
-        $result = IntlConfig::loadNotifications($langCode);
-        $this->assertSame($isEmpty, $result->isEmpty());
-        $this->assertSame($expected, $result->toArray());
-    }
-
-    public static function providerLoadNotifications(): array {
-        return [
-            "existing"     => [ "en", self::Notifications, false ],
             "missing lang" => [ "zz", [], true ],
         ];
     }

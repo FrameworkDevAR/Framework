@@ -673,6 +673,10 @@
                 "type": "string"
             },
             {
+                "name": "version",
+                "type": "number"
+            },
+            {
                 "name": "description",
                 "type": "string"
             },

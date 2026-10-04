@@ -98,20 +98,16 @@ FilePath::registerDirectory(&quot;archive&quot;);</code></pre></figure>
 
 <h2 id="intl">Languages</h2>
 <p>Set the default language and point the <a href="../subsystems/emails.html#templates">internationalization</a> layer at your copy
-directories — strings and notifications, each holding one JSON file per language:</p>
+strings directory, which holds one JSON file per language:</p>
 <figure class="code"><figcaption class="code-tab">config/Intl.config.php</figcaption><pre><code class="language-php">use Framework\Intl\IntlConfig;
 
 IntlConfig::setDefaultLanguage(&quot;en&quot;);
-IntlConfig::setStringsDir(&quot;nls/strings&quot;);
-IntlConfig::setNotificationsDir(&quot;nls/notifications&quot;);</code></pre></figure>
-<p>Each directory holds one JSON file per language, named by its code (<code>en.json</code>,
+IntlConfig::setStringsDir(&quot;nls/strings&quot;);</code></pre></figure>
+<p>The directory holds one JSON file per language, named by its code (<code>en.json</code>,
 <code>es.json</code>). The framework loads the file that matches the active language and falls back to the
 default you set above — so a typical <code>nls/</code> tree looks like this:</p>
 <pre><code class="language-bash">nls/
-├── strings/         # UI strings, one file per language
-│   ├── en.json
-│   └── es.json
-└── notifications/   # notification copy, per language
+└── strings/         # UI strings, one file per language
     ├── en.json
     └── es.json</code></pre>
 <p>An app of your own — a front end, an admin — usually keeps its own strings beside its source, written as a script
