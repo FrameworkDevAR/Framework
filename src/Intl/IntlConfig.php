@@ -12,9 +12,8 @@ use Framework\Utils\Dictionary;
  */
 class IntlConfig {
 
-    private static string $defaultLanguage  = "en";
-    private static string $stringsDir       = "nls/strings";
-    private static string $notificationsDir = "nls/notifications";
+    private static string $defaultLanguage = "en";
+    private static string $stringsDir      = "nls/strings";
 
     /** @var array<string,string> */
     private static array $scriptDirs = [];
@@ -57,15 +56,6 @@ class IntlConfig {
      */
     public static function setStringsDir(string $dir): void {
         self::$stringsDir = $dir;
-    }
-
-    /**
-     * Sets the Notifications Directory
-     * @param string $dir
-     * @return void
-     */
-    public static function setNotificationsDir(string $dir): void {
-        self::$notificationsDir = $dir;
     }
 
     /**
@@ -112,15 +102,6 @@ class IntlConfig {
     }
 
     /**
-     * Returns the path to the Notifications Directory
-     * @return string
-     */
-    public static function getNotificationsPath(): string {
-        self::loadConfig();
-        return Application::getBasePath(self::$notificationsDir);
-    }
-
-    /**
      * Returns the path to each Script Directory, by the name it was added with
      * @return array<string,string>
      */
@@ -156,17 +137,6 @@ class IntlConfig {
     public static function loadStrings(string $langCode): Dictionary {
         self::loadConfig();
         $result = Discovery::loadJSON(self::$stringsDir, $langCode);
-        return new Dictionary($result);
-    }
-
-    /**
-     * Loads the Notifications for the given Language
-     * @param string $langCode
-     * @return Dictionary
-     */
-    public static function loadNotifications(string $langCode): Dictionary {
-        self::loadConfig();
-        $result = Discovery::loadJSON(self::$notificationsDir, $langCode);
         return new Dictionary($result);
     }
 }

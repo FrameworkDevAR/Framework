@@ -46,14 +46,12 @@ so the same code renders in whatever language the request is in.</p>
 
 <h2 id="config">Configuration</h2>
 <p><a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Intl/IntlConfig.php" target="_blank" rel="noopener noreferrer"><code>IntlConfig</code></a> is where the layer is set up. In a <a href="../introduction/config-files.html#intl">config file</a> it
-sets the default language and points at your copy directories — strings, plus the
-<a href="../subsystems/notifications.html#content">notification</a> content:</p>
+sets the default language and points at your strings directory:</p>
 <figure class="code"><figcaption class="code-tab">config/Intl.config.php</figcaption><pre><code class="language-php">use Framework\Intl\IntlConfig;
 
 IntlConfig::setDefaultLanguage(&quot;en&quot;);
-IntlConfig::setStringsDir(&quot;nls/strings&quot;);
-IntlConfig::setNotificationsDir(&quot;nls/notifications&quot;);</code></pre></figure>
-<p>The defaults are those same <code>nls/…</code> paths, so you only call the setters to move them. The default
+IntlConfig::setStringsDir(&quot;nls/strings&quot;);</code></pre></figure>
+<p>The default is that same <code>nls/strings</code> path, so you only call the setter to move it. The default
 language is the fallback used whenever no language is set on the request.</p>
 <p>Two more take the directories the check reads: <code>addScriptDir()</code> for the ones where your own apps keep
 their <a href="#scripts">strings</a>, and <code>addSourceDir()</code> for the ones where the strings are
@@ -229,20 +227,18 @@ keys, so a link reads naturally in each language:</p>
 command compares the files of a directory against each other and fails when they no longer match, so it can run
 alongside the other checks before merging:</p>
 <pre><code class="language-bash">./framework nlsCheck</code></pre>
-<p>It reads the two directories of the config, plus every <a href="#scripts">app directory</a> added to it. What is
+<p>It reads the strings directory of the config, plus every <a href="#scripts">app directory</a> added to it. What is
 compared depends on what the files hold:</p>
 <table class="api-table">
     <thead><tr><th>Directory</th><th>Compared by</th></tr></thead>
     <tbody>
         <tr><td>Strings</td><td>The keys, the keys inside each of them, and the line each key is written at.</td></tr>
-        <tr><td>Notifications</td><td>The keys, the keys inside each of them, and the order of the blocks.</td></tr>
         <tr><td>App directories</td><td>The same as the strings, since they are written the same way.</td></tr>
     </tbody>
 </table>
-<p>The keys inside a key are the options of a Select, the entries of a list, and the <code>title</code> and
-<code>message</code> a notification is made of. The lines are compared where the files mirror each other line for line,
-and the order where a block is as long as its copy needs. The <code>NAME</code> key is skipped, since each strings
-file names its own language.</p>
+<p>The keys inside a key are the options of a Select and the entries of a list. The lines are compared as the files
+mirror each other line for line. The <code>NAME</code> key is skipped, since each strings file names its own
+language.</p>
 <p>No file is taken to be the right one. The error is reported for the files that are on their own, against the ones
 that agree, and when only two of them disagree the file of the default language is the one taken to be right. There
 is a section per directory, naming the path it read, and a directory with no files is left out:</p>
@@ -251,11 +247,7 @@ is a section per directory, naming the path it read, and a directory with no fil
   - GENERAL_ACCEPT is missing, and is in en.json and pt.json
   - SELECT_STATUS is a string, and a Select in en.json and pt.json
 - Found 1 error in pt.json
-  - PRODUCT_CREATED is at line 49, and at line 48 in en.json and es.json
-
-Notifications: nls/notifications
-- Found 1 error in es.json
-  - position 3 holds Reset, and Welcome in en.json</code></pre>
+  - PRODUCT_CREATED is at line 49, and at line 48 in en.json and es.json</code></pre>
 <p>The keys are what everything else rests on, so the lines and the order are only reported once they match: a key
 that only one file holds moves every key below it in that file, and reporting those as well would bury the one thing
 to fix.</p>

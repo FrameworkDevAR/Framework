@@ -45,12 +45,9 @@ class NLSCheck {
     public static function check(): void {
         DiscoveryConfig::load();
 
-        // The strings are written to mirror each other line for line, while a
-        // notification is a block of its own, so only its place among the others
-        // can be compared
+        // The strings are written to mirror each other line for line
         $sections = [
             [ "Strings", IntlConfig::getStringsPath(), true ],
-            [ "Notifications", IntlConfig::getNotificationsPath(), false ],
         ];
 
         // The directories of the apps, which hold their strings as a script

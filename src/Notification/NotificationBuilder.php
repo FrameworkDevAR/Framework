@@ -6,19 +6,24 @@ use Framework\Discovery\Discovery;
 use Framework\Discovery\Package;
 use Framework\Discovery\Attr\Priority;
 use Framework\Discovery\Type\DiscoveryBuilder;
+use Framework\Discovery\Type\DiscoveryClass;
 use Framework\Builder\Builder;
-use Framework\Intl\IntlConfig;
+use Framework\Notification\NotificationMessage;
 use Framework\Notification\NotificationSender;
-use Framework\System\Language;
 use Framework\Utils\Arrays;
-use Framework\Utils\Dictionary;
 use Framework\Utils\Strings;
 
 /**
  * The Notification Builder
+ * @phpstan-type NotificationMessageData array{
+ *   key:   string,
+ *   class: string,
+ * }
  * @phpstan-type NotificationCodesResult array{
- *   codes: list<string>,
- *   total: int,
+ *   codes:       list<string>,
+ *   messages:    list<NotificationMessageData>,
+ *   hasMessages: bool,
+ *   total:       int,
  * }
  * @phpstan-type NotificationProviderData array{
  *   name:     string,
@@ -58,28 +63,61 @@ class NotificationBuilder implements DiscoveryBuilder {
 
 
     /**
-     * Collects the Notifications from the Notification files
+     * Collects the Notifications from the Notification Messages
      * @return NotificationCodesResult
      */
     public static function collectNotifications(): array {
-        $languages = Language::getAll();
-        $data      = new Dictionary();
+        $classes = Discovery::findClasses(
+            parentClass:  NotificationMessage::class,
+            forAll:       !Package::isFramework(),
+            forFramework: true,
+        );
+        return self::collectCodes(self::collectMessages($classes));
+    }
 
-        foreach ($languages as $language => $languageName) {
-            $data = IntlConfig::loadNotifications($language);
-            if ($data->isNotEmpty()) {
-                break;
+    /**
+     * Collects the Notification Messages from the given Classes, by their Code
+     * @param list<DiscoveryClass> $classes
+     * @return array<string,string>
+     */
+    public static function collectMessages(array $classes): array {
+        $result = [];
+        foreach ($classes as $class) {
+            $name = $class->getName();
+            if (is_subclass_of($name, NotificationMessage::class)) {
+                $code = Strings::substringAfter($name, "\\");
+                $code = Strings::stripEnd($code, "Notification");
+                $result[$code] = $name;
             }
         }
+        return $result;
+    }
 
-        $codes = [];
-        foreach ($data as $notificationCode => $notification) {
-            $codes[] = $notificationCode;
+    /**
+     * Collects the Codes of the given Notification Messages
+     * @param array<string,string> $messages
+     * @return NotificationCodesResult
+     */
+    public static function collectCodes(array $messages): array {
+        // Pad the codes so the values of the array line up
+        $maxLength = 0;
+        foreach ($messages as $code => $class) {
+            $maxLength = max($maxLength, Strings::length($code) + 2);
+        }
+
+        $list = [];
+        foreach ($messages as $code => $class) {
+            $list[] = [
+                "key"   => Strings::padRight("\"$code\"", $maxLength),
+                "class" => $class,
+            ];
         }
 
         return [
-            "codes" => $codes,
-            "total" => count($codes),
+            "codes"       => array_keys($messages),
+            "messages"    => $list,
+            "hasMessages" => count($list) > 0,
+            "total"       => count($messages),
         ];
     }
 
