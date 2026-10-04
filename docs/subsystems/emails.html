@@ -355,6 +355,11 @@ use Framework\System\EmailCode;
 
 $content = EmailContent::get(EmailCode::Welcome, &quot;en&quot;);
 Email::sendContent($content, &quot;user@example.com&quot;);</code></pre>
+<p>An admin screen saves its changes with <code>EmailContent::edit()</code>, which takes the subject and the message
+and raises the version of the row, and does nothing to a row with no version, as its class is not one that can be
+edited. <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Provider/Mustache.php" target="_blank" rel="noopener noreferrer"><code>Mustache::getError()</code></a> says whether the new texts render, and
+the <code>public static array $variables</code> of the class, where it describes each variable its <code>send()</code>
+gives, is what the screen shows beside the form.</p>
 <p>The stored copy renders through Mustache, so <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Email/EmailContent.php" target="_blank" rel="noopener noreferrer"><code>EmailContent::render()</code></a> fills the message&#39;s
 <code>{{placeholders}}</code> with per-send data, and
 <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Email/EmailQueue.php" target="_blank" rel="noopener noreferrer"><code>EmailQueue::add()</code></a> takes the very same content when you want it <a href="#queue">queued</a> instead of

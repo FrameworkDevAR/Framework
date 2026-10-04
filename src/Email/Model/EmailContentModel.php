@@ -34,10 +34,10 @@ class EmailContentModel {
     #[Field]
     public string $description = "";
 
-    #[Field]
+    #[Field, Requested]
     public string $subject = "";
 
-    #[Field(isText: true)]
+    #[Field(isText: true), Requested]
     public string $message = "";
 
     #[Field(isPosition: true)]
