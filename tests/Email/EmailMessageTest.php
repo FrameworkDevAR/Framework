@@ -26,6 +26,7 @@ class EmailMessageTest extends TestCase {
         $this->assertNull(TestEmail::$template);
         $this->assertFalse(TestEmail::$sendNow);
         $this->assertSame(0, TestEmail::$version);
+        $this->assertSame([], TestEmail::$variables);
         $this->assertSame("An email with a template", TestTemplateEmail::$description);
         $this->assertTrue(TestTemplateEmail::$sendNow);
     }

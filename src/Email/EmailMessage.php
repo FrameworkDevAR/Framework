@@ -37,6 +37,9 @@ abstract class EmailMessage {
     /** @var array<string,string> */
     public static array $body = [];
 
+    /** @var array<string,string> */
+    public static array $variables = [];
+
     private const PartialsDir = "data/email";
 
     /** @var array<string,string>|null */
