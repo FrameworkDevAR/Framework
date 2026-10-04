@@ -13,7 +13,7 @@ use Framework\Utils\Dictionary;
 class IntlConfig {
 
     private static string $defaultLanguage = "en";
-    private static string $stringsDir      = "nls/strings";
+    private static string $stringsDir      = "nls";
 
     /** @var array<string,string> */
     private static array $scriptDirs = [];
