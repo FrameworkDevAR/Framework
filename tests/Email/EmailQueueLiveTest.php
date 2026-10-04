@@ -4,6 +4,8 @@ namespace Tests\Email;
 use Framework\Email\Email;
 use Framework\Email\EmailQueue;
 use Framework\Email\EmailResult;
+use Tests\Email\Fixture\TestEmail;
+use Tests\Email\Fixture\TestTemplateEmail;
 use Tests\Email\Fixture\TestEmailSender;
 use Framework\Email\Schema\EmailContentEntity;
 use Framework\Email\Schema\EmailQueueRequest;
@@ -69,6 +71,38 @@ class EmailQueueLiveTest extends LiveTestCase {
         $this->assertSame("The subject", $emails[0]->subject);
         $this->assertSame("The message", $emails[0]->message);
         $this->assertSame([ self::SendTo ], $emails[0]->sendTo->toStrings());
+    }
+
+    public function testAMessageIsQueuedRendered(): void {
+        $this->assertTrue(TestEmail::send(self::SendTo, "en", "John"));
+
+        $emails = EmailQueue::getAllUnsent();
+        $this->assertCount(1, $emails);
+        $this->assertSame(EmailCode::Test, $emails[0]->emailCode);
+        $this->assertSame("Hello John", $emails[0]->subject);
+        $this->assertSame(TestEmail::getBody("en", [ "name" => "John" ]), $emails[0]->message);
+        $this->assertSame([ self::SendTo ], $emails[0]->sendTo->toStrings());
+    }
+
+    public function testAnEmailThatCanNotWaitIsSentNow(): void {
+        $this->assertTrue(TestTemplateEmail::send());
+
+        $this->assertCount(0, EmailQueue::getAllUnsent());
+    }
+
+    public function testAnEmailIsAddedWithItsCode(): void {
+        $this->assertTrue(EmailQueue::addEmail(EmailCode::Test, self::SendTo, "A subject", "A message", dataID: 3));
+
+        $emails = EmailQueue::getAllUnsent();
+        $this->assertSame("A subject", $emails[0]->subject);
+        $this->assertSame("A message", $emails[0]->message);
+        $this->assertSame(3, $emails[0]->dataID);
+    }
+
+    public function testAnEmailSentNowLeavesItSent(): void {
+        $this->assertTrue(EmailQueue::addEmail(EmailCode::Test, self::SendTo, "A subject", "A message", sendNow: true));
+
+        $this->assertCount(0, EmailQueue::getAllUnsent());
     }
 
     public function testTheTextGivenWinsOverTheContent(): void {

@@ -266,6 +266,76 @@ emailing real customers.</p>
 <code>sendAlways: true</code> on a message that must always go out — a password reset, say — to skip the filter for
 that one send.</p>
 
+<h2 id="messages">Emails as classes</h2>
+<p>An email can also be a class extending
+<a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Email/EmailMessage.php" target="_blank" rel="noopener noreferrer"><code>EmailMessage</code></a>. Its own static <code>send()</code> takes the data as typed
+parameters, so PHPStan checks every send, and its texts are written in the class, the <code>$subject</code> and the
+<code>$body</code> with a text per language, so the whole email in every language reads in one file:</p>
+<figure class="code"><figcaption class="code-tab">src/Auth/Email/WelcomeEmail.php</figcaption><pre><code class="language-php">namespace MyApp\Auth\Email;
+
+use Framework\Email\EmailMessage;
+
+class WelcomeEmail extends EmailMessage {
+
+    public static string $description = &quot;Welcome to new users&quot;;
+
+    public static array $subject = [
+        &quot;en&quot; =&gt; &quot;Welcome to {{site}}&quot;,
+        &quot;es&quot; =&gt; &quot;Bienvenido a {{site}}&quot;,
+    ];
+
+    public static array $body = [
+        &quot;en&quot; =&gt; &quot;
+            Hi {{name}},
+
+            Thanks for joining {{site}}, we are glad to have you.
+        &quot;,
+        &quot;es&quot; =&gt; &quot;
+            Hola {{name}},
+
+            Gracias por unirse a {{site}}.
+        &quot;,
+    ];
+
+
+    public static function send(string $email, string $language, string $name): bool {
+        return self::queue($email, $language, [
+            &quot;name&quot; =&gt; $name,
+        ]);
+    }
+}</code></pre></figure>
+<p>The texts are <a href="../core/build.html#templates">Mustache</a> with the data, and <code>{{site}}</code> is the app name.
+The lines are trimmed, so they can be indented, and a language that is not in the class uses the root one. The
+<code>$body</code> is made of paragraphs, like the <a href="#content">localized content</a>. The
+<code>send()</code> of the email gives the recipient, the language and the data to <code>queue()</code>, which renders it
+and adds it to the <a href="#queue">queue</a> with the class name without the suffix as its code. An email that can
+not wait for the queue sets <code>public static bool $sendNow = true</code>:</p>
+<pre><code class="language-php">WelcomeEmail::send(
+    email:    &quot;john@example.com&quot;,
+    language: &quot;en&quot;,
+    name:     &quot;John&quot;,
+);</code></pre>
+<p>An email that needs its own HTML names a <code>.mu</code> template in a <code>public static ?Template $template</code>.
+The template has no texts: the <code>subject</code> and the <code>body</code> of the language are rendered with the data
+and given to it next to the data, and the <code>$body</code> can be left out. It can use the partials of
+<a href="https://github.com/FrameworkDevAR/Framework/tree/main/data/email" target="_blank" rel="noopener noreferrer"><code>data/email</code></a>,
+written with inline styles and tables, each one reading its own key and rendering nothing without it. An app
+replaces one by writing a file with the same name in its own <code>data/email</code>:</p>
+<table class="api-table">
+    <thead><tr><th>Partial</th><th>Reads</th></tr></thead>
+    <tbody>
+        <tr><td><code>{{&gt; Button}}</code></td><td><code>button</code>, with a <code>url</code> and a <code>text</code>.</td></tr>
+        <tr><td><code>{{&gt; Quote}}</code></td><td><code>quote</code>, HTML in a grey bubble.</td></tr>
+        <tr><td><code>{{&gt; Avatar}}</code></td><td><code>avatar</code>, a circle with the <code>initials</code> over a <code>color</code>.</td></tr>
+        <tr><td><code>{{&gt; Footer}}</code></td><td><code>footer</code>, a small grey line.</td></tr>
+        <tr><td><code>{{&lt; Card}}</code></td><td>A bordered box around its <code>{{$content}}</code> block.</td></tr>
+    </tbody>
+</table>
+<p>The <a href="../core/build.html">build</a> adds the code of every class to the <code>EmailCode</code> enum, next to the
+ones of the localized content, and <code>EmailCode::getMessages()</code> returns the classes by their code. The
+<a href="../features/phpstan.html#rules-emails">PHPStan rules</a> check that every Email has a <code>$description</code>, a
+<code>$subject</code>, a <code>send()</code> and a text for each language.</p>
+
 <h2 id="content">Localized content</h2>
 <p>When the same email goes out again and again — a welcome, a receipt, a password reset — its copy belongs in the
 translation files, not in code. Each message lives per language under <code>nls/emails</code>, keyed by a code, with
