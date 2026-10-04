@@ -87,7 +87,7 @@ Assert what a thing holds, not just that it is there. A test asking only whether
 Three private console commands back it, all only visible from inside this repo:
 
 ```bash
-./framework docs          # serve it locally on port 3005
+./framework docs          # serve it locally on port 2000
 ./framework docsCheck     # verify the links, and the code examples
 ./framework docsIndex     # rebuild docs/assets/search.json
 ./framework docsSchema    # rebuild docs/assets/schema.json

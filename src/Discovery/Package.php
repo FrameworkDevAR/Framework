@@ -17,7 +17,7 @@ class Package {
 
     // Documentation
     public const DocsDir     = "docs";
-    public const DocsPort    = 3005;
+    public const DocsPort    = 2000;
 
     // Source Directories
     public const SystemDir   = "System";
