@@ -5,7 +5,7 @@ use Framework\Database\SchemaModel;
 use Framework\Database\Query\QueryBuilder;
 use Framework\Database\Model\FieldType;
 use Framework\File\FilePath;
-use Framework\System\Path;
+use Framework\File\MediaFile;
 use Framework\Date\Type\DateType;
 use Framework\Utils\Arrays;
 use Framework\Utils\JSON;
@@ -458,8 +458,12 @@ class Field {
                     $result["{$key}Url"] = FilePath::getUrl($this->filePath, $string);
                 }
             } else {
-                $result["{$key}Url"]   = $string !== "" ? Path::getSourceUrl("0", $string) : "";
-                $result["{$key}Thumb"] = $string !== "" ? Path::getThumbsUrl("0", $string) : "";
+                $result["{$key}Url"]   = "";
+                $result["{$key}Thumb"] = "";
+                if ($string !== "") {
+                    $result["{$key}Url"]   = MediaFile::getSharedUrl($string);
+                    $result["{$key}Thumb"] = MediaFile::getSharedThumbUrl($string);
+                }
             }
         }
 

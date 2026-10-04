@@ -7,6 +7,7 @@ use Framework\File\FileType;
 use Framework\File\Image;
 use Framework\File\Type\MediaType;
 use Framework\File\Type\FileItem;
+use Framework\System\Config;
 use Framework\System\Path;
 use Framework\System\MediaSchema;
 use Framework\Utils\Strings;
@@ -27,6 +28,59 @@ class MediaFile {
         self::$id = $id > 0 ? $id : 0;
     }
 
+    /**
+     * Returns the Folders of the given ID, which a flat Media does not have, as an App
+     * can keep its files in the source itself
+     * @param int $id
+     * @return list<int>
+     */
+    private static function getIDParts(int $id): array {
+        if (Config::isFileFlatMedia()) {
+            return [];
+        }
+        return [ $id ];
+    }
+
+    /**
+     * Returns the given Path Parts without the parts that go up or stay, as a path that
+     * came in a request could reach a file outside the Media
+     * @param array<int|string> $pathParts
+     * @return list<int|string>
+     */
+    private static function cleanParts(array $pathParts): array {
+        $result = [];
+        foreach ($pathParts as $pathPart) {
+            if (is_int($pathPart)) {
+                $result[] = $pathPart;
+                continue;
+            }
+            foreach (Strings::split($pathPart, "/") as $part) {
+                if ($part !== "" && $part !== "." && $part !== "..") {
+                    $result[] = $part;
+                }
+            }
+        }
+        return $result;
+    }
+
+    /**
+     * Returns the Url of the given File of the Media shared by every ID
+     * @param int|string ...$pathParts
+     * @return string
+     */
+    public static function getSharedUrl(int|string ...$pathParts): string {
+        return Path::getSourceUrl(...self::getIDParts(0), ...self::cleanParts($pathParts));
+    }
+
+    /**
+     * Returns the Thumb Url of the given File of the Media shared by every ID
+     * @param int|string ...$pathParts
+     * @return string
+     */
+    public static function getSharedThumbUrl(int|string ...$pathParts): string {
+        return Path::getThumbsUrl(...self::getIDParts(0), ...self::cleanParts($pathParts));
+    }
+
 
 
     /**
@@ -35,7 +89,7 @@ class MediaFile {
      * @return string
      */
     public static function getPath(int|string ...$pathParts): string {
-        return Path::getSourcePath(self::$id, ...$pathParts);
+        return Path::getSourcePath(...self::getIDParts(self::$id), ...self::cleanParts($pathParts));
     }
 
     /**
@@ -44,7 +98,7 @@ class MediaFile {
      * @return string
      */
     public static function getThumbPath(int|string ...$pathParts): string {
-        return Path::getThumbsPath(self::$id, ...$pathParts);
+        return Path::getThumbsPath(...self::getIDParts(self::$id), ...self::cleanParts($pathParts));
     }
 
     /**
@@ -53,7 +107,7 @@ class MediaFile {
      * @return string
      */
     public static function getUrl(int|string ...$pathParts): string {
-        return Path::getSourceUrl(self::$id, ...$pathParts);
+        return Path::getSourceUrl(...self::getIDParts(self::$id), ...self::cleanParts($pathParts));
     }
 
     /**
@@ -62,7 +116,7 @@ class MediaFile {
      * @return string
      */
     public static function getThumbUrl(int|string ...$pathParts): string {
-        return Path::getThumbsUrl(self::$id, ...$pathParts);
+        return Path::getThumbsUrl(...self::getIDParts(self::$id), ...self::cleanParts($pathParts));
     }
 
     /**
@@ -229,8 +283,9 @@ class MediaFile {
             return false;
         }
         if (FileType::isImage($oldName)) {
+            // The File was already moved, so a missing Thumb is made from its new place
             if (!Storage::fileExists($oldThumbs)) {
-                if (!Image::resize($oldSource, $oldThumbs, 200, 200, Image::Resize)) {
+                if (!Image::resize($newSource, $newThumbs, 200, 200, Image::Resize)) {
                     return false;
                 }
             } elseif (!Storage::moveFile($oldThumbs, $newThumbs)) {

@@ -107,6 +107,20 @@ class Assign {
     }
 
     /**
+     * Assigns the Column replacing the given Prefix with another, which a Like would not
+     * do, as the same text can be further in the value too
+     * @param string $prefix
+     * @param string $replace
+     * @return Assign
+     */
+    public static function replacePrefix(string $prefix, string $replace): Assign {
+        return new Assign("CONCAT(?, SUBSTRING(`__FIELD__`, ?))", [
+            $replace,
+            Strings::length($prefix) + 1,
+        ]);
+    }
+
+    /**
      * Assigns the Greatest between the Field value and another value or Column
      * @param Column|int $value
      * @return Assign

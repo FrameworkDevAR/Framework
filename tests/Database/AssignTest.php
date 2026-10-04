@@ -45,6 +45,7 @@ class AssignTest extends TestCase {
             "uuid"             => [ fn() => Assign::uuid(), "`f` = UUID()",               [] ],
             "encrypt"          => [ fn() => Assign::encrypt("secret", "key"), "`f` = AES_ENCRYPT(?, ?)",    [ "secret", "key" ] ],
             "replace"          => [ fn() => Assign::replace("old", "new"), "`f` = REPLACE(`f`, ?, ?)",   [ "old", "new" ] ],
+            "replace a prefix" => [ fn() => Assign::replacePrefix("old/", "new/"), "`f` = CONCAT(?, SUBSTRING(`f`, ?))", [ "new/", 5 ] ],
             "greatest"         => [ fn() => Assign::greatest(10), "`f` = GREATEST(`f`, ?)",     [ 10 ] ],
             "expression"       => [ fn() => Assign::exp("NOW()"), "`f` = NOW()",                [] ],
             "bound expression" => [ fn() => Assign::exp("price * ?", [ 3 ]), "`f` = price * ?",     [ 3 ] ],

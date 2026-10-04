@@ -6,6 +6,7 @@ use Framework\Database\Model\FieldType;
 use Framework\Date\Date;
 use Framework\File\File;
 use Framework\Utils\JSON;
+use Tests\TestHelpers;
 
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -14,6 +15,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
  * The Field Attribute, which turns a property of a Model into a column
  */
 class FieldTest extends TestCase {
+    use TestHelpers;
 
     /**
      * Returns a Field of the given type, named the same in every place
@@ -292,6 +294,7 @@ class FieldTest extends TestCase {
      * @param string              $filePath
      * @param array<string,mixed> $data
      * @param array<string,mixed> $expected
+     * @param bool                $isFlat   Optional.
      * @return void
      */
     #[DataProvider("providerFileValues")]
@@ -299,7 +302,9 @@ class FieldTest extends TestCase {
         string $filePath,
         array $data,
         array $expected,
+        bool $isFlat = false,
     ): void {
+        $this->setConfig("FILE_FLAT_MEDIA", $isFlat);
         $field = Field::create(
             name:       "image",
             prefixName: "image",
@@ -307,13 +312,15 @@ class FieldTest extends TestCase {
             filePath:   $filePath,
         );
 
-        $this->assertSame($expected, $field->toValues($data));
+        $result = $field->toValues($data);
+        $this->setConfig("FILE_FLAT_MEDIA", false);
+        $this->assertSame($expected, $result);
     }
 
     /**
      * A Field that names a path has the one url the path builds, and one
      * that does not falls back to the source and the thumbnail
-     * @return array<string,array{string,array<string,mixed>,array<string,mixed>}>
+     * @return array<string,array{0:string,1:array<string,mixed>,2:array<string,mixed>,3?:bool}>
      */
     public static function providerFileValues(): array {
         return [
@@ -335,6 +342,16 @@ class FieldTest extends TestCase {
                     "imageUrl"   => "files/source/0/one.png",
                     "imageThumb" => "files/thumbs/0/one.png",
                 ],
+            ],
+            "no path, flat media" => [
+                "",
+                [ "image" => "one.png" ],
+                [
+                    "image"      => "one.png",
+                    "imageUrl"   => "files/source/one.png",
+                    "imageThumb" => "files/thumbs/one.png",
+                ],
+                true,
             ],
             "no path and no file" => [
                 "",

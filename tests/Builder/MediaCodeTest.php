@@ -163,10 +163,23 @@ class MediaCodeTest extends TestCase {
         $this->assertStringNotContainsString("whereExp", $code);
     }
 
-    public function testAFieldThatIsNoJsonAsksForNoExpression(): void {
+    public function testTheFilesInsideADirectoryChangeWithIt(): void {
+        // A Directory renamed, moved or deleted takes the Files inside it along, matching
+        // only the start of the path and with its case, not any text that is like it
         $code = $this->codeFor(FieldType::String);
 
-        $this->assertStringNotContainsString("Exp", $code);
+        $this->assertStringContainsString('Assign::replacePrefix($oldDir, $newDir)', $code);
+        $this->assertSame(2, substr_count(
+            $code,
+            '->where(Exp::create("LEFT(`image`, ?)", $length), Op::Equal, $oldDir, caseSensitive: true)',
+        ));
+    }
+
+    public function testAFieldThatIsNoJsonAsksForNoJsonExpression(): void {
+        $code = $this->codeFor(FieldType::String);
+
+        $this->assertStringNotContainsString("Exp::json", $code);
+        $this->assertStringNotContainsString("Assign::json", $code);
     }
     public function testTheGeneratedCodeParses(): void {
         // It writes into the build directory, which is gitignored and holds

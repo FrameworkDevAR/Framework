@@ -204,7 +204,14 @@ MediaFile::deletePath($path, $name);
 
 MediaFile::getPath($path);        // and getUrl()
 MediaFile::getThumbPath($path);   // and getThumbUrl()</code></pre>
-<p>Moving, renaming or deleting a file carries its thumbnail along, so the two never drift apart.</p>
+<p>Moving, renaming or deleting a file carries its thumbnail along, so the two never drift apart, and makes a
+missing one at its new place. The file fields of the Models that point at it change with it, and those that
+point at a file inside a moved or deleted folder too. A path given to it can not go up out of the media, as
+<code>..</code> and <code>.</code> are dropped from it.</p>
+<p>Each ID set with <code>MediaFile::setID()</code> has its own folder in the source and the thumbnails, so the
+files of one client never mix with another&#39;s. An App that kept its files in the source itself can set
+<code>FILE_FLAT_MEDIA</code> to use them there, without that folder. The urls of the file fields of a Model, which
+<code>getSharedUrl()</code> and <code>getSharedThumbUrl()</code> build, follow the same rule.</p>
 
 <h2 id="filelist">FileList</h2>
 <p><a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/File/FileList.php" target="_blank" rel="noopener noreferrer"><code>FileList</code></a> is what a media listing is built with. You add an entry per file or folder — with its

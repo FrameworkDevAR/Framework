@@ -3,9 +3,10 @@ namespace {{namespace}};
 
 use Framework\File\Storage;{{#hasFields}}
 use Framework\Database\Query\Query;
-use Framework\Database\Query\Op;{{/hasFields}}{{#hasReplace}}
-use Framework\Database\Query\Assign;{{/hasReplace}}{{#hasJSON}}
-use Framework\Database\Query\Exp;{{/hasJSON}}
+use Framework\Database\Query\Op;
+use Framework\Database\Query\Assign;
+use Framework\Database\Query\Exp;
+use Framework\Utils\Strings;{{/hasFields}}
 
 /**
  * The Media Schema
@@ -53,6 +54,12 @@ class MediaSchema {
      * @return void
      */
     private static function replacePath(string $old, string $new): void {
+    {{#hasFields}}
+        // A Path can be a Directory, so the Files inside it change too
+        $oldDir = "$old/";
+        $newDir = "$new/";
+        $length = Strings::length($oldDir);
+    {{/hasFields}}
     {{#fields}}
 
         // Replace the File Path in {{name}}.{{fieldName}}
@@ -60,6 +67,10 @@ class MediaSchema {
         Query::update("{{tableName}}")
             ->set("{{fieldName}}", $new)
             ->where("{{fieldName}}", Op::Equal, $old)
+            ->execute();
+        Query::update("{{tableName}}")
+            ->set("{{fieldName}}", Assign::replacePrefix($oldDir, $newDir))
+            ->where(Exp::create("LEFT(`{{fieldName}}`, ?)", $length), Op::Equal, $oldDir, caseSensitive: true)
             ->execute();
         {{/isSet}}
         {{#isReplace}}
@@ -84,6 +95,11 @@ class MediaSchema {
      * @return void
      */
     private static function removePath(string $old): void {
+    {{#hasFields}}
+        // A Path can be a Directory, so the Files inside it are removed too
+        $oldDir = "$old/";
+        $length = Strings::length($oldDir);
+    {{/hasFields}}
     {{#fields}}
 
         // Remove the File Path in {{name}}.{{fieldName}}
@@ -91,6 +107,10 @@ class MediaSchema {
         Query::update("{{tableName}}")
             ->set("{{fieldName}}", "")
             ->where("{{fieldName}}", Op::Equal, $old)
+            ->execute();
+        Query::update("{{tableName}}")
+            ->set("{{fieldName}}", "")
+            ->where(Exp::create("LEFT(`{{fieldName}}`, ?)", $length), Op::Equal, $oldDir, caseSensitive: true)
             ->execute();
         {{/isSet}}
         {{#isReplace}}
