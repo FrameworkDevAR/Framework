@@ -11,6 +11,7 @@ window.DOCS_NAV = [
             { url: "introduction/configuration.html",      name: "Configuration" },
             { url: "introduction/config-files.html",       name: "Config Files" },
             { url: "introduction/cli.html",                name: "CLI Commands" },
+            { url: "introduction/apps.html",               name: "Apps" },
         ],
     },
     {

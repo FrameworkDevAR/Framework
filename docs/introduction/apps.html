@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apps — Framework</title>
+    <meta name="description" content="The apps that come with the framework: DER draws a database, Diff compares two files and JSON edits a JSON document, all in the browser.">
+    <meta name="theme-color" content="#2f6fd0">
+    <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+    <link rel="mask-icon" href="../assets/favicon.svg" color="#2f6fd0">
+    <link rel="apple-touch-icon" href="../assets/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Serif:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="topbar">
+        <span class="brand-mark">Framework</span><a class="version" target="_blank" rel="noopener noreferrer"></a>
+        <button class="menu-toggle" aria-label="Toggle navigation">☰</button>
+    </div>
+
+    <div class="layout">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-head">
+                <div class="brand-row">
+                    <a class="brand" href="../index.html"><img class="brand-logo" src="../assets/favicon.svg" alt="" width="34" height="34">Framework</a><a class="version" id="docsVersion" target="_blank" rel="noopener noreferrer"></a>
+                </div>
+                <button class="search-open" id="searchOpen" type="button" data-search>
+                    <span>Search the docs…</span>
+                    <kbd>⌘K</kbd>
+                </button>
+            </div>
+            <nav id="docsNav"></nav>
+        </aside>
+
+        <div class="content">
+            <div class="doc">
+                <article class="doc-main prose">
+<div class="eyebrow">Introduction</div>
+                    <h1>Apps</h1>
+                    <p class="lead">The framework comes with three small apps that run in the browser. DER draws
+                    a database, Diff compares two files, and JSON edits a JSON document.</p>
+
+<p>Each app is a single page with no server behind it. Everything you put in an app stays in your browser.
+Nothing is sent anywhere, and the app opens the way you left it.</p>
+<p>These are the apps and where each one lives:</p>
+<table class="api-table">
+    <thead><tr><th>App</th><th>What it does</th><th>Open it</th><th>Source</th></tr></thead>
+    <tbody>
+        <tr><td><a href="#der">DER</a></td><td>Draws the database of an app as a diagram.</td><td><a href="https://der.frameworkphp.com.ar/" target="_blank" rel="noopener noreferrer">der.frameworkphp.com.ar</a></td><td><a href="https://github.com/FrameworkDevAR/DER" target="_blank" rel="noopener noreferrer">GitHub</a></td></tr>
+        <tr><td><a href="#diff">Diff</a></td><td>Shows what changed between two files.</td><td><a href="https://diff.frameworkphp.com.ar/" target="_blank" rel="noopener noreferrer">diff.frameworkphp.com.ar</a></td><td><a href="https://github.com/FrameworkDevAR/Diff" target="_blank" rel="noopener noreferrer">GitHub</a></td></tr>
+        <tr><td><a href="#json">JSON</a></td><td>Edits, queries and compares JSON documents.</td><td><a href="https://json.frameworkphp.com.ar/" target="_blank" rel="noopener noreferrer">json.frameworkphp.com.ar</a></td><td><a href="https://github.com/FrameworkDevAR/JSON" target="_blank" rel="noopener noreferrer">GitHub</a></td></tr>
+    </tbody>
+</table>
+
+<h2 id="der">DER</h2>
+<p>DER reads the <a href="../database/schema-json.html">Schema JSON</a> the build writes and draws it as a
+diagram. Every table is a box on a board. Every foreign key is a line between the two tables it joins.</p>
+<p>You pick the tables to show, drag them around and gather them into groups. A database can have several
+boards, one for each part of it.</p>
+<div class="note">The <a href="../database/der.html">DER guide</a> covers loading a database, building the
+board, the settings and the shortcuts.</div>
+
+<h2 id="diff">Diff</h2>
+<p>Diff compares two files and shows what changed. Paste the old file on one side and the new file on the
+other, or drop them in, and click <b>Compare</b>.</p>
+<p>The result can be read in three ways:</p>
+<table class="api-table">
+    <thead><tr><th>Layout</th><th>What you get</th></tr></thead>
+    <tbody>
+        <tr><td>Side by side</td><td>The old file on the left and the new file on the right, with the lines that changed beside each other.</td></tr>
+        <tr><td>Unified</td><td>Both files in one column, the removed lines over the added ones.</td></tr>
+        <tr><td>Structure</td><td>Two JSON files compared by what they hold, key by key. The order the keys were written in does not count as a change.</td></tr>
+    </tbody>
+</table>
+<p>Inside a line that changed, the words that changed are marked. The lines that did not change are folded
+away, and <b>Unfold</b> brings them back. <b>Wrap</b> breaks the long lines. A strip beside the result shows
+where every change is, and the arrows at the top walk from one change to the next.</p>
+<p>The code is coloured by the language of the file. Diff takes the language from the name of the file, or
+from what the text looks like when it has no name.</p>
+
+<h2 id="json">JSON</h2>
+<p>JSON is an editor for JSON documents. It has two panels, so two documents can be open at once. Each panel
+shows its document in one of three ways:</p>
+<table class="api-table">
+    <thead><tr><th>View</th><th>What you get</th></tr></thead>
+    <tbody>
+        <tr><td>Text</td><td>The document as it is written, with line numbers and colours. Brackets fold, and long lines can wrap.</td></tr>
+        <tr><td>Tree</td><td>A row for each key and each value, set in under what holds it. Rows open and close. A key or a value is edited in place.</td></tr>
+        <tr><td>Table</td><td>A list shown as a table, with a row for each item and a column for each value. A click on a column sorts by it.</td></tr>
+    </tbody>
+</table>
+<p>The toolbar of a panel works on its document:</p>
+<table class="api-table">
+    <thead><tr><th>Tool</th><th>What it does</th></tr></thead>
+    <tbody>
+        <tr><td>Format</td><td>Writes the document with a line for each key and each item.</td></tr>
+        <tr><td>Smart format</td><td>Keeps what fits in a line on one line, and lines up the colons of each object.</td></tr>
+        <tr><td>Compact</td><td>Writes the document in a single line.</td></tr>
+        <tr><td>Repair</td><td>Mends a text that is almost JSON: single quotes, keys without quotes, comments, missing or extra commas, brackets that were never closed. It shows only when the text is not valid.</td></tr>
+        <tr><td>Sort</td><td>Puts the keys of an object in order, or the items of a list by any value they have.</td></tr>
+        <tr><td>Transform</td><td>Runs a query over the document and shows the result before applying it. A form writes the query that filters, sorts and picks, or you write it by hand.</td></tr>
+        <tr><td>Search</td><td>Finds a text in the keys and the values, and replaces it.</td></tr>
+        <tr><td>JSON Schema</td><td>Checks the document against a schema and lists every place that does not match.</td></tr>
+    </tbody>
+</table>
+<p>A query for Transform can be written in three languages. The first is a small language of steps joined by
+a bar, where each step hands its result to the next:</p>
+<pre><code class="language-bash">.users | filter(.age &gt;= 18) | sort(.name) | pick(.name, .age)</code></pre>
+<p>The other two are JSONPath and JavaScript.</p>
+<p>The buttons between the two panels copy a document to the other side and compare the two. While they
+are compared, the two trees are drawn row by row and scroll together, and every difference is marked.</p>
+<p>JSON also reads a CSV file as a list of objects, and saves a list as a CSV file.</p>
+
+<h2 id="shared">What the apps share</h2>
+<p>The three apps look and work the same way:</p>
+<ul>
+    <li><b>The logo switches apps.</b> Click the logo at the top left and pick another app, or these docs.</li>
+    <li><b>The title opens what you kept.</b> DER lists the databases you loaded. Diff keeps every pair of
+    files you compare, and JSON keeps every document you work on. In Diff and JSON, an entry you save with a
+    name stays for good.</li>
+    <li><b>The address follows the history.</b> In Diff and JSON each entry has its own address, so the back
+    and forward buttons of the browser walk through them.</li>
+    <li><b>Everything has a key.</b> Press <kbd>?</kbd> in any app to see its shortcuts.</li>
+    <li><b>Light and dark.</b> The switch at the top right picks light, dark, or the choice of the system.</li>
+</ul>
+
+<h2 id="links">Open one from a link</h2>
+<p>Diff and JSON can open what a link carries. The content goes after the <code>#</code> of the address, and
+the browser never sends that part to a server. A script or an LLM can then hand you a diff or a document as
+a link, with no file to send.</p>
+<p>A link is written in one of two forms:</p>
+<table class="api-table">
+    <thead><tr><th>Form</th><th>Looks like</th><th>Use it for</th></tr></thead>
+    <tbody>
+        <tr><td>Written out</td><td><code>#old=…&amp;new=…</code> in Diff, <code>#json=…</code> in JSON</td><td>Short content. Each value is percent-encoded.</td></tr>
+        <tr><td>Packed</td><td><code>#z=…</code></td><td>Anything longer. The fields go in a JSON object, which is gzipped and written in base64.</td></tr>
+    </tbody>
+</table>
+
+<h3 id="links-diff">The fields of a Diff link</h3>
+<p>A Diff link takes these fields:</p>
+<table class="api-table">
+    <thead><tr><th>Field</th><th>What it holds</th></tr></thead>
+    <tbody>
+        <tr><td><code>old</code></td><td>The text of the old file.</td></tr>
+        <tr><td><code>new</code></td><td>The text of the new file.</td></tr>
+        <tr><td><code>oldName</code>, <code>newName</code></td><td>The names of the files. They are optional, and the extension picks the colours of the code.</td></tr>
+        <tr><td><code>layout</code></td><td>The layout to open in: <code>split</code>, <code>unified</code> or <code>tree</code>. It is optional.</td></tr>
+    </tbody>
+</table>
+
+<h3 id="links-json">The fields of a JSON link</h3>
+<p>A JSON link takes these fields:</p>
+<table class="api-table">
+    <thead><tr><th>Field</th><th>What it holds</th></tr></thead>
+    <tbody>
+        <tr><td><code>json</code></td><td>The document. In a packed link it can be the JSON itself or its text.</td></tr>
+        <tr><td><code>name</code></td><td>The name of the document. It is optional.</td></tr>
+        <tr><td><code>mode</code></td><td>The view to open in: <code>tree</code>, <code>table</code> or <code>text</code>. It is optional.</td></tr>
+        <tr><td><code>right</code>, <code>rightName</code></td><td>A second document for the other panel, and its name. They are optional.</td></tr>
+        <tr><td><code>compare</code></td><td><code>true</code> to compare the two documents. It is optional.</td></tr>
+    </tbody>
+</table>
+
+<h3 id="links-write">Write a packed link</h3>
+<p>This writes a packed link to a diff of two files in Python:</p>
+<pre><code class="language-python">import base64, gzip, json
+
+fields = { &quot;old&quot;: old_text, &quot;new&quot;: new_text, &quot;oldName&quot;: &quot;a.json&quot;, &quot;newName&quot;: &quot;b.json&quot; }
+packed = base64.urlsafe_b64encode(gzip.compress(json.dumps(fields).encode())).decode()
+print(&quot;https://diff.frameworkphp.com.ar/#z=&quot; + packed)</code></pre>
+<p>A link to JSON is written the same way, with its own fields and
+<code>https://json.frameworkphp.com.ar/</code> as the address.</p>
+<div class="note">Each app publishes this format as plain text for an LLM to read, at
+<a href="https://diff.frameworkphp.com.ar/llms.txt" target="_blank" rel="noopener noreferrer">diff.frameworkphp.com.ar/llms.txt</a>
+and <a href="https://json.frameworkphp.com.ar/llms.txt" target="_blank" rel="noopener noreferrer">json.frameworkphp.com.ar/llms.txt</a>.</div>
+
+<div class="page-nav"><a href="../introduction/cli.html"><span class="dir">← Previous</span><span class="ttl">CLI Commands</span></a><a class="next" href="../core/discovery.html"><span class="dir">Next →</span><span class="ttl">Discovery</span></a></div>
+                </article>
+                <nav class="toc" aria-label="On this page">
+                    <p class="toc-title">On this page</p>
+                    <ul></ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"
+            data-autoloader-path="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/"></script>
+    <script src="../assets/version.js"></script>
+    <script src="../assets/nav.js"></script>
+    <script src="../assets/docs.js"></script>
+</body>
+</html>
