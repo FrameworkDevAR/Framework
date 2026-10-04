@@ -10,6 +10,7 @@ use Framework\Email\Schema\EmailQueueColumn;
 use Framework\Email\Schema\EmailQueueQuery;
 use Framework\Email\Schema\EmailContentEntity;
 use Framework\System\Config;
+use Framework\System\EmailCode;
 use Framework\Date\Date;
 use Framework\Utils\Arrays;
 
@@ -78,15 +79,41 @@ class EmailQueue extends EmailQueueSchema {
         bool $sendNow = false,
         int $dataID = 0,
     ): bool {
-        $sendTos   = Arrays::toStrings($sendTo);
-        $subject ??= $content->subject;
-        $message ??= $content->message;
+        return self::addEmail(
+            emailCode: $content->emailCode,
+            sendTo:    $sendTo,
+            subject:   $subject ?? $content->subject,
+            message:   $message ?? $content->message,
+            sendNow:   $sendNow,
+            dataID:    $dataID,
+        );
+    }
 
+    /**
+     * Adds an Email to the Queue and sends it if it is sent right away
+     * @param EmailCode           $emailCode
+     * @param list<string>|string $sendTo
+     * @param string              $subject
+     * @param string              $message
+     * @param bool                $sendNow   Optional.
+     * @param int                 $dataID    Optional.
+     * @return bool
+     */
+    public static function addEmail(
+        EmailCode $emailCode,
+        array|string $sendTo,
+        string $subject,
+        string $message,
+        bool $sendNow = false,
+        int $dataID = 0,
+    ): bool {
+        $sendTos = Arrays::toStrings($sendTo);
         if (count($sendTos) === 0) {
             return false;
         }
+
         $emailQueueID = self::createEntity(
-            emailCode:   $content->emailCode,
+            emailCode:   $emailCode,
             sendTo:      $sendTos,
             subject:     $subject,
             message:     $message,

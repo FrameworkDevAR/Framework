@@ -4,8 +4,10 @@ namespace Framework\Email;
 use Framework\Analysis\Attr\NotTested;
 use Framework\Discovery\Discovery;
 use Framework\Discovery\Type\DiscoveryBuilder;
+use Framework\Discovery\Type\DiscoveryClass;
 use Framework\Discovery\Attr\Priority;
 use Framework\Builder\Builder;
+use Framework\Email\EmailMessage;
 use Framework\Email\EmailSender;
 use Framework\Intl\IntlConfig;
 use Framework\Discovery\Package;
@@ -16,9 +18,15 @@ use Framework\Utils\Strings;
 
 /**
  * The Email Builder
+ * @phpstan-type EmailMessageData array{
+ *   key:   string,
+ *   class: string,
+ * }
  * @phpstan-type EmailCodesResult array{
- *   codes: list<string>,
- *   total: int,
+ *   codes:       list<string>,
+ *   messages:    list<EmailMessageData>,
+ *   hasMessages: bool,
+ *   total:       int,
  * }
  * @phpstan-type EmailProviderData array{
  *   name:     string,
@@ -58,10 +66,23 @@ class EmailBuilder implements DiscoveryBuilder {
 
 
     /**
-     * Collects the Emails from the Emails files
+     * Collects the Emails from the Emails files and the Email Messages
      * @return EmailCodesResult
      */
     public static function collectEmails(): array {
+        $classes = Discovery::findClasses(
+            parentClass:  EmailMessage::class,
+            forAll:       !Package::isFramework(),
+            forFramework: true,
+        );
+        return self::collectCodes(self::collectFiles(), self::collectMessages($classes));
+    }
+
+    /**
+     * Collects the Codes of the Emails files
+     * @return list<string>
+     */
+    public static function collectFiles(): array {
         $languages = Language::getAll();
         $data      = new Dictionary();
 
@@ -74,7 +95,41 @@ class EmailBuilder implements DiscoveryBuilder {
 
         $codes = [];
         foreach ($data as $emailCode => $email) {
-            $codes[] = $emailCode;
+            $codes[] = Strings::toString($emailCode);
+        }
+        return $codes;
+    }
+
+    /**
+     * Collects the Email Messages from the given Classes, by their Code
+     * @param list<DiscoveryClass> $classes
+     * @return array<string,string>
+     */
+    public static function collectMessages(array $classes): array {
+        $result = [];
+        foreach ($classes as $class) {
+            $name = $class->getName();
+            if (is_subclass_of($name, EmailMessage::class)) {
+                $code = Strings::substringAfter($name, "\\");
+                $code = Strings::stripEnd($code, "Email");
+                $result[$code] = $name;
+            }
+        }
+        return $result;
+    }
+
+    /**
+     * Joins the Codes of the files with the ones of the Email Messages
+     * @param list<string>         $fileCodes
+     * @param array<string,string> $messages
+     * @return EmailCodesResult
+     */
+    public static function collectCodes(array $fileCodes, array $messages): array {
+        $codes = $fileCodes;
+        foreach ($messages as $code => $class) {
+            if (!Arrays::contains($codes, $code)) {
+                $codes[] = $code;
+            }
         }
 
         // If no codes are found, add a default one
@@ -82,9 +137,25 @@ class EmailBuilder implements DiscoveryBuilder {
             $codes[] = "Test";
         }
 
+        // Pad the codes so the values of the array line up
+        $maxLength = 0;
+        foreach ($messages as $code => $class) {
+            $maxLength = max($maxLength, Strings::length($code) + 2);
+        }
+
+        $list = [];
+        foreach ($messages as $code => $class) {
+            $list[] = [
+                "key"   => Strings::padRight("\"$code\"", $maxLength),
+                "class" => $class,
+            ];
+        }
+
         return [
-            "codes" => $codes,
-            "total" => count($codes),
+            "codes"       => $codes,
+            "messages"    => $list,
+            "hasMessages" => count($list) > 0,
+            "total"       => count($codes),
         ];
     }
 

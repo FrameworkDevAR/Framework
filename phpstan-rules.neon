@@ -113,6 +113,12 @@ services:
             requiredLanguages: %framework.actionLogLanguages%
         tags:
             - phpstan.rules.rule
+    -
+        class: Framework\Analysis\Email\EmailMessageRule
+        arguments:
+            requiredLanguages: %framework.emailLanguages%
+        tags:
+            - phpstan.rules.rule
 
 
 parameters:
@@ -132,6 +138,7 @@ parameters:
         requireOptionalComment: false
         requireReturnType: false
         actionLogLanguages: ['en', 'es']
+        emailLanguages: ['en', 'es']
 
 parametersSchema:
     framework: structure([
@@ -150,4 +157,5 @@ parametersSchema:
         requireOptionalComment: bool()
         requireReturnType: bool()
         actionLogLanguages: listOf(string())
+        emailLanguages: listOf(string())
     ])
