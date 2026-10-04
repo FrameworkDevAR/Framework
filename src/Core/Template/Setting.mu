@@ -19,11 +19,11 @@ class Setting {
 
     /**
      * Saves all the Settings
-     * @param array<string,string> $data
-     * @return bool
+     * @param array<string,mixed> $data
+     * @return void
      */
-    public static function saveAll(array $data): bool {
-        return SettingData::saveAll($data);
+    public static function saveAll(array $data): void {
+        SettingData::saveAll($data);
     }
 
 
@@ -40,11 +40,11 @@ class Setting {
 
     /**
      * Saves all the Settings for {{name}}
-     * @param array<string,string> $data
-     * @return bool
+     * @param array<string,mixed> $data
+     * @return void
      */
-    public static function save{{name}}(array $data): bool {
-        return SettingData::saveSection("{{section}}", $data);
+    public static function save{{name}}(array $data): void {
+        SettingData::saveSection("{{section}}", $data);
     }
 
 {{/sections}}
@@ -75,6 +75,9 @@ class Setting {
         {{#isArray}}
         return $result !== null ? JSON::decodeAsArray($result) : [];
         {{/isArray}}
+        {{#isList}}
+        return JSON::decodeAsStrings($result, withoutEmpty: true);
+        {{/isList}}
     }
 
     /**
@@ -89,6 +92,9 @@ class Setting {
         {{#isArray}}
         $value = JSON::encode($value);
         {{/isArray}}
+        {{#isList}}
+        $value = JSON::encode($value);
+        {{/isList}}
         return SettingData::set("{{section}}", "{{variable}}", (string)$value);
     }
 {{/variables}}

@@ -140,6 +140,22 @@ class SettingDataLiveTest extends LiveTestCase {
         $this->assertSame([ "example" => "a value" ], SettingData::getAll(SettingConfig::General));
     }
 
+    public function testTheValuesComeBackInTheirTypes(): void {
+        $this->register("name", VariableType::String, "a value");
+        $this->register("amount", VariableType::Integer, 42);
+        $this->register("isActive", VariableType::Boolean, true);
+        $this->register("emails", VariableType::List, [ "a@b.com", "c@d.com" ]);
+        SettingConfig::register("other", "Another", VariableType::String, "a third");
+        $this->migrate();
+
+        $this->assertEquals([
+            "name"     => "a value",
+            "amount"   => 42,
+            "isActive" => true,
+            "emails"   => [ "a@b.com", "c@d.com" ],
+        ], SettingData::getValues(SettingConfig::General));
+    }
+
     public function testASectionThatIsNotThereIsEmpty(): void {
         $this->register();
         $this->migrate();

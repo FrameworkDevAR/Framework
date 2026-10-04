@@ -119,6 +119,11 @@ Setting::saveAll($data);
 
 // And read a whole section back
 Setting::getAllGeneral();   // [ &quot;siteName&quot; =&gt; &quot;My New App&quot;, … ]</code></pre>
+<p>Those read the stored strings. A settings screen usually wants each value in its type instead, which
+<a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Core/SettingData.php" target="_blank" rel="noopener noreferrer"><code>SettingData::getValues()</code></a> returns for a section, decoded by the type each one was stored with:</p>
+<pre><code class="language-php">use Framework\Core\SettingData;
+
+SettingData::getValues(&quot;Email&quot;);   // [ &quot;fromName&quot; =&gt; &quot;My App&quot;, &quot;isActive&quot; =&gt; true, … ]</code></pre>
 
                 <div class="page-nav"><a href="../subsystems/credentials.html"><span class="dir">← Previous</span><span class="ttl">Credentials</span></a><a class="next" href="../subsystems/emails.html"><span class="dir">Next →</span><span class="ttl">Emails</span></a></div>
                 </article>

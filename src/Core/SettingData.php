@@ -122,8 +122,24 @@ class SettingData extends SettingsSchema implements DiscoveryMigration {
     }
 
     /**
+     * Returns the Settings of the given Section, each decoded into its Type
+     * @param string $section
+     * @return array<string,mixed>
+     */
+    public static function getValues(string $section): array {
+        $query = new SettingsQuery();
+        $query->section->equal($section);
+
+        $result = [];
+        foreach (self::getEntityList($query) as $elem) {
+            $result[$elem->variable] = VariableType::decodeValue($elem->variableType, $elem->value);
+        }
+        return $result;
+    }
+
+    /**
      * Saves all the Settings
-     * @param array<string,string> $data
+     * @param array<string,mixed> $data
      * @return void
      */
     public static function saveAll(array $data): void {
@@ -146,8 +162,8 @@ class SettingData extends SettingsSchema implements DiscoveryMigration {
 
     /**
      * Saves the Settings from the given Section
-     * @param string               $section
-     * @param array<string,string> $data
+     * @param string              $section
+     * @param array<string,mixed> $data
      * @return void
      */
     public static function saveSection(string $section, array $data): void {

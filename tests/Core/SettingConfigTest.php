@@ -1,8 +1,11 @@
 <?php
 namespace Tests\Core;
 
+use Framework\Builder\Builder;
 use Framework\Core\SettingConfig;
 use Framework\Core\VariableType;
+use Framework\Discovery\Package;
+use Framework\File\Storage;
 use Tests\TestHelpers;
 
 use PHPUnit\Framework\TestCase;
@@ -116,6 +119,12 @@ class SettingConfigTest extends TestCase {
                 VariableType::Array,
                 [ "type" => "array", "isArray" => true ],
             ],
+            "list"              => [
+                "emails",
+                SettingConfig::General,
+                VariableType::List,
+                [ "type" => "array", "docType" => "list<string>", "isList" => true, "isArray" => false ],
+            ],
         ];
     }
 
@@ -134,7 +143,40 @@ class SettingConfigTest extends TestCase {
             "no array"   => [ [ VariableType::String, VariableType::Integer ], false ],
             "with array" => [ [ VariableType::String, VariableType::Array ], true ],
             "only array" => [ [ VariableType::Array ], true ],
+            "with list"  => [ [ VariableType::String, VariableType::List ], true ],
         ];
+    }
+
+
+    public function testASectionIsCollectedOnce(): void {
+        // Its methods are written once per section, so a repeated one would not parse
+        SettingConfig::register("phone", "store", VariableType::String);
+        SettingConfig::register("itemsPerPage", "store", VariableType::Integer);
+        SettingConfig::register("emails", "orders", VariableType::List);
+
+        $this->assertSame([
+            [ "section" => "store", "name" => "Store" ],
+            [ "section" => "orders", "name" => "Orders" ],
+        ], SettingConfig::collectSettings()["sections"]);
+    }
+
+    public function testTheGeneratedCodeParses(): void {
+        SettingConfig::register("phone", "store", VariableType::String);
+        SettingConfig::register("itemsPerPage", "store", VariableType::Integer);
+        SettingConfig::register("isActive", "orders", VariableType::Boolean);
+        SettingConfig::register("emails", "orders", VariableType::List);
+
+        $template = Storage::readFile(Package::getBasePath("src/Core/Template/Setting.mu"));
+        $this->setPrivateStaticProperty(Builder::class, "templates", [ "Setting" => $template ]);
+        $code = Builder::render("Setting", SettingConfig::collectSettings() + [
+            "namespace" => "Tests\\System",
+        ]);
+
+        token_get_all($code, TOKEN_PARSE);
+        $this->assertSame(1, substr_count($code, "function getAllStore("));
+        $this->assertStringContainsString("public static function getOrdersEmails(): array {", $code);
+        $this->assertStringContainsString("return JSON::decodeAsStrings(\$result, withoutEmpty: true);", $code);
+        $this->assertStringContainsString("public static function saveAll(array \$data): void {", $code);
     }
 
 

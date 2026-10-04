@@ -35,6 +35,7 @@ use Framework\Utils\Strings;
  *   isFloat:   bool,
  *   isString:  bool,
  *   isArray:   bool,
+ *   isList:    bool,
  * }
  * @phpstan-type SettingResult array{
  *   sections?:  list<SettingSectionData>,
@@ -135,14 +136,15 @@ class SettingConfig implements DiscoveryBuilder {
 
         foreach (self::$settings as $setting) {
             $section = $setting["section"];
-            if (!Strings::isEqual($section, self::General)) {
-                $result[] = [
+            // A Section has many Settings, but its methods are written once
+            if (!Strings::isEqual($section, self::General) && !isset($result[$section])) {
+                $result[$section] = [
                     "section" => $section,
                     "name"    => Strings::upperCaseFirst($section),
                 ];
             }
         }
-        return $result;
+        return array_values($result);
     }
 
     /**
@@ -178,10 +180,11 @@ class SettingConfig implements DiscoveryBuilder {
                 "isFloat"   => $variableType === VariableType::Float,
                 "isString"  => $variableType === VariableType::String,
                 "isArray"   => $variableType === VariableType::Array,
+                "isList"    => $variableType === VariableType::List,
             ];
 
             $isFirst = false;
-            if ($variableType === VariableType::Array) {
+            if ($variableType === VariableType::Array || $variableType === VariableType::List) {
                 $hasJSON = true;
             }
         }

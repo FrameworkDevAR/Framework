@@ -63,6 +63,29 @@ class VariableTypeTest extends TestCase {
     }
 
 
+    #[DataProvider("providerDecodeValue")]
+    public function testDecodeValue(VariableType $type, string $value, mixed $expected): void {
+        $this->assertSame($expected, VariableType::decodeValue($type, $value));
+    }
+
+    public static function providerDecodeValue(): array {
+        return [
+            "array json"     => [ VariableType::Array, '{"a":1}', [ "a" => 1 ] ],
+            "array empty"    => [ VariableType::Array, "{}", [] ],
+            "list json"      => [ VariableType::List, '["a","","b"]', [ "a", "b" ] ],
+            "list empty"     => [ VariableType::List, "", [] ],
+            "bool true"      => [ VariableType::Boolean, "1", true ],
+            "bool false"     => [ VariableType::Boolean, "0", false ],
+            "bool empty"     => [ VariableType::Boolean, "", false ],
+            "int value"      => [ VariableType::Integer, "42", 42 ],
+            "int empty"      => [ VariableType::Integer, "", 0 ],
+            "float value"    => [ VariableType::Float, "1.5", 1.5 ],
+            "string value"   => [ VariableType::String, "hello", "hello" ],
+            "default"        => [ VariableType::None, "hello", "hello" ],
+        ];
+    }
+
+
     #[DataProvider("providerEncodeValue")]
     public function testEncodeValue(VariableType $type, mixed $value, string $expected): void {
         $this->assertSame($expected, VariableType::encodeValue($type, $value));
@@ -72,6 +95,8 @@ class VariableTypeTest extends TestCase {
         return [
             "array empty"    => [ VariableType::Array, [], "{}" ],
             "array json"     => [ VariableType::Array, [ "a" => 1 ], '{"a":1}' ],
+            "list empty"     => [ VariableType::List, [], "[]" ],
+            "list json"      => [ VariableType::List, [ "a", "b" ], '["a","b"]' ],
             "bool empty"     => [ VariableType::Boolean, "", "0" ],
             "bool true"      => [ VariableType::Boolean, true, "1" ],
             "int empty"      => [ VariableType::Integer, null, "0" ],

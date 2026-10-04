@@ -5,6 +5,7 @@ use Framework\Enum\IsEnum;
 use Framework\Enum\Enum;
 use Framework\Utils\Arrays;
 use Framework\Utils\JSON;
+use Framework\Utils\Numbers;
 use Framework\Utils\Strings;
 
 use JsonSerializable;
@@ -89,10 +90,28 @@ enum VariableType implements Enum, JsonSerializable {
     public static function encodeValue(VariableType $type, mixed $value): string {
         return match ($type) {
             self::Array   => Arrays::isEmpty($value) ? "{}" : JSON::encode($value),
+            self::List    => Arrays::isEmpty($value) ? "[]" : JSON::encode($value),
             self::Boolean => Arrays::isEmpty($value) ? "0" : "1",
             self::Float,
             self::Integer => Arrays::isEmpty($value) ? "0" : Strings::toString($value),
             default       => Strings::toString($value),
+        };
+    }
+
+    /**
+     * Decodes the given stored Value into the given Type
+     * @param VariableType $type
+     * @param string       $value
+     * @return mixed
+     */
+    public static function decodeValue(VariableType $type, string $value): mixed {
+        return match ($type) {
+            self::Array   => JSON::decodeAsArray($value),
+            self::List    => JSON::decodeAsStrings($value, withoutEmpty: true),
+            self::Boolean => $value !== "" && $value !== "0",
+            self::Integer => Numbers::toInt($value),
+            self::Float   => Numbers::toFloat($value),
+            default       => $value,
         };
     }
 }
