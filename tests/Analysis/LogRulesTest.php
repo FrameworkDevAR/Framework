@@ -70,6 +70,15 @@ class LogRulesTest extends RuleTestCase {
                 [ "The #[Action] attribute is missing the language: en.", 22 ],
             ], $languages ],
 
+            // With no languages given the rule asks for its own
+            "the default languages"      => [ ActionAttributeRule::class, [ "LogActions" ], [
+                [ "The #[Action] attribute is missing the language: en.", 16 ],
+                [ "Argument 2 in #[Action] must be a named parameter.", 22 ],
+                [ "Argument 3 in #[Action] must be a named parameter.", 22 ],
+                [ "The #[Action] attribute is missing the language: en.", 22 ],
+                [ "The #[Action] attribute is missing the language: es.", 22 ],
+            ], [ [] ] ],
+
             // The numbers are lines of the fixture, so a line added at the top
             // of it moves them
             "the name and the languages" => [ ActionAttributeRule::class, [ "BadActions" ], [

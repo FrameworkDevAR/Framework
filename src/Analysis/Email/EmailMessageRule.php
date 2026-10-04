@@ -23,6 +23,8 @@ use ReflectionClass;
  */
 class EmailMessageRule implements Rule {
 
+    private const DefaultLanguages = [ "en", "es" ];
+
     /** @var list<string> */
     private array $requiredLanguages;
 
@@ -36,6 +38,9 @@ class EmailMessageRule implements Rule {
         private ReflectionProvider $reflectionProvider,
         array $requiredLanguages = [],
     ) {
+        if (count($requiredLanguages) === 0) {
+            $requiredLanguages = self::DefaultLanguages;
+        }
         $this->requiredLanguages = array_values(array_unique($requiredLanguages));
     }
 

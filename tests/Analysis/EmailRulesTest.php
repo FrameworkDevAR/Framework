@@ -62,6 +62,11 @@ class EmailRulesTest extends RuleTestCase {
                 [ "The Email $noSend has no static send().", 6 ],
                 [ "The \$body of the Email $noSend must be an array by language.", 17 ],
             ], $languages ],
+            // With no languages given the rule asks for its own
+            "the default languages" => [ EmailMessageRule::class, [ "MissingEmail" ], [
+                [ "The \$subject of the Email $missing is missing the language: en.", 10 ],
+                [ "The \$body of the Email $missing has an unknown language: fr.", 14 ],
+            ], [ [] ] ],
             // What an Email takes from the one it extends counts as its own
             "the inherited ones" => [ EmailMessageRule::class,
                 [ "TemplateBaseEmail", "TemplateChildEmail", "WelcomeEmail", "WelcomeBackEmail" ], [], $languages,

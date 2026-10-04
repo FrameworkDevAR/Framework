@@ -20,6 +20,8 @@ use PhpParser\Node\Stmt\Class_;
  */
 class ActionAttributeRule implements Rule {
 
+    private const DefaultLanguages = [ "en", "es" ];
+
     /** @var list<string> */
     private array $requiredLanguages;
 
@@ -28,6 +30,9 @@ class ActionAttributeRule implements Rule {
      * @param list<string> $requiredLanguages Optional.
      */
     public function __construct(array $requiredLanguages = []) {
+        if (count($requiredLanguages) === 0) {
+            $requiredLanguages = self::DefaultLanguages;
+        }
         $this->requiredLanguages = array_values(array_unique($requiredLanguages));
     }
 
