@@ -137,8 +137,8 @@ parameters:
         requireNamedBoolArg: false
         requireOptionalComment: false
         requireReturnType: false
-        actionLogLanguages: ['en', 'es']
-        emailLanguages: ['en', 'es']
+        actionLogLanguages: []
+        emailLanguages: []
 
 parametersSchema:
     framework: structure([
