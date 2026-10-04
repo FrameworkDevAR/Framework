@@ -48,6 +48,25 @@ class DiscoveryConfig {
     }
 
     /**
+     * Loads a single Config file of the App, for the code that runs without the others
+     * @param string $file
+     * @return bool
+     */
+    public static function loadFile(string $file): bool {
+        // When all of them are loaded this one is too, and the Framework has no App Config
+        if (self::$loaded || Package::isFramework()) {
+            return false;
+        }
+
+        $configPath = Application::getBasePath(Package::ConfigDir, $file . self::Extension);
+        if (file_exists($configPath)) {
+            include_once $configPath;
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Loads a Default Config file from the Framework
      * @param string $file
      * @return bool
