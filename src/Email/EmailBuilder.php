@@ -9,11 +9,8 @@ use Framework\Discovery\Attr\Priority;
 use Framework\Builder\Builder;
 use Framework\Email\EmailMessage;
 use Framework\Email\EmailSender;
-use Framework\Intl\IntlConfig;
 use Framework\Discovery\Package;
-use Framework\System\Language;
 use Framework\Utils\Arrays;
-use Framework\Utils\Dictionary;
 use Framework\Utils\Strings;
 
 /**
@@ -66,7 +63,7 @@ class EmailBuilder implements DiscoveryBuilder {
 
 
     /**
-     * Collects the Emails from the Emails files and the Email Messages
+     * Collects the Emails from the Email Messages
      * @return EmailCodesResult
      */
     public static function collectEmails(): array {
@@ -75,29 +72,7 @@ class EmailBuilder implements DiscoveryBuilder {
             forAll:       !Package::isFramework(),
             forFramework: true,
         );
-        return self::collectCodes(self::collectFiles(), self::collectMessages($classes));
-    }
-
-    /**
-     * Collects the Codes of the Emails files
-     * @return list<string>
-     */
-    public static function collectFiles(): array {
-        $languages = Language::getAll();
-        $data      = new Dictionary();
-
-        foreach ($languages as $language => $languageName) {
-            $data = IntlConfig::loadEmails($language);
-            if ($data->isNotEmpty()) {
-                break;
-            }
-        }
-
-        $codes = [];
-        foreach ($data as $emailCode => $email) {
-            $codes[] = Strings::toString($emailCode);
-        }
-        return $codes;
+        return self::collectCodes(self::collectMessages($classes));
     }
 
     /**
@@ -119,18 +94,12 @@ class EmailBuilder implements DiscoveryBuilder {
     }
 
     /**
-     * Joins the Codes of the files with the ones of the Email Messages
-     * @param list<string>         $fileCodes
+     * Collects the Codes of the given Email Messages
      * @param array<string,string> $messages
      * @return EmailCodesResult
      */
-    public static function collectCodes(array $fileCodes, array $messages): array {
-        $codes = $fileCodes;
-        foreach ($messages as $code => $class) {
-            if (!Arrays::contains($codes, $code)) {
-                $codes[] = $code;
-            }
-        }
+    public static function collectCodes(array $messages): array {
+        $codes = array_keys($messages);
 
         // If no codes are found, add a default one
         if (count($codes) === 0) {

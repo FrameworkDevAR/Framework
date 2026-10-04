@@ -41,7 +41,7 @@
 
 <div class="eyebrow">Features</div>
 <h1>JSON Schemas</h1>
-<p class="lead">The framework ships JSON Schema files for the JSON it reads — strings, emails, notifications and
+<p class="lead">The framework ships JSON Schema files for the JSON it reads — strings, notifications and
 icons — so your editor validates and autocompletes those files as you type them.</p>
 
 <div class="note">Not to be confused with the <a href="../database/schema-json.html">Schema JSON</a> in
@@ -53,7 +53,6 @@ Database — that one describes your tables. These validate the config files as 
     <thead><tr><th>Schema</th><th>Validates</th></tr></thead>
     <tbody>
         <tr><td><code>strings.schema.json</code></td><td>The <a href="../features/intl.html#files">translation</a> files in <code>nls/strings</code>.</td></tr>
-        <tr><td><code>emails.schema.json</code></td><td>The <a href="../subsystems/emails.html#content">email content</a> in <code>nls/emails</code>.</td></tr>
         <tr><td><code>notifications.schema.json</code></td><td>The <a href="../subsystems/notifications.html#content">notification content</a> in <code>nls/notifications</code>.</td></tr>
         <tr><td><code>icons.schema.json</code></td><td>The <a href="icons.html#mapping">icon mapping</a> read by <a href="../introduction/cli.html#icons"><code>./framework icons</code></a>.</td></tr>
     </tbody>
@@ -67,10 +66,6 @@ resolve inside <code>vendor</code>, so they update with the package:</p>
         {
             &quot;fileMatch&quot;: [ &quot;/nls/strings/*.json&quot; ],
             &quot;url&quot;: &quot;./vendor/frameworkdevar/framework/schemas/strings.schema.json&quot;
-        },
-        {
-            &quot;fileMatch&quot;: [ &quot;/nls/emails/*.json&quot; ],
-            &quot;url&quot;: &quot;./vendor/frameworkdevar/framework/schemas/emails.schema.json&quot;
         },
         {
             &quot;fileMatch&quot;: [ &quot;/nls/notifications/*.json&quot; ],
@@ -94,11 +89,10 @@ expected pattern is flagged rather than silently ignored at build time.</p>
 <code>SELECT_…</code> keys hold an object of options (this is what <a href="../features/enums.html">enum</a> labels read
 through), and <code>DATE_…</code> keys may be a string, an array or an object of formats.</p>
 
-<h3 id="rules-content">Emails &amp; notifications</h3>
-<p>Keys are <code>PascalCase</code> — they become the generated <code>EmailCode</code> /
-<code>NotificationCode</code> cases — and every entry <strong>requires</strong> its fields: a
-<code>description</code>, plus <code>subject</code> and a <code>message</code> array for emails, or
-<code>title</code> and <code>message</code> for notifications. Miss one and the editor says so immediately.</p>
+<h3 id="rules-content">Notifications</h3>
+<p>Keys are <code>PascalCase</code> — they become the generated <code>NotificationCode</code> cases — and every
+entry <strong>requires</strong> its fields: a <code>description</code>, a <code>title</code> and a
+<code>message</code>. Miss one and the editor says so immediately.</p>
 
 <h3 id="rules-icons">Icons</h3>
 <p>Icons are grouped in lowercase folders, and each icon&#39;s value says where it comes from — an

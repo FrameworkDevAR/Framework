@@ -2,15 +2,14 @@
 namespace Framework\Email;
 
 use Framework\Discovery\Type\DiscoveryMigration;
+use Framework\Email\EmailMessage;
 use Framework\Email\Schema\EmailContentSchema;
 use Framework\Email\Schema\EmailContentEntity;
 use Framework\Email\Schema\EmailContentQuery;
-use Framework\Intl\IntlConfig;
 use Framework\Provider\Mustache;
-use Framework\System\Config;
 use Framework\System\Language;
 use Framework\System\EmailCode;
-use Framework\Utils\Dictionary;
+use Framework\Utils\Arrays;
 use Framework\Utils\Strings;
 
 /**
@@ -68,22 +67,63 @@ class EmailContent extends EmailContentSchema implements DiscoveryMigration {
      */
     #[\Override]
     public static function migrateData(): void {
-        self::truncateData();
+        self::migrateContents(EmailCode::getMessages());
+    }
 
+    /**
+     * Migrates the Email Contents from the given Email Messages
+     * @param array<string,class-string<EmailMessage>> $messages
+     * @return void
+     */
+    public static function migrateContents(array $messages): void {
+        $contents  = self::getAllContents();
         $languages = Language::getAll();
         $position  = 0;
         $didUpdate = false;
+        $keys      = [];
 
         foreach ($languages as $language => $languageName) {
-            $emails = IntlConfig::loadEmails($language);
-            if ($emails->isNotEmpty()) {
-                $position  = self::migrateLanguage(
-                    $emails,
-                    $language,
-                    $languageName,
-                    $position,
+            $total = 0;
+
+            // An Email Message with a version only replaces a Content with a lower one,
+            // so one that was edited after the class was written is kept. Without a
+            // version it can not be edited, and it is written again
+            foreach ($messages as $code => $emailClass) {
+                $key       = self::getKey($code, $language);
+                $keys[]    = $key;
+                $content   = $contents[$key] ?? null;
+                $version   = $emailClass::$version;
+                $position += 1;
+
+                if ($content !== null && $version > 0 && $content->version >= $version) {
+                    self::editEntity($content->id, position: $position, skipOrder: true);
+                    continue;
+                }
+
+                $total += 1;
+                self::saveContent(
+                    content:      $content,
+                    emailCode:    EmailCode::fromValue($code),
+                    language:     $language,
+                    languageName: $languageName,
+                    version:      $version,
+                    description:  $emailClass::$description,
+                    subject:      $emailClass::getSubjectText($language),
+                    message:      $emailClass::getBodyText($language),
+                    position:     $position,
                 );
+            }
+
+            if ($total > 0) {
+                print("- Updated $total emails for language $languageName\n");
                 $didUpdate = true;
+            }
+        }
+
+        // The Contents of an Email whose class is gone are removed
+        foreach ($contents as $key => $content) {
+            if (!Arrays::contains($keys, $key)) {
+                self::removeEntity($content->id);
             }
         }
 
@@ -93,42 +133,76 @@ class EmailContent extends EmailContentSchema implements DiscoveryMigration {
     }
 
     /**
-     * Migrates the Email Templates for the given Language
-     * @param Dictionary $emails
-     * @param string     $language
-     * @param string     $languageName
-     * @param int        $position
-     * @return int
+     * Returns all the Email Contents by their code and language
+     * @return array<string,EmailContentEntity>
      */
-    private static function migrateLanguage(
-        Dictionary $emails,
+    private static function getAllContents(): array {
+        $result = [];
+        foreach (self::getEntityList() as $content) {
+            $key          = self::getKey($content->emailCode->toString(), $content->language);
+            $result[$key] = $content;
+        }
+        return $result;
+    }
+
+    /**
+     * Returns the key of the Content of an Email in a Language
+     * @param string $emailCode
+     * @param string $language
+     * @return string
+     */
+    private static function getKey(string $emailCode, string $language): string {
+        return "$emailCode-$language";
+    }
+
+    /**
+     * Creates the Email Content, or edits the given one
+     * @param EmailContentEntity|null $content
+     * @param EmailCode               $emailCode
+     * @param string                  $language
+     * @param string                  $languageName
+     * @param int                     $version
+     * @param string                  $description
+     * @param string                  $subject
+     * @param string                  $message
+     * @param int                     $position
+     * @return void
+     */
+    private static function saveContent(
+        ?EmailContentEntity $content,
+        EmailCode $emailCode,
         string $language,
         string $languageName,
+        int $version,
+        string $description,
+        string $subject,
+        string $message,
         int $position,
-    ): int {
-        $siteName = Config::getName();
-        $total    = 0;
-
-        foreach ($emails as $emailCode => $email) {
-            $message   = Strings::join($email->getStrings("message"), "\n\n");
-            $position += 1;
-            $total    += 1;
-
+    ): void {
+        if ($content === null) {
             self::createEntity(
-                emailCode:    EmailCode::fromValue($emailCode),
+                emailCode:    $emailCode,
                 language:     $language,
                 languageName: $languageName,
-                description:  $email->getString("description"),
-                subject:      Strings::replace($email->getString("subject"), "[site]", $siteName),
-                message:      Strings::replace($message, "[site]", $siteName),
+                version:      $version,
+                description:  $description,
+                subject:      $subject,
+                message:      $message,
                 position:     $position,
                 skipOrder:    true,
             );
+            return;
         }
 
-        if ($total > 0) {
-            print("- Updated $total emails for language $languageName\n");
-        }
-        return $position;
+        self::editEntity(
+            $content->id,
+            languageName: $languageName,
+            version:      $version,
+            description:  $description,
+            subject:      $subject,
+            message:      $message,
+            position:     $position,
+            skipOrder:    true,
+        );
     }
 }

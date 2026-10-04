@@ -15,7 +15,6 @@ class IntlConfigTest extends TestCase {
     private const FixtureDir = "tests/Intl/.tmp_intl_config";
 
     private const Strings       = [ "HELLO" => "Hola", "BYE" => "Chau" ];
-    private const Emails        = [ "WELCOME" => "Welcome {0}" ];
     private const Notifications = [ "ALERT" => "Alert!" ];
 
     private string $fixtureBase = "";
@@ -26,7 +25,7 @@ class IntlConfigTest extends TestCase {
 
     protected function setUp(): void {
         $props = [
-            "defaultLanguage", "stringsDir", "emailsDir", "notificationsDir",
+            "defaultLanguage", "stringsDir", "notificationsDir",
             "scriptDirs", "sourceDirs",
         ];
         foreach ($props as $prop) {
@@ -35,11 +34,9 @@ class IntlConfigTest extends TestCase {
 
         $this->fixtureBase = Application::getBasePath(self::FixtureDir);
         $this->writeFixture("strings", "en", self::Strings);
-        $this->writeFixture("emails", "en", self::Emails);
         $this->writeFixture("notifications", "en", self::Notifications);
 
         IntlConfig::setStringsDir(self::FixtureDir . "/strings");
-        IntlConfig::setEmailsDir(self::FixtureDir . "/emails");
         IntlConfig::setNotificationsDir(self::FixtureDir . "/notifications");
     }
 
@@ -118,20 +115,6 @@ class IntlConfigTest extends TestCase {
     }
 
 
-    #[DataProvider("providerGetEmailsPath")]
-    public function testGetEmailsPath(string $dir): void {
-        IntlConfig::setEmailsDir($dir);
-        $this->assertSame(Application::getBasePath($dir), IntlConfig::getEmailsPath());
-    }
-
-    public static function providerGetEmailsPath(): array {
-        return [
-            "default" => [ "nls/emails" ],
-            "custom"  => [ "custom/emails" ],
-        ];
-    }
-
-
     #[DataProvider("providerGetNotificationsPath")]
     public function testGetNotificationsPath(string $dir): void {
         IntlConfig::setNotificationsDir($dir);
@@ -183,21 +166,6 @@ class IntlConfigTest extends TestCase {
     public static function providerLoadStrings(): array {
         return [
             "existing"     => [ "en", self::Strings, false ],
-            "missing lang" => [ "zz", [], true ],
-        ];
-    }
-
-
-    #[DataProvider("providerLoadEmails")]
-    public function testLoadEmails(string $langCode, array $expected, bool $isEmpty): void {
-        $result = IntlConfig::loadEmails($langCode);
-        $this->assertSame($isEmpty, $result->isEmpty());
-        $this->assertSame($expected, $result->toArray());
-    }
-
-    public static function providerLoadEmails(): array {
-        return [
-            "existing"     => [ "en", self::Emails, false ],
             "missing lang" => [ "zz", [], true ],
         ];
     }

@@ -32,11 +32,12 @@ class TestEmail extends EmailMessage {
      * @param string $email
      * @param string $language
      * @param string $name
+     * @param int    $dataID   Optional.
      * @return bool
      */
-    public static function send(string $email, string $language, string $name): bool {
+    public static function send(string $email, string $language, string $name, int $dataID = 0): bool {
         return self::queue($email, $language, [
             "name" => $name,
-        ]);
+        ], $dataID);
     }
 }
