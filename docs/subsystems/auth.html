@@ -113,6 +113,11 @@ removes the row, and <a class="src-link" href="https://github.com/FrameworkDevAR
 or an <code>Authorization</code> header. <a href="../introduction/bootstrapping.html#auth">Framework::execute()</a> validates it with
 <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Auth/Auth.php" target="_blank" rel="noopener noreferrer"><code>Auth::validateAPI()</code></a> and marks the request as an API call — those may send a JSON body instead of form
 fields. That token grants the <code>API</code> role; a <a href="#tokens">token of its own</a> grants any other.</p>
+<p>A client that sends a key and a secret instead, as older APIs did, can keep doing so. <code>AUTH_API_PARAMS</code>
+names the fields that form the token: their values, joined with a colon, are taken as the <code>token</code> and
+removed from the request. It is only read when the request brings no token another way:</p>
+<figure class="code"><figcaption class="code-tab">.env</figcaption><pre><code class="language-bash">AUTH_API_PARAMS = [ &quot;apiKey&quot;, &quot;apiSecret&quot; ]
+AUTH_API_TOKEN  = &quot;the-key:the-secret&quot;</code></pre></figure>
 
 <h2 id="access">Access roles &amp; the Access class</h2>
 <p>Access levels are declared with <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Core/AccessRole.php" target="_blank" rel="noopener noreferrer"><code>AccessRole::register()</code></a> and grouped in a
@@ -218,6 +223,7 @@ Auth::logoutAs();                   // return to the admin</code></pre>
         <tr><td><code>AUTH_HOURS</code></td><td>Access-token lifetime, in hours.</td></tr>
         <tr><td><code>AUTH_DAYS</code></td><td>Refresh-token lifetime, in days.</td></tr>
         <tr><td><code>AUTH_API_TOKEN</code></td><td>Static token for server-to-server API access.</td></tr>
+        <tr><td><code>AUTH_API_PARAMS</code></td><td>Fields whose values, joined with a colon, form the <a href="#api">API token</a>.</td></tr>
         <tr><td><code>AUTH_FIELDS</code></td><td>Extra credential fields to expose.</td></tr>
     </tbody>
 </table>

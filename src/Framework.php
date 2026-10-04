@@ -7,10 +7,12 @@ use Framework\Auth\Auth;
 use Framework\Intl\NLS;
 use Framework\Log\ErrorLog;
 use Framework\System\Access;
+use Framework\System\Config;
 use Framework\System\Router;
 use Framework\Utils\Dictionary;
 use Framework\Utils\JSON;
 use Framework\Utils\Server;
+use Framework\Utils\Strings;
 
 use Exception;
 
@@ -60,6 +62,11 @@ class Framework {
             $token = Server::getAuthToken();
         }
 
+        // Or from the Params that form it, for the clients that send a key and a secret
+        if ($token === "") {
+            $token = self::getTokenFromParams($request);
+        }
+
         // Validate the API
         if ($token !== "") {
             Auth::validateAPI($token);
@@ -94,6 +101,33 @@ class Framework {
             print($e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Returns the Token formed by the values of the Auth API Params joined with a colon,
+     * removing them from the Request, or an empty string if one of them is missing
+     * @param Request $request
+     * @return string
+     */
+    private static function getTokenFromParams(Request $request): string {
+        $params = Config::getAuthApiParams();
+        if (count($params) === 0) {
+            return "";
+        }
+
+        $values = [];
+        foreach ($params as $param) {
+            $value = $request->getString($param);
+            if ($value === "") {
+                return "";
+            }
+            $values[] = $value;
+        }
+
+        foreach ($params as $param) {
+            $request->remove($param);
+        }
+        return Strings::join($values, ":");
     }
 
     /**

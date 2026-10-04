@@ -11,6 +11,8 @@ use Framework\System\Access;
 use Tests\LiveTestCase;
 use Tests\TestHelpers;
 
+use PHPUnit\Framework\Attributes\DataProvider;
+
 /**
  * The Framework Service, the entry every request of an App goes through
  *
@@ -141,6 +143,47 @@ class FrameworkTest extends LiveTestCase {
         $this->assertTrue($result);
         $this->assertTrue(Auth::hasAPI());
         $this->assertStringContainsString("error", $output);
+    }
+
+    /**
+     * The Params that form the token, for the clients that send a key and a secret
+     * @param array<string,string> $params
+     * @param bool                 $isAPI
+     * @param bool                 $areKept
+     * @return void
+     */
+    #[DataProvider("providerTokenFromParams")]
+    public function testTheTokenCanComeFromTheParams(
+        array $params,
+        bool $isAPI,
+        bool $areKept,
+    ): void {
+        $this->setConfig("AUTH_API_TOKEN", "a-key:a-secret");
+        $this->setConfig("AUTH_API_PARAMS", [ "apiKey", "apiSecret" ]);
+        $this->useRequest([ "route" => "nothing/here" ] + $params);
+
+        try {
+            $this->execute();
+        } finally {
+            $this->setConfig("AUTH_API_TOKEN", "");
+            $this->setConfig("AUTH_API_PARAMS", []);
+        }
+
+        $this->assertSame($isAPI, Auth::hasAPI());
+        $this->assertSame($areKept, Framework::getRequest()->has("apiKey"));
+    }
+
+    /**
+     * Only the Params that all came are taken out of the Request
+     * @return array<string,array{array<string,string>,bool,bool}>
+     */
+    public static function providerTokenFromParams(): array {
+        return [
+            "both right"     => [ [ "apiKey" => "a-key", "apiSecret" => "a-secret" ], true, false ],
+            "a wrong secret" => [ [ "apiKey" => "a-key", "apiSecret" => "other" ], false, false ],
+            "no secret"      => [ [ "apiKey" => "a-key" ], false, true ],
+            "none of them"   => [ [], false, false ],
+        ];
     }
 
     public function testBadTokensAreNotSignedIn(): void {
