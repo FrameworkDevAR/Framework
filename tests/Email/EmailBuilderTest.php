@@ -1,7 +1,6 @@
 <?php
 namespace Tests\Email;
 
-use Framework\Application;
 use Framework\Builder\Builder;
 use Framework\Discovery\Package;
 use Framework\Discovery\Type\DiscoveryClass;
@@ -10,7 +9,6 @@ use Framework\Email\EmailMessage;
 use Framework\Email\EmailSender;
 use Framework\System\EmailProvider;
 use Framework\Utils\Arrays;
-use Framework\Intl\IntlConfig;
 use Framework\File\Storage;
 use Tests\Email\Fixture\TestEmail;
 use Tests\Email\Fixture\TestEmailSender;
@@ -22,79 +20,11 @@ use PHPUnit\Framework\Attributes\DataProvider;
 class EmailBuilderTest extends TestCase {
     use TestHelpers;
 
-    private const FixtureDir = "tests/Email/.tmp_email_builder";
-
-    private string $fixtureBase = "";
-
-    /** @var array<string,mixed> */
-    private array $original = [];
-
-
-    protected function setUp(): void {
-        foreach ([ "defaultLanguage", "emailsDir" ] as $prop) {
-            $this->original[$prop] = $this->getPrivateStaticProperty(IntlConfig::class, $prop);
-        }
-
-        $this->fixtureBase = Application::getBasePath(self::FixtureDir);
-        Storage::createDir($this->fixtureBase);
-        IntlConfig::setEmailsDir(self::FixtureDir);
-    }
-
-    protected function tearDown(): void {
-        foreach ($this->original as $prop => $value) {
-            $this->setPrivateStaticProperty(IntlConfig::class, $prop, $value);
-        }
-        Storage::deleteDir($this->fixtureBase);
-    }
-
-    private function writeEmails(string $langCode, array $data): void {
-        Storage::writeFile($this->fixtureBase . DIRECTORY_SEPARATOR . $langCode . ".json", json_encode($data));
-    }
-
-
-    #[DataProvider("providerCollectFiles")]
-    public function testCollectFiles(array $files, array $expectedCodes): void {
-        foreach ($files as $langCode => $data) {
-            $this->writeEmails($langCode, $data);
-        }
-
-        $this->assertSame($expectedCodes, EmailBuilder::collectFiles());
-    }
-
-    public static function providerCollectFiles(): array {
-        return [
-            "multiple codes"      => [
-                [
-                    "en" => [
-                        "WELCOME" => [ "subject" => "Welcome" ],
-                        "RESET"   => [ "subject" => "Reset" ],
-                    ],
-                ],
-                [ "WELCOME", "RESET" ],
-            ],
-            "single code"         => [
-                [
-                    "en" => [ "WELCOME" => [ "subject" => "Welcome" ] ],
-                ],
-                [ "WELCOME" ],
-            ],
-            "empty file"          => [ [ "en" => [] ], [] ],
-            "missing file"        => [ [], [] ],
-            "ignores other langs" => [
-                [
-                    "es" => [ "HOLA" => [ "subject" => "Hola" ] ],
-                ],
-                [],
-            ],
-        ];
-    }
 
     public function testCollectEmails(): void {
-        // The Framework has no Email Messages, so the codes are the ones of the files
-        $this->writeEmails("en", [ "WELCOME" => [ "subject" => "Welcome" ] ]);
-
+        // The Framework has no Email Messages, so the only code is the default one
         $result = EmailBuilder::collectEmails();
-        $this->assertSame([ "WELCOME" ], $result["codes"]);
+        $this->assertSame([ "Test" ], $result["codes"]);
         $this->assertSame([], $result["messages"]);
         $this->assertFalse($result["hasMessages"]);
         $this->assertSame(1, $result["total"]);
@@ -129,7 +59,7 @@ class EmailBuilderTest extends TestCase {
         $this->setPrivateStaticProperty(Builder::class, "templates", [ "EmailCode" => $template ]);
 
         try {
-            $code = Builder::render("EmailCode", EmailBuilder::collectCodes([ "Reset" ], $messages) + [
+            $code = Builder::render("EmailCode", EmailBuilder::collectCodes($messages) + [
                 "namespace" => "Tests\\System",
             ]);
         } finally {
@@ -151,7 +81,6 @@ class EmailBuilderTest extends TestCase {
             "with messages"    => [
                 [ "Invite" => "App\\Auth\\InviteEmail", "TaskAssign" => "App\\Task\\TaskAssignEmail" ],
                 [
-                    "    case Reset;",
                     "    case Invite;",
                     "    case TaskAssign;",
                     "            \"Invite\"     => \\App\\Auth\\InviteEmail::class,",
@@ -160,14 +89,14 @@ class EmailBuilderTest extends TestCase {
             ],
             "without messages" => [
                 [],
-                [ "    case Reset;", "        return [];" ],
+                [ "    case Test;", "        return [];" ],
             ],
         ];
     }
 
     #[DataProvider("providerCollectCodes")]
-    public function testCollectCodes(array $fileCodes, array $messages, array $expectedCodes, array $expectedKeys): void {
-        $result = EmailBuilder::collectCodes($fileCodes, $messages);
+    public function testCollectCodes(array $messages, array $expectedCodes, array $expectedKeys): void {
+        $result = EmailBuilder::collectCodes($messages);
 
         $this->assertSame($expectedCodes, $result["codes"]);
         $this->assertSame($expectedKeys, Arrays::createArray($result["messages"], "key"));
@@ -177,20 +106,17 @@ class EmailBuilderTest extends TestCase {
 
     public static function providerCollectCodes(): array {
         return [
-            "only files"       => [ [ "Reset" ], [], [ "Reset" ], [] ],
-            "only messages"    => [
-                [],
+            "one message"      => [
+                [ "Invite" => "App\\InviteEmail" ],
+                [ "Invite" ],
+                [ "\"Invite\"" ],
+            ],
+            "several messages" => [
                 [ "Reset" => "App\\ResetEmail", "TaskAssign" => "App\\TaskAssignEmail" ],
                 [ "Reset", "TaskAssign" ],
                 [ "\"Reset\"     ", "\"TaskAssign\"" ],
             ],
-            "both, joined"     => [
-                [ "Reset", "Invite" ],
-                [ "Invite" => "App\\InviteEmail" ],
-                [ "Reset", "Invite" ],
-                [ "\"Invite\"" ],
-            ],
-            "nothing"          => [ [], [], [ "Test" ], [] ],
+            "nothing"          => [ [], [ "Test" ], [] ],
         ];
     }
 

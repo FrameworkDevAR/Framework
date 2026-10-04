@@ -1,94 +1,43 @@
 <?php
 namespace Tests\Email;
 
-use Framework\Application;
 use Framework\Email\EmailContent;
-use Framework\File\Storage;
-use Framework\System\Config;
-use Framework\Intl\IntlConfig;
+use Framework\Email\EmailMessage;
 use Framework\System\EmailCode;
 
+use Tests\Email\Fixture\TestEmail;
 use Tests\LiveTestCase;
-use Tests\TestHelpers;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
  * The Email Contents, the text of each email in each language
  *
- * The strings live in a JSON per language, which this writes into a directory
- * of its own so the migration has something to find. This repository ships
- * none, and the one code it knows is Test.
+ * The texts come from the Email Messages, and the build of this repository has
+ * none, so the migration is given the one of the tests, whose code is Test.
  */
 class EmailContentLiveTest extends LiveTestCase {
-    use TestHelpers;
-
-    private const FixtureDir = "tests/Email/.tmp_email_content";
-
-    private string $fixtureBase = "";
-    private mixed  $emailsDir   = null;
-    private mixed  $name        = null;
-
 
     protected function setUp(): void {
         parent::setUp();
         $this->migrateOnce();
 
-        $this->emailsDir   = $this->getPrivateStaticProperty(IntlConfig::class, "emailsDir");
-        $this->name        = Config::getName();
-        $this->fixtureBase = Application::getBasePath(self::FixtureDir);
-        Storage::createDir($this->fixtureBase);
-        IntlConfig::setEmailsDir(self::FixtureDir);
-
         $this->query("DELETE FROM `email_content`");
     }
 
     protected function tearDown(): void {
-        $this->setPrivateStaticProperty(IntlConfig::class, "emailsDir", $this->emailsDir);
-        $this->setConfig("NAME", $this->name);
-        Storage::deleteDir($this->fixtureBase);
+        TestEmail::$version = 0;
     }
 
     /**
-     * Writes the strings of a language, the way an app ships them
-     * @param string              $langCode
-     * @param array<string,mixed> $emails
-     * @return void
-     */
-    private function writeEmails(string $langCode, array $emails): void {
-        Storage::writeFile(
-            $this->fixtureBase . DIRECTORY_SEPARATOR . $langCode . ".json",
-            (string)json_encode($emails),
-        );
-    }
-
-    /**
-     * Writes the one email this repository has a code for
-     * @param string $subject Optional.
-     * @param string $message Optional.
-     * @return void
-     */
-    private function writeTestEmail(
-        string $subject = "A subject",
-        string $message = "A message",
-    ): void {
-        $this->writeEmails("en", [
-            "Test" => [
-                "description" => "The email of the tests",
-                "subject"     => $subject,
-                "message"     => [ $message ],
-            ],
-        ]);
-    }
-
-    /**
-     * Runs the migration, which prints what it did
+     * Runs the migration with the given Email Messages, which prints what it did
+     * @param array<string,class-string<EmailMessage>> $messages Optional.
      * @return string
      */
-    private function migrate(): string {
+    private function migrateMessages(array $messages = [ "Test" => TestEmail::class ]): string {
         ob_start();
         try {
-            EmailContent::migrateData();
+            EmailContent::migrateContents($messages);
         } finally {
             $output = ob_get_clean();
         }
@@ -97,73 +46,91 @@ class EmailContentLiveTest extends LiveTestCase {
 
 
 
-    public function testTheStringsBecomeRows(): void {
-        $this->writeTestEmail();
-
-        $this->assertStringContainsString("Updated 1 emails", $this->migrate());
+    public function testAnEmailMessageBecomesARow(): void {
+        $this->assertStringContainsString("Updated 1 emails", $this->migrateMessages());
 
         $content = EmailContent::get(EmailCode::Test, "en");
-        $this->assertSame("A subject", $content->subject);
-        $this->assertSame("A message", $content->message);
-        $this->assertSame("The email of the tests", $content->description);
+        $this->assertSame("Hello {{name}}", $content->subject);
+        $this->assertSame("Hello <b>{{name}}</b>!\n\nWelcome to {{site}}.", $content->message);
+        $this->assertSame("An email of the tests", $content->description);
         $this->assertSame("English", $content->languageName);
+        $this->assertSame(0, $content->version);
         $this->assertSame(1, $content->position);
     }
 
     public function testThereIsNothingToUpdate(): void {
-        $this->assertStringContainsString("No emails updated", $this->migrate());
+        // The migration of the build finds no Email Messages here
+        ob_start();
+        try {
+            EmailContent::migrateData();
+        } finally {
+            $output = (string)ob_get_clean();
+        }
 
+        $this->assertStringContainsString("No emails updated", $output);
         $this->assertFalse(EmailContent::get(EmailCode::Test, "en")->exists());
     }
 
-    public function testTheRowsAreWrittenAgain(): void {
-        $this->writeTestEmail();
-        $this->migrate();
+    /**
+     * The version of the class and the one its row was left with, and what the row holds
+     * after the class is migrated again
+     * @param int    $classVersion
+     * @param int    $rowVersion
+     * @param string $subject
+     * @param int    $version
+     * @return void
+     */
+    #[DataProvider("providerVersions")]
+    public function testTheVersionSaysWhichTextIsKept(
+        int $classVersion,
+        int $rowVersion,
+        string $subject,
+        int $version,
+    ): void {
+        TestEmail::$version = $classVersion;
+        $this->migrateMessages();
+        $this->query("UPDATE `email_content` SET `subject` = 'Edited', `version` = $rowVersion");
 
-        $this->writeTestEmail("Another subject", "Another message");
-        $this->migrate();
-
-        $this->assertSame(1, EmailContent::getEntityTotal());
-        $this->assertSame("Another subject", EmailContent::get(EmailCode::Test, "en")->subject);
-    }
-
-    public function testTheParagraphsAreJoined(): void {
-        $this->writeEmails("en", [
-            "Test" => [
-                "subject" => "A subject",
-                "message" => [ "One", "Two" ],
-            ],
-        ]);
-        $this->migrate();
-
-        $this->assertSame("One\n\nTwo", EmailContent::get(EmailCode::Test, "en")->message);
-    }
-
-    public function testTheSiteNameIsWrittenIn(): void {
-        $this->setConfig("NAME", "The Site");
-        $this->writeTestEmail("Welcome to [site]", "This is [site] writing");
-        $this->migrate();
+        $this->migrateMessages();
 
         $content = EmailContent::get(EmailCode::Test, "en");
-        $this->assertSame("Welcome to The Site", $content->subject);
-        $this->assertSame("This is The Site writing", $content->message);
+        $this->assertSame($subject, $content->subject);
+        $this->assertSame($version, $content->version);
+        $this->assertSame(1, EmailContent::getEntityTotal());
+    }
+
+    /**
+     * @return array<string,array{int,int,string,int}>
+     */
+    public static function providerVersions(): array {
+        return [
+            "with no version the class is written again" => [ 0, 3, "Hello {{name}}", 0 ],
+            "a lower one is replaced by the class"       => [ 2, 1, "Hello {{name}}", 2 ],
+            "the same one is kept"                       => [ 2, 2, "Edited", 2 ],
+            "a higher one is kept"                       => [ 2, 3, "Edited", 3 ],
+        ];
+    }
+
+    public function testAnEmailThatIsGoneIsRemoved(): void {
+        $this->migrateMessages();
+        $this->migrateMessages([]);
+
+        $this->assertSame(0, EmailContent::getEntityTotal());
     }
 
     public function testALanguageFallsBackToTheRoot(): void {
-        $this->writeTestEmail();
-        $this->migrate();
+        $this->migrateMessages();
 
         // Only en is set up here, and it is the root, so asking in any other
         // language comes back with it rather than with nothing
-        $this->assertSame("A subject", EmailContent::get(EmailCode::Test, "pt")->subject);
+        $this->assertSame("Hello {{name}}", EmailContent::get(EmailCode::Test, "pt")->subject);
     }
 
     public function testNoCodeAtAllFindsNothing(): void {
         // The condition of an Enum drops the case that has no value, which
         // would leave the query asking for every code, so the code is looked
         // up by its name instead
-        $this->writeTestEmail();
-        $this->migrate();
+        $this->migrateMessages();
 
         $this->assertFalse(EmailContent::get(EmailCode::None, "en")->exists());
     }

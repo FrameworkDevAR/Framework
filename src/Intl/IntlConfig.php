@@ -13,7 +13,6 @@ class IntlConfig {
 
     private static string $defaultLanguage  = "en";
     private static string $stringsDir       = "nls/strings";
-    private static string $emailsDir        = "nls/emails";
     private static string $notificationsDir = "nls/notifications";
 
     /** @var array<string,string> */
@@ -40,15 +39,6 @@ class IntlConfig {
      */
     public static function setStringsDir(string $dir): void {
         self::$stringsDir = $dir;
-    }
-
-    /**
-     * Sets the Emails Directory
-     * @param string $dir
-     * @return void
-     */
-    public static function setEmailsDir(string $dir): void {
-        self::$emailsDir = $dir;
     }
 
     /**
@@ -102,14 +92,6 @@ class IntlConfig {
     }
 
     /**
-     * Returns the path to the Emails Directory
-     * @return string
-     */
-    public static function getEmailsPath(): string {
-        return Application::getBasePath(self::$emailsDir);
-    }
-
-    /**
      * Returns the path to the Notifications Directory
      * @return string
      */
@@ -150,16 +132,6 @@ class IntlConfig {
      */
     public static function loadStrings(string $langCode): Dictionary {
         $result = Discovery::loadJSON(self::$stringsDir, $langCode);
-        return new Dictionary($result);
-    }
-
-    /**
-     * Loads the Emails for the given Language
-     * @param string $langCode
-     * @return Dictionary
-     */
-    public static function loadEmails(string $langCode): Dictionary {
-        $result = Discovery::loadJSON(self::$emailsDir, $langCode);
         return new Dictionary($result);
     }
 
