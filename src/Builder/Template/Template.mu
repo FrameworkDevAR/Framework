@@ -39,9 +39,10 @@ enum Template {
     /**
      * Renders the Template with the given Data
      * @param array<string,mixed> $data
+     * @param array<string,string> $partials Optional.
      * @return string
      */
-    public function render(array $data): string {
+    public function render(array $data, array $partials = []): string {
         $relPath = match ($this) {
         {{#templates}}
             self::{{constant}} => "{{relPath}}",
@@ -54,7 +55,7 @@ enum Template {
 
         $path = Application::getBasePath($relPath);
         $code = Storage::readFile($path);
-        return Mustache::render($code, $data);
+        return Mustache::render($code, $data, $partials);
     }
 
     /**

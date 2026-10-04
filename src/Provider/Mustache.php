@@ -49,11 +49,19 @@ class Mustache {
 
     /**
      * Renders a Mustache template
-     * @param string              $template
-     * @param array<string,mixed> $data
+     * @param string               $template
+     * @param array<string,mixed>  $data
+     * @param array<string,string> $partials Optional.
      * @return string
      */
-    public static function render(string $template, array $data): string {
-        return self::getEngine()->render($template, $data);
+    public static function render(string $template, array $data, array $partials = []): string {
+        if (count($partials) === 0) {
+            return self::getEngine()->render($template, $data);
+        }
+
+        // The partials are given to the Engine when it is created, so the shared
+        // one can not take them
+        $engine = new Engine([ "partials" => $partials ]);
+        return $engine->render($template, $data);
     }
 }

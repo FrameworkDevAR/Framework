@@ -201,6 +201,18 @@ class SmsSender extends Sender {
     public static string $name = &quot;SMS&quot;;   // ✓ declared again
 }</code></pre>
 
+<h3 id="rules-emails">Emails</h3>
+<p><code>EmailMessage</code> — a class extending <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Email/EmailMessage.php" target="_blank" rel="noopener noreferrer"><code>EmailMessage</code></a> has
+a static <code>send()</code>, a <code>$body</code> unless it has a <code>$template</code>, and its <code>$subject</code> and
+<code>$body</code> have a text for each language of <a href="#framework"><code>emailLanguages</code></a> and no other.</p>
+<pre><code class="language-php">use Framework\Email\EmailMessage;
+
+class WelcomeEmail extends EmailMessage {   // ✗ no static send()
+
+    public static array $subject = [
+        &quot;en&quot; =&gt; &quot;Welcome&quot;,                  // ✗ missing es
+    ];
+}</code></pre>
 
 <h3 id="rules-logs">Logs</h3>
 <p><code>ActionSection</code> — a class with a <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Log/Attr/Section.php" target="_blank" rel="noopener noreferrer"><code>#[Section]</code></a> has at least one <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Log/Attr/Action.php" target="_blank" rel="noopener noreferrer"><code>#[Action]</code></a> method.</p>
@@ -241,7 +253,8 @@ key in <code>phpstan.neon</code> — they default to off, so flip on the ones yo
         requireNamedBoolArg:       true
         requireOptionalComment:    true
         requireReturnType:         true
-        actionLogLanguages:        [&#039;en&#039;, &#039;es&#039;]</code></pre></figure>
+        actionLogLanguages:        [&#039;en&#039;, &#039;es&#039;]
+        emailLanguages:            [&#039;en&#039;, &#039;es&#039;]</code></pre></figure>
 <p><code>disallowClassCompare</code> — two objects are never compared directly with <code>==</code>.</p>
 <pre><code class="language-php">$a = Date::now();
 $b = Date::now();
@@ -336,6 +349,8 @@ languages (default <code>[en, es]</code>).</p>
 
 #[Action(&quot;Create&quot;, en: &quot;Created&quot;)]                 // ✗ missing es
 #[Action(&quot;Create&quot;, en: &quot;Created&quot;, es: &quot;Creado&quot;)]   // ✓</code></pre>
+<p><code>emailLanguages</code> — the <code>$subject</code> and the <code>$body</code> of each
+<a href="#rules-emails">Email</a> have a text for each of the given languages (default <code>[en, es]</code>).</p>
                 <div class="page-nav"><a href="schema-json.html"><span class="dir">← Previous</span><span class="ttl">JSON Schemas</span></a><a class="next" href="../utilities/date.html"><span class="dir">Next →</span><span class="ttl">Date &amp; Time</span></a></div>
                 </article>
                 <nav class="toc" aria-label="On this page">
