@@ -97,19 +97,18 @@ FilePath::register(&quot;exports&quot;);
 FilePath::registerDirectory(&quot;archive&quot;);</code></pre></figure>
 
 <h2 id="intl">Languages</h2>
-<p>Set the default language and point the <a href="../subsystems/emails.html#templates">internationalization</a> layer at your copy
+<p>Set the default language and point the <a href="../subsystems/emails.html#templates">internationalization</a> layer at your
 strings directory, which holds one JSON file per language:</p>
 <figure class="code"><figcaption class="code-tab">config/Intl.config.php</figcaption><pre><code class="language-php">use Framework\Intl\IntlConfig;
 
 IntlConfig::setDefaultLanguage(&quot;en&quot;);
-IntlConfig::setStringsDir(&quot;nls/strings&quot;);</code></pre></figure>
+IntlConfig::setStringsDir(&quot;nls&quot;);</code></pre></figure>
 <p>The directory holds one JSON file per language, named by its code (<code>en.json</code>,
 <code>es.json</code>). The framework loads the file that matches the active language and falls back to the
 default you set above — so a typical <code>nls/</code> tree looks like this:</p>
 <pre><code class="language-bash">nls/
-└── strings/         # UI strings, one file per language
-    ├── en.json
-    └── es.json</code></pre>
+├── en.json          # UI strings, one file per language
+└── es.json</code></pre>
 <p>An app of your own — a front end, an admin — usually keeps its own strings beside its source, written as a script
 rather than as JSON. Those directories are added by name, and the only thing the framework does with them is
 <a href="../features/intl.html#scripts">check</a> them:</p>
