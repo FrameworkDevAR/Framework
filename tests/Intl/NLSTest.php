@@ -66,6 +66,60 @@ class NLSTest extends TestCase {
     }
 
 
+    public function testAMissingRootFileIsReportedOnce(): void {
+        $warnings = $this->withoutStrings(function (): void {
+            NLS::getString("HELLO", "fr");
+            NLS::getString("BYE", "fr");
+        });
+        $this->assertCount(1, $warnings);
+        $this->assertStringContainsString("There is no Strings file for \"en\"", $warnings[0]);
+    }
+
+    public function testALanguageWithoutAFileUsesTheRootQuietly(): void {
+        $this->setPrivateStaticProperty(NLS::class, "reported", false);
+        $warnings = [];
+        set_error_handler(function (int $code, string $message) use (&$warnings): bool {
+            $warnings[] = $message;
+            return true;
+        }, E_USER_WARNING);
+
+        try {
+            $this->assertSame("Hello", NLS::getString("HELLO", "fr"));
+        } finally {
+            restore_error_handler();
+        }
+        $this->assertSame([], $warnings);
+    }
+
+    /**
+     * Runs the callback with no Strings at all, and returns the warnings it raised
+     * @param callable(): void $callback
+     * @return list<string>
+     */
+    private function withoutStrings(callable $callback): array {
+        $stringsDir = $this->getPrivateStaticProperty(IntlConfig::class, "stringsDir");
+        $reported   = $this->getPrivateStaticProperty(NLS::class, "reported");
+        $warnings   = [];
+
+        IntlConfig::setStringsDir("tests/Intl/.tmp_no_strings");
+        $this->setPrivateStaticProperty(NLS::class, "data", []);
+        $this->setPrivateStaticProperty(NLS::class, "reported", false);
+        set_error_handler(function (int $code, string $message) use (&$warnings): bool {
+            $warnings[] = $message;
+            return true;
+        }, E_USER_WARNING);
+
+        try {
+            $callback();
+        } finally {
+            restore_error_handler();
+            $this->setPrivateStaticProperty(IntlConfig::class, "stringsDir", $stringsDir);
+            $this->setPrivateStaticProperty(NLS::class, "reported", $reported);
+        }
+        return $warnings;
+    }
+
+
     #[DataProvider("providerGetSetLanguage")]
     public function testGetSetLanguage(string $language): void {
         NLS::setLanguage($language);
@@ -317,11 +371,7 @@ class NLSTest extends TestCase {
     public function testLoadReturnsEmpty(): void {
         // No cached data and a strings dir with no file makes loadStrings() empty,
         // so load() falls through to returning a new empty Dictionary.
-        $this->setPrivateStaticProperty(NLS::class, "data", []);
-        $originalDir = $this->getPrivateStaticProperty(IntlConfig::class, "stringsDir");
-        IntlConfig::setStringsDir("tests/Intl/.nonexistent");
-
-        try {
+        $warnings = $this->withoutStrings(function (): void {
             $load   = new \ReflectionMethod(NLS::class, "load");
             $result = $load->invoke(null, "en");
             $this->assertInstanceOf(Dictionary::class, $result);
@@ -329,9 +379,8 @@ class NLSTest extends TestCase {
 
             // getString falls back to the untranslated key when nothing is loaded
             $this->assertSame("HELLO", NLS::getString("HELLO", "en"));
-        } finally {
-            $this->setPrivateStaticProperty(IntlConfig::class, "stringsDir", $originalDir);
-        }
+        });
+        $this->assertCount(1, $warnings);
     }
 
 

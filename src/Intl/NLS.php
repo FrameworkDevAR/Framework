@@ -19,6 +19,7 @@ class NLS {
     /** @var array<string,Dictionary> */
     private static array  $data     = [];
     private static string $language = "root";
+    private static bool   $reported = false;
 
 
 
@@ -73,6 +74,13 @@ class NLS {
         $rootCode = Language::getRootCode();
         if ($rootCode !== $langCode) {
             return self::load($rootCode);
+        }
+
+        // Not even the root has a file, so every string is empty, which is only reported once
+        if (!self::$reported) {
+            self::$reported = true;
+            $path = IntlConfig::getStringsPath();
+            trigger_error("There is no Strings file for \"$langCode\" in $path", E_USER_WARNING);
         }
         return new Dictionary();
     }

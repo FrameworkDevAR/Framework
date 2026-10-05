@@ -31,6 +31,11 @@ class LanguageBuilder implements DiscoveryBuilder {
     #[\Override]
     #[NotTested("It generates a file")]
     public static function generateCode(): int {
+        // Without them the build still has a Language, but every string is empty
+        if (!self::hasStrings()) {
+            print("- No Strings found in " . IntlConfig::getStringsPath() . "\n");
+        }
+
         $data = self::collectLanguages();
         return Builder::generateCode("Language", $data);
     }
@@ -45,6 +50,20 @@ class LanguageBuilder implements DiscoveryBuilder {
     }
 
 
+
+    /**
+     * Returns true if the Strings directory has a Language file
+     * @return bool
+     */
+    public static function hasStrings(): bool {
+        $files = Storage::getFilesInDir(IntlConfig::getStringsPath());
+        foreach ($files as $file) {
+            if (Strings::endsWith($file, ".json")) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     /**
      * Collects the Languages from the Strings files
