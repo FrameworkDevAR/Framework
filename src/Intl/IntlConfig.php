@@ -3,7 +3,6 @@ namespace Framework\Intl;
 
 use Framework\Application;
 use Framework\Discovery\Discovery;
-use Framework\Discovery\DiscoveryConfig;
 use Framework\Utils\Arrays;
 use Framework\Utils\Dictionary;
 
@@ -20,23 +19,6 @@ class IntlConfig {
 
     /** @var list<string> */
     private static array $sourceDirs = [];
-
-    private static bool $loaded = false;
-
-
-
-    /**
-     * Loads the Intl Config of the App, the first time that a value is requested
-     * @return void
-     */
-    private static function loadConfig(): void {
-        // A request does not load the Config files, so the values of the App would be
-        // the defaults. It is marked first, as the Config calls the setters
-        if (!self::$loaded) {
-            self::$loaded = true;
-            DiscoveryConfig::loadFile("Intl");
-        }
-    }
 
 
 
@@ -88,7 +70,6 @@ class IntlConfig {
      * @return string
      */
     public static function getDefaultLanguage(): string {
-        self::loadConfig();
         return self::$defaultLanguage;
     }
 
@@ -97,7 +78,6 @@ class IntlConfig {
      * @return string
      */
     public static function getStringsPath(): string {
-        self::loadConfig();
         return Application::getBasePath(self::$stringsDir);
     }
 
@@ -106,7 +86,6 @@ class IntlConfig {
      * @return array<string,string>
      */
     public static function getScriptPaths(): array {
-        self::loadConfig();
         $result = [];
         foreach (self::$scriptDirs as $name => $dir) {
             $result[$name] = Application::getBasePath($dir);
@@ -119,7 +98,6 @@ class IntlConfig {
      * @return list<string>
      */
     public static function getSourcePaths(): array {
-        self::loadConfig();
         $result = [];
         foreach (self::$sourceDirs as $dir) {
             $result[] = Application::getBasePath($dir);
@@ -135,7 +113,6 @@ class IntlConfig {
      * @return Dictionary
      */
     public static function loadStrings(string $langCode): Dictionary {
-        self::loadConfig();
         $result = Discovery::loadJSON(self::$stringsDir, $langCode);
         return new Dictionary($result);
     }

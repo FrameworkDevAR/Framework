@@ -120,10 +120,12 @@ build turns those annotations into typed <code>src/System</code> classes. The ke
 <h2 id="config">Loading the config files</h2>
 <p><a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Discovery/DiscoveryConfig.php" target="_blank" rel="noopener noreferrer"><code>DiscoveryConfig</code></a> is what makes a
 <a href="../introduction/config-files.html">config file</a> take effect. It walks the app once, includes every file
-whose name ends in <code>.config.php</code>, and remembers that it has done so:</p>
+whose name ends in <code>.config.php</code>, or in <code>.console.php</code> for the ones that only the console
+uses, and remembers that it has done so. A request calls <code>loadForRequest()</code> instead, which only
+includes the <code>.config.php</code> files, from the list that the build writes:</p>
 <pre><code class="language-php">use Framework\Discovery\DiscoveryConfig;
 
-DiscoveryConfig::load();       // include every *.config.php in the app
+DiscoveryConfig::load();       // include every *.config.php and *.console.php in the app
 DiscoveryConfig::loadDefault(&quot;access&quot;);   // fall back to the Framework&#039;s own</code></pre>
 <p>Three rules follow from how it scans, and they explain most surprises:</p>
 <table class="api-table">

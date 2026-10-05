@@ -60,7 +60,7 @@ icon name:</p>
 <p>Point the builder at that directory and register one or more <strong>icon sets</strong> in a
 <a href="../introduction/config-files.html#loading">config file</a>. A set has a name, the folders it pulls from, and where its
 stylesheet is written — so an app can ship one bundle for the admin and a smaller one for the public site:</p>
-<figure class="code"><figcaption class="code-tab">config/Icons.config.php</figcaption><pre><code class="language-php">use Framework\Core\Icons;
+<figure class="code"><figcaption class="code-tab">config/Icons.console.php</figcaption><pre><code class="language-php">use Framework\Core\Icons;
 
 Icons::setSource(&quot;icons&quot;);
 Icons::setPreview(&quot;public/icons.html&quot;);
