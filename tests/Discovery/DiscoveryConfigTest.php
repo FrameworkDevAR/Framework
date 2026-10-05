@@ -2,6 +2,7 @@
 namespace Tests\Discovery;
 
 use Framework\Application;
+use Framework\Builder\ConfigListCode;
 use Framework\Discovery\DiscoveryConfig;
 use Framework\Discovery\Package;
 use Framework\File\Storage;
@@ -150,34 +151,102 @@ class DiscoveryConfigTest extends TestCase {
         });
     }
 
-    public function testASingleConfigIsNotLoadedInsideTheFramework(): void {
+    public function testARequestLoadsNothingInsideTheFramework(): void {
         $this->assertTrue(Package::isFramework());
-        $this->assertFalse(DiscoveryConfig::loadFile("Access"));
+        $this->assertFalse(DiscoveryConfig::loadForRequest());
     }
 
-    public function testAnAppLoadsASingleConfigFromItsConfigDirectory(): void {
-        $appDir     = "tests/Discovery/.tmp_app";
+    public function testARequestWithoutTheListFindsItsConfigs(): void {
+        $this->withConfigApp(function (): void {
+            $this->assertTrue(DiscoveryConfig::loadForRequest());
+            $this->assertTrue($GLOBALS["requestConfigLoaded"] ?? false);
+            $this->assertFalse($GLOBALS["consoleConfigLoaded"] ?? false);
+        });
+    }
+
+    public function testTheConsoleLoadsBothKindsOfConfig(): void {
+        $this->withConfigApp(function (): void {
+            $this->assertTrue(DiscoveryConfig::load());
+            $this->assertTrue($GLOBALS["requestConfigLoaded"] ?? false);
+            $this->assertTrue($GLOBALS["consoleConfigLoaded"] ?? false);
+        });
+    }
+
+    public function testARequestOnlyLoadsTheListedConfigs(): void {
+        $this->withConfigApp(function (): void {
+            $this->writeList([ "config/Request.config.php" ]);
+            $this->assertTrue(DiscoveryConfig::loadForRequest());
+            $this->assertTrue($GLOBALS["requestConfigLoaded"] ?? false);
+            $this->assertFalse($GLOBALS["consoleConfigLoaded"] ?? false);
+            $this->assertFalse(DiscoveryConfig::loadForRequest());
+        });
+    }
+
+    public function testAListedConfigThatIsGoneIsIgnored(): void {
+        $this->withConfigApp(function (): void {
+            $this->writeList([ "config/Gone.config.php", "config/Request.config.php" ]);
+            $this->assertTrue(DiscoveryConfig::loadForRequest());
+            $this->assertTrue($GLOBALS["requestConfigLoaded"] ?? false);
+        });
+    }
+
+    public function testTheRequestPathsLeaveOutTheConsoleConfigs(): void {
+        $this->withConfigApp(function (): void {
+            $this->assertSame(
+                [ "config/Request.config.php" ],
+                DiscoveryConfig::getRelativePaths(),
+            );
+        });
+    }
+
+    public function testTheBuilderListsTheRequestConfigs(): void {
+        $this->withConfigApp(function (): void {
+            $this->assertSame(
+                [ "files" => [ "config/Request.config.php" ], "total" => 1 ],
+                ConfigListCode::collectFiles(),
+            );
+        });
+    }
+
+    /**
+     * Runs the given callback in an App with a Config for the requests and one for the console
+     * @param callable(): void $callback
+     * @return void
+     */
+    private function withConfigApp(callable $callback): void {
+        // Each one has its own App, as a file that was included once is not included again
+        $appDir     = "tests/Discovery/.tmp_app_" . uniqid();
         $configPath = Application::getBasePath($appDir, Package::ConfigDir);
+        $listPath   = Package::getBuildPath() . "/" . DiscoveryConfig::ListFile;
+        $listWas    = file_exists($listPath) ? Storage::readFile($listPath) : null;
+
         Storage::createDir($configPath);
-        Storage::writeFile("$configPath/Sample.config.php", '<?php $GLOBALS["sampleConfigLoaded"] = true;');
+        Storage::writeFile("$configPath/Request.config.php", '<?php $GLOBALS["requestConfigLoaded"] = true;');
+        Storage::writeFile("$configPath/Console.console.php", '<?php $GLOBALS["consoleConfigLoaded"] = true;');
+        Storage::deleteFile($listPath);
 
         try {
-            $this->withApp($appDir, function (): void {
-                $this->assertFalse(DiscoveryConfig::loadFile("Missing"));
-                $this->assertTrue(DiscoveryConfig::loadFile("Sample"));
-                $this->assertTrue($GLOBALS["sampleConfigLoaded"] ?? false);
-            });
+            $this->withApp($appDir, $callback);
         } finally {
             Storage::deleteDir(Application::getBasePath($appDir));
-            unset($GLOBALS["sampleConfigLoaded"]);
+            if ($listWas !== null) {
+                Storage::writeFile($listPath, $listWas);
+            } else {
+                Storage::deleteFile($listPath);
+            }
+            unset($GLOBALS["requestConfigLoaded"], $GLOBALS["consoleConfigLoaded"]);
         }
     }
 
-    public function testASingleConfigIsNotLoadedAgainOnceAllAre(): void {
-        $this->withApp(Package::DocsDir, function (): void {
-            DiscoveryConfig::load();
-            $this->assertFalse(DiscoveryConfig::loadFile("Access"));
-        });
+    /**
+     * Writes the list of the Config files that a request loads
+     * @param list<string> $relPaths
+     * @return void
+     */
+    private function writeList(array $relPaths): void {
+        $listPath = Package::getBuildPath() . "/" . DiscoveryConfig::ListFile;
+        Storage::createDir(Package::getBuildPath());
+        Storage::writeFile($listPath, "<?php\nreturn " . var_export($relPaths, true) . ";\n");
     }
 
     /**
