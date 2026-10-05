@@ -107,8 +107,12 @@ public static function getAll(): array {
     <li>The <strong>order</strong> puts the root first and sorts the rest by name, so a picker opens on the
     language most people want.</li>
     <li>With <strong>no languages at all</strong> — an empty directory, or files that all lack a
-    <code>NAME</code> — the list is created with English alone, so there is always one to answer with.</li>
+    <code>NAME</code> — the list is created with English alone, so there is always one to answer with. The
+    build says so in its output, as every string of the app is empty then.</li>
 </ul>
+<p>A language without a file of its own answers with the root. When not even the root has a file, every string
+is empty, so the first request that asks for one logs a warning in the <a href="../features/logging.html">error log</a>
+with the path that was read.</p>
 <p>Rebuild after adding a file, renaming one, or changing a <code>NAME</code>: until then the class still
 holds the languages of the last build. What the class offers:</p>
 <pre><code class="language-php">use Framework\System\Language;
@@ -227,7 +231,8 @@ keys, so a link reads naturally in each language:</p>
 command compares the files of a directory against each other and fails when they no longer match, so it can run
 alongside the other checks before merging:</p>
 <pre><code class="language-bash">./framework nlsCheck</code></pre>
-<p>It reads the strings directory of the config, plus every <a href="#scripts">app directory</a> added to it. What is
+<p>It reads the strings directory of the config, plus every <a href="#scripts">app directory</a> added to it, and
+fails when the strings directory has no language files. What is
 compared depends on what the files hold:</p>
 <table class="api-table">
     <thead><tr><th>Directory</th><th>Compared by</th></tr></thead>

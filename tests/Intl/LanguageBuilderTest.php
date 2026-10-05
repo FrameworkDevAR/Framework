@@ -43,6 +43,25 @@ class LanguageBuilderTest extends TestCase {
     }
 
 
+    public function testAnEmptyDirectoryHasNoStrings(): void {
+        $this->assertFalse(LanguageBuilder::hasStrings());
+    }
+
+    public function testADirectoryWithoutJSONHasNoStrings(): void {
+        Storage::writeFile($this->fixtureBase . DIRECTORY_SEPARATOR . "notes.txt", "");
+        $this->assertFalse(LanguageBuilder::hasStrings());
+    }
+
+    public function testADirectoryWithALanguageFileHasStrings(): void {
+        $this->writeLang("en", [ "NAME" => "English" ]);
+        $this->assertTrue(LanguageBuilder::hasStrings());
+    }
+
+    public function testAMissingDirectoryHasNoStrings(): void {
+        IntlConfig::setStringsDir(self::FixtureDir . "/missing");
+        $this->assertFalse(LanguageBuilder::hasStrings());
+    }
+
     #[DataProvider("providerCollectLanguages")]
     public function testCollectLanguages(array $files, string $default, array $expectedLanguages, string $expectedRoot): void {
         foreach ($files as $code => $data) {
