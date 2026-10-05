@@ -57,22 +57,30 @@ class NLSCheck {
 
         $languages = [];
         $found     = [];
-        foreach ($sections as [ $label, $path, $byLine ]) {
+        $errors    = 0;
+        foreach ($sections as $index => [ $label, $path, $byLine ]) {
             $files = self::readFiles($path);
             if (count($files) > 0) {
                 $languages[] = $path;
                 $found[]     = [ $label, $path, $files, $byLine ];
+            } elseif ($index === 0) {
+                // Every string of the App is read from there, so without them all are empty
+                print("$label: " . self::getRelativePath($path) . "\n");
+                print("- There are no language files\n");
+                $errors += 1;
             }
         }
 
         if (count($found) === 0) {
+            if ($errors > 0) {
+                exit(1);
+            }
             print("There are no language files to check\n");
             return;
         }
 
         $usage   = self::readUsage($languages);
         $defined = [];
-        $errors  = 0;
 
         foreach ($found as [ $label, $path, $files, $byLine ]) {
             $errors += self::printSection($label, $path, $files, $usage, byLine: $byLine);
