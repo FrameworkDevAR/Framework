@@ -50,15 +50,20 @@ and generates typed code from them.</p>
 the <code>vendor</code> directory is skipped and the location otherwise does not matter, so a
 <code>config/</code> folder is only a convention. The framework ships an example of each file: copy the ones
 you need into your app and extend them. Register nothing and the framework falls back to its own defaults.</p>
+<p>The console commands find them by walking the app, while a request includes the list of them that the
+<a href="../core/build.html#how"><code>./framework build</code></a> writes, so it does not walk the app on
+every call. A new file is only seen by the requests after the next build, and until the first one a request
+walks the app too. A file that only the console needs, like the ones of the migrations and the icons, ends in
+<code>.console.php</code> instead, and a request never loads it.</p>
 <p>By convention they live together in a <code>config/</code> folder — one file per concern:</p>
 <pre><code class="language-bash">config/
 ├── Access.config.php            # access roles
 ├── Settings.config.php          # typed settings
 ├── File.config.php              # extra storage paths
 ├── Intl.config.php              # languages &amp; copy dirs
-├── Migration.config.php         # migrations folder &amp; last applied
-├── MigrationTables.config.php   # table renames
-└── MigrationColumns.config.php  # column renames</code></pre>
+├── Migration.console.php         # migrations folder &amp; last applied
+├── MigrationTables.console.php   # table renames
+└── MigrationColumns.console.php  # column renames</code></pre>
 <div class="note">Config that feeds generated code — access roles and settings especially — takes effect after
 the next <a href="../core/build.html#how"><code>./framework build</code></a>.</div>
 
@@ -123,7 +128,7 @@ IntlConfig::addSourceDir(&quot;../desktop/src&quot;);</code></pre></figure>
 <p>The <a href="../database/migrations.html#running">migration</a> config is split across three files. The main one points the
 runner at your migrations folder and, when adopting it on an existing database, sets the last migration already
 applied:</p>
-<figure class="code"><figcaption class="code-tab">config/Migration.config.php</figcaption><pre><code class="language-php">use Framework\Database\Migration\Migration;
+<figure class="code"><figcaption class="code-tab">config/Migration.console.php</figcaption><pre><code class="language-php">use Framework\Database\Migration\Migration;
 
 Migration::setPath(&quot;migrations&quot;);
 Migration::setLastApplied(&quot;2024_01_initial&quot;);</code></pre></figure>
@@ -131,15 +136,15 @@ Migration::setLastApplied(&quot;2024_01_initial&quot;);</code></pre></figure>
 before the schema is synced, so the sync matches your models against the new names instead of dropping and
 recreating. Table names may be <code>snake_case</code> or <code>PascalCase</code>, ID columns
 <code>SNAKE_CASE</code>:</p>
-<figure class="code"><figcaption class="code-tab">config/MigrationTables.config.php</figcaption><pre><code class="language-php">use Framework\Database\Migration\Migration;
+<figure class="code"><figcaption class="code-tab">config/MigrationTables.console.php</figcaption><pre><code class="language-php">use Framework\Database\Migration\Migration;
 
 Migration::renameTable(&quot;old_table&quot;, &quot;new_table&quot;);
 Migration::renameTable(&quot;Client&quot;, &quot;Customer&quot;);</code></pre></figure>
-<figure class="code"><figcaption class="code-tab">config/MigrationColumns.config.php</figcaption><pre><code class="language-php">use Framework\Database\Migration\Migration;
+<figure class="code"><figcaption class="code-tab">config/MigrationColumns.console.php</figcaption><pre><code class="language-php">use Framework\Database\Migration\Migration;
 
 Migration::renameColumn(&quot;TableName&quot;, &quot;oldColumn&quot;, &quot;newColumn&quot;);
 Migration::renameColumn(&quot;Customer&quot;, &quot;CLIENT_ID&quot;, &quot;CUSTOMER_ID&quot;);</code></pre></figure>
-<figure class="code"><figcaption class="code-tab">config/MigrationIndexes.config.php</figcaption><pre><code class="language-php">use Framework\Database\Migration\Migration;
+<figure class="code"><figcaption class="code-tab">config/MigrationIndexes.console.php</figcaption><pre><code class="language-php">use Framework\Database\Migration\Migration;
 
 Migration::renameIndex(&quot;TableName&quot;, &quot;oldIndex&quot;, &quot;NEW_INDEX&quot;);
 Migration::renameIndex(&quot;Customer&quot;, &quot;idx_client_type&quot;, &quot;CLIENT_TYPE&quot;);</code></pre></figure>
