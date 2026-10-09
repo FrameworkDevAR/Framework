@@ -195,8 +195,8 @@ class SchemaBuilderTest extends TestCase {
         // Models and write the same classes twice
         $output = $this->build();
 
-        $this->assertStringContainsString("Framework Schema codes -> 17 models", $output);
-        $this->assertStringContainsString("App Schema codes -> 17 models", $output);
+        $this->assertStringContainsString("Framework Schema codes -> 19 models", $output);
+        $this->assertStringContainsString("App Schema codes -> 19 models", $output);
     }
 
     public function testTheCodeOfTheBuildIsDestroyed(): void {

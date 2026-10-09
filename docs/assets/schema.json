@@ -127,6 +127,31 @@
         ],
         "foreigns": []
     },
+    "credential_challenge": {
+        "description": "The passkey challenges waiting for an answer, with the time each one was made.",
+        "fields": [
+            {
+                "name": "challenge",
+                "type": "string",
+                "isPrimary": true
+            },
+            {
+                "name": "CREDENTIAL_ID",
+                "type": "number"
+            },
+            {
+                "name": "time",
+                "type": "date"
+            }
+        ],
+        "foreigns": [
+            {
+                "fromField": "CREDENTIAL_ID",
+                "toTable": "credential",
+                "toField": "CREDENTIAL_ID"
+            }
+        ]
+    },
     "credential_device": {
         "description": "The devices a credential signs in from, used to reach them with a push.",
         "fields": [
@@ -148,6 +173,61 @@
             {
                 "name": "provider",
                 "type": "enum"
+            },
+            {
+                "name": "modifiedTime",
+                "type": "date"
+            }
+        ],
+        "foreigns": [
+            {
+                "fromField": "CREDENTIAL_ID",
+                "toTable": "credential",
+                "toField": "CREDENTIAL_ID"
+            }
+        ]
+    },
+    "credential_passkey": {
+        "description": "The passkeys a credential signs in with, with the public key of each one.",
+        "fields": [
+            {
+                "name": "PASSKEY_ID",
+                "type": "number",
+                "isPrimary": true
+            },
+            {
+                "name": "CREDENTIAL_ID",
+                "type": "number",
+                "isKey": true
+            },
+            {
+                "name": "name",
+                "type": "string"
+            },
+            {
+                "name": "credentialKey",
+                "type": "string",
+                "isKey": true
+            },
+            {
+                "name": "publicKey",
+                "type": "text"
+            },
+            {
+                "name": "algorithm",
+                "type": "number"
+            },
+            {
+                "name": "signCount",
+                "type": "number"
+            },
+            {
+                "name": "lastUsedTime",
+                "type": "date"
+            },
+            {
+                "name": "createdTime",
+                "type": "date"
             },
             {
                 "name": "modifiedTime",

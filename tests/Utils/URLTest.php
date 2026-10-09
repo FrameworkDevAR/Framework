@@ -70,6 +70,22 @@ class URLTest extends TestCase {
     }
 
 
+    #[DataProvider("providerGetOrigin")]
+    public function testGetOrigin(string $url, string $expected): void {
+        $this->assertSame($expected, URL::getOrigin($url));
+    }
+
+    public static function providerGetOrigin(): array {
+        return [
+            "with a path"   => [ "https://app.example.com/login?x=1", "https://app.example.com" ],
+            "with a port"   => [ "http://localhost:4100/", "http://localhost:4100" ],
+            "only the host" => [ "https://example.com", "https://example.com" ],
+            "no scheme"     => [ "example.com/path", "" ],
+            "empty"         => [ "", "" ],
+        ];
+    }
+
+
     #[DataProvider("providerGetPathParts")]
     public function testGetPathParts(string $url, array $expected): void {
         $this->assertSame($expected, URL::getPathParts($url));
