@@ -2,6 +2,7 @@
 namespace Tests\Auth;
 
 use Framework\Auth\Credential;
+use Framework\Auth\Passkey;
 use Framework\Date\Date;
 use Framework\Auth\Schema\CredentialColumn;
 use Framework\Auth\Schema\CredentialQuery;
@@ -306,6 +307,17 @@ class CredentialLiveTest extends LiveTestCase {
         $this->assertSame("", $entity->password);
         $this->assertSame("", $entity->salt);
         $this->assertSame(CredentialStatus::None, $entity->status);
+    }
+
+    public function testThePasskeysAreDeletedWhenDestroyed(): void {
+        $credentialID = $this->create();
+        $this->query(
+            "INSERT INTO `credential_passkey` (`CREDENTIAL_ID`, `name`, `credentialKey`) " .
+            "VALUES ($credentialID, 'Laptop', 'destroyed-key')",
+        );
+
+        Credential::destroy($credentialID);
+        $this->assertSame([], Passkey::getAllForCredential($credentialID));
     }
 
     public function testTheCredentialIsMarkedAsDeleted(): void {

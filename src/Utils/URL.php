@@ -60,6 +60,21 @@ class URL {
         return Strings::toString($result);
     }
 
+    /**
+     * Returns the origin of the given URL, which is its scheme, host and port
+     * @param string $url
+     * @return string
+     */
+    public static function getOrigin(string $url): string {
+        $scheme = Strings::toString(parse_url($url, PHP_URL_SCHEME));
+        $host   = self::getHost($url);
+        $port   = parse_url($url, PHP_URL_PORT);
+        if ($scheme === "" || $host === "") {
+            return "";
+        }
+        return "{$scheme}://{$host}" . (is_int($port) ? ":{$port}" : "");
+    }
+
 
 
     /**

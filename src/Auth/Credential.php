@@ -5,6 +5,7 @@ use Framework\Analysis\Attr\NotTested;
 use Framework\IO\Search;
 use Framework\IO\Select;
 use Framework\Database\Query\QueryBuilder;
+use Framework\Auth\Passkey;
 use Framework\Auth\Schema\CredentialSchema;
 use Framework\Auth\Schema\CredentialRequest;
 use Framework\Auth\Schema\CredentialEntity;
@@ -382,6 +383,9 @@ class Credential extends CredentialSchema {
             status:           CredentialStatus::Inactive,
             isDeleted:        true,
         );
+
+        // A Passkey would still prove the Credential that was destroyed
+        Passkey::deleteAllForCredential($credentialID);
     }
 
 
