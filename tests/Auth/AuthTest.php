@@ -34,6 +34,7 @@ class AuthTest extends TestCase {
     private function reset(): void {
         $this->setPrivateStaticProperty(Auth::class, "accessName", Access::General);
         $this->setPrivateStaticProperty(Auth::class, "apiToken", "");
+        $this->setPrivateStaticProperty(Auth::class, "isExternal", false);
     }
 
 
@@ -91,6 +92,22 @@ class AuthTest extends TestCase {
             "api"     => [ Access::API ],
             "none"    => [ Access::None ],
         ];
+    }
+
+    public function testAnExternalUserIsLoggedInWithItsAccess(): void {
+        $this->assertFalse(Auth::isLoggedIn());
+        $this->assertTrue(Auth::requiresLogin(Access::Admin));
+
+        // The App validated a user that is not a Credential, so it has its Access but
+        // neither a Credential nor an API, and is answered with the tokens it brings
+        Auth::setExternal(Access::Admin);
+        $this->assertTrue(Auth::hasExternal());
+        $this->assertTrue(Auth::isLoggedIn());
+        $this->assertFalse(Auth::requiresLogin(Access::Admin));
+        $this->assertTrue(Auth::grant(Access::Admin));
+        $this->assertFalse(Auth::hasCredential());
+        $this->assertFalse(Auth::hasAPI());
+        $this->assertSame("", Auth::getAccessToken());
     }
 
     public function testNoAccessIsReachedWithATokenHere(): void {
