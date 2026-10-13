@@ -31,6 +31,7 @@ class Auth {
     private static int    $adminID      = 0;
     private static int    $userID       = 0;
     private static string $apiToken     = "";
+    private static bool   $isExternal   = false;
 
     private static ?CredentialEntity $credential = null;
     private static ?CredentialEntity $admin      = null;
@@ -213,6 +214,17 @@ class Auth {
         self::$accessName = Access::API;
     }
 
+    /**
+     * Sets the auth as a user that the App validated on its own, with the given Access, for the
+     * users that are not Credentials, like the clients of a store with their own login
+     * @param Access $accessName
+     * @return void
+     */
+    public static function setExternal(Access $accessName): void {
+        self::$accessName = $accessName;
+        self::$isExternal = true;
+    }
+
 
 
     /**
@@ -257,6 +269,7 @@ class Auth {
         self::$sendRefresh  = false;
         self::$accessName   = Access::General;
         self::$apiToken     = "";
+        self::$isExternal   = false;
         self::$credential   = null;
         self::$credentialID = 0;
         self::$adminID      = 0;
@@ -562,7 +575,7 @@ class Auth {
      * @return bool
      */
     public static function isLoggedIn(): bool {
-        return self::hasCredential() || self::hasAPI();
+        return self::hasCredential() || self::hasAPI() || self::$isExternal;
     }
 
     /**
@@ -579,6 +592,14 @@ class Auth {
      */
     public static function hasCredential(): bool {
         return self::$credentialID !== 0;
+    }
+
+    /**
+     * Returns true if there is a user that the App validated on its own
+     * @return bool
+     */
+    public static function hasExternal(): bool {
+        return self::$isExternal;
     }
 
     /**

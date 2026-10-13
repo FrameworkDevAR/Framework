@@ -176,6 +176,18 @@ the way a signed-in user of that role would:</p>
 <pre><code class="language-php">#[Route(&quot;/orders/import&quot;, Access::Zapier)]   // only that token
 #[Route(&quot;/orders/list&quot;, Access::API)]        // any of the API roles</code></pre>
 
+<h3 id="external">A user of the app&#39;s own</h3>
+<p>Some apps have users that are not credentials, like the clients of a store that sign in with a password kept
+in a table of the app. The app validates them on its own, before <code>Framework::execute()</code> runs, and
+gives the request the role they have with <code>Auth::setExternal()</code>. From there the request is signed in
+with that role, so its routes are guarded the same way, but it has no credential and no API, and the app answers it
+with whatever token its users expect:</p>
+<figure class="code"><figcaption class="code-tab">config/Access.config.php</figcaption><pre><code class="language-php">AccessRole::register(&quot;Client&quot;, &quot;Client&quot;);</code></pre></figure>
+<figure class="code"><figcaption class="code-tab">index.php</figcaption><pre><code class="language-php">if (ClientAuth::validate()) {   // reads the token of the client, and calls Auth::setExternal(Access::Client)
+    Framework::execute();
+}</code></pre></figure>
+<p><code>Auth::hasExternal()</code> tells such a request apart, and <code>Auth::logout()</code> ends it too.</p>
+
 <h2 id="reset">Password resets</h2>
 <p><a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Auth/Reset.php" target="_blank" rel="noopener noreferrer"><code>Reset</code></a> drives the forgot-password flow: <code>create()</code> issues a one-time code to email the
 user, <code>codeExists()</code> validates the code they return, and <code>getCredentialID()</code> resolves it back
