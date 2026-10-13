@@ -176,19 +176,35 @@ a logo or a chart travels inside the document.</p>
 <h2 id="mailchimp">MailChimp</h2>
 <p><a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Provider/MailChimp.php" target="_blank" rel="noopener noreferrer"><code>MailChimp</code></a> manages an audience and its campaigns, separate from the transactional
 <a href="../subsystems/emails.html#providers">email</a> sending. It is gated by the
-<code>MAILCHIMP_*</code> keys, each part switched on its own — subscribers, creating contacts, sending
+<code>MAILCHIMP_*</code> keys, each part switched on its own — subscribers, creating campaigns, sending
 campaigns:</p>
 <pre><code class="language-php">use Framework\Provider\MailChimp;
 
-MailChimp::addSubscriber($email, $data);
-MailChimp::editSubscriber($email, $data);
+MailChimp::addSubscriber($email, $firstName, $lastName);
+MailChimp::addMember($email, [ "CODE" =&gt; $code ]);       // any merge fields
+MailChimp::editMember($email, [ "CODE" =&gt; $code ], "unsubscribed");
 MailChimp::deleteSubscriber($email);
 MailChimp::getSubscriberStatus($email);
 
-MailChimp::sendCampaign($campaignID);
-MailChimp::getReport($campaignID);       // opens, clicks, sends</code></pre>
-<p><code>addSubscriberBatch()</code> imports many at once, and the <code>get…Details</code> family reads back who
-opened, clicked or received a campaign.</p>
+$mailChimpID = MailChimp::sendCampaign(
+    subject:    $subject,
+    time:       null,                  // now, or a future Date to schedule it
+    templateID: $templateID,
+    sections:   [ "content" =&gt; $html ],
+    emails:     $emails,               // null for the whole list
+    folderID:   "1f0d5af8f4",
+    toName:     "*|FNAME|*",
+);
+MailChimp::hasReport($mailChimpID);                    // without asking MailChimp
+MailChimp::getReport($mailChimpID);                    // opens and clicks
+MailChimp::getOpenDetails($mailChimpID, "CODE");       // a merge field of each member</code></pre>
+<p><code>sendCampaign()</code> returns the ID of the campaign, <code>MailChimp::Disabled</code> when creating
+campaigns is switched off, or <code>null</code> when MailChimp refused it. A disabled campaign has no report and nothing to
+un-schedule. A campaign is sent at once
+without a time or with one that is not in the future, and scheduled otherwise, the time given to
+MailChimp in UTC as it expects. <code>addSubscriberBatch()</code> imports many at once, and the
+<code>get…Details</code> family reads back who opened, clicked the first link or received a campaign,
+as their emails or as the merge field asked for.</p>
 
 <h2 id="curl">Curl</h2>
 <p><a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Provider/Curl.php" target="_blank" rel="noopener noreferrer"><code>Curl</code></a> is the HTTP client every provider on this page is built on, and the one to use for an API the

@@ -16,6 +16,9 @@ use Framework\Utils\Strings;
  */
 class MailChimp {
 
+    /** The ID returned for a Campaign when MailChimp is not active */
+    public const Disabled = "disabled";
+
     private const BaseUrl = "https://<dc>.api.mailchimp.com/3.0";
 
 
@@ -45,94 +48,37 @@ class MailChimp {
     }
 
     /**
+     * Does a Request
+     * @param CurlMethod               $method
+     * @param string                   $route
+     * @param array<string,mixed>|null $request Optional.
+     * @return Dictionary
+     */
+    private static function request(
+        CurlMethod $method,
+        string $route,
+        ?array $request = null,
+    ): Dictionary {
+        $result = Curl::execute(
+            method:      $method,
+            url:         self::getUrl($route),
+            params:      $request,
+            headers:     self::getHeaders(),
+            jsonBody:    $method !== CurlMethod::GET && $method !== CurlMethod::DELETE,
+            returnError: true,
+        );
+        return new Dictionary($result);
+    }
+
+    /**
      * Returns true if the response is successful
      * @param Dictionary $response
      * @return bool
      */
     private static function isSuccess(Dictionary $response): bool {
-        $status = $response->getInt("status");
-        return $status >= 200 && $status <= 299;
-    }
-
-    /**
-     * Does a GET Request
-     * @param string                   $route
-     * @param array<string,mixed>|null $request Optional.
-     * @return Dictionary
-     */
-    private static function get(string $route, ?array $request = null): Dictionary {
-        $result = Curl::execute(
-            method:  CurlMethod::GET,
-            url:     self::getUrl($route),
-            params:  $request,
-            headers: self::getHeaders(),
-        );
-        return new Dictionary($result);
-    }
-
-    /**
-     * Does a POST Request
-     * @param string                   $route
-     * @param array<string,mixed>|null $request Optional.
-     * @return Dictionary
-     */
-    private static function post(string $route, ?array $request = null): Dictionary {
-        $result = Curl::execute(
-            method:   CurlMethod::POST,
-            url:      self::getUrl($route),
-            params:   $request,
-            headers:  self::getHeaders(),
-            jsonBody: true,
-        );
-        return new Dictionary($result);
-    }
-
-    /**
-     * Does a PATCH Request
-     * @param string                   $route
-     * @param array<string,mixed>|null $request Optional.
-     * @return Dictionary
-     */
-    private static function patch(string $route, ?array $request = null): Dictionary {
-        $result = Curl::execute(
-            method:   CurlMethod::PATCH,
-            url:      self::getUrl($route),
-            params:   $request,
-            headers:  self::getHeaders(),
-            jsonBody: true,
-        );
-        return new Dictionary($result);
-    }
-
-    /**
-     * Does a PUT Request
-     * @param string                   $route
-     * @param array<string,mixed>|null $request Optional.
-     * @return Dictionary
-     */
-    private static function put(string $route, ?array $request = null): Dictionary {
-        $result = Curl::execute(
-            method:   CurlMethod::PUT,
-            url:      self::getUrl($route),
-            params:   $request,
-            headers:  self::getHeaders(),
-            jsonBody: true,
-        );
-        return new Dictionary($result);
-    }
-
-    /**
-     * Does a DELETE Request
-     * @param string $route
-     * @return Dictionary
-     */
-    private static function delete(string $route): Dictionary {
-        $result = Curl::execute(
-            method:  CurlMethod::DELETE,
-            url:     self::getUrl($route),
-            headers: self::getHeaders()
-        );
-        return new Dictionary($result);
+        // A failed request comes as an error, and MailChimp answers its errors with a numeric
+        // status, while a success has a text status, or no body at all for the actions
+        return !$response->has("error") && !is_int($response->get("status"));
     }
 
 
@@ -161,6 +107,14 @@ class MailChimp {
     }
 
     /**
+     * Returns true if the Subscribers can be changed
+     * @return bool
+     */
+    private static function canEditSubscribers(): bool {
+        return Config::isMailchimpActive() && Config::isMailchimpSubscriberActive();
+    }
+
+    /**
      * Returns all the subscribers
      * @param int $count  Optional.
      * @param int $offset Optional.
@@ -172,7 +126,7 @@ class MailChimp {
         }
 
         $route    = self::getSubscribersRoute();
-        $response = self::get($route, [
+        $response = self::request(CurlMethod::GET, $route, [
             "count"  => $count,
             "offset" => $offset,
         ]);
@@ -191,8 +145,11 @@ class MailChimp {
 
         $hash     = self::getSubscriberHash($email);
         $route    = self::getSubscribersRoute($hash);
-        $response = self::get($route);
-        return $response->isNotEmpty() ? $response : null;
+        $response = self::request(CurlMethod::GET, $route);
+        if ($response->isEmpty() || !self::isSuccess($response)) {
+            return null;
+        }
+        return $response;
     }
 
     /**
@@ -209,6 +166,51 @@ class MailChimp {
     }
 
     /**
+     * Adds a Subscriber with the given Merge Fields
+     * @param string               $email
+     * @param array<string,string> $mergeFields
+     * @return bool
+     */
+    public static function addMember(string $email, array $mergeFields): bool {
+        if (!self::canEditSubscribers()) {
+            return false;
+        }
+
+        $response = self::request(CurlMethod::POST, self::getSubscribersRoute(), [
+            "status"        => "subscribed",
+            "email_address" => $email,
+            "merge_fields"  => $mergeFields,
+        ]);
+        return self::isSuccess($response);
+    }
+
+    /**
+     * Edits a Subscriber with the given Merge Fields
+     * @param string               $email
+     * @param array<string,string> $mergeFields
+     * @param string               $status      Optional.
+     * @return bool
+     */
+    public static function editMember(
+        string $email,
+        array $mergeFields,
+        string $status = "subscribed",
+    ): bool {
+        if (!self::canEditSubscribers()) {
+            return false;
+        }
+
+        $hash     = self::getSubscriberHash($email);
+        $route    = self::getSubscribersRoute($hash);
+        $response = self::request(CurlMethod::PATCH, $route, [
+            "status"        => $status,
+            "email_address" => $email,
+            "merge_fields"  => $mergeFields,
+        ]);
+        return self::isSuccess($response);
+    }
+
+    /**
      * Adds a Subscriber
      * @param string $email
      * @param string $firstName
@@ -216,19 +218,10 @@ class MailChimp {
      * @return bool
      */
     public static function addSubscriber(string $email, string $firstName, string $lastName): bool {
-        if (!Config::isMailchimpActive() || !Config::isMailchimpSubscriberActive()) {
-            return false;
-        }
-
-        $response = self::post(self::getSubscribersRoute(), [
-            "status"        => "subscribed",
-            "email_address" => $email,
-            "merge_fields"  => [
-                "FNAME" => $firstName,
-                "LNAME" => $lastName,
-            ],
+        return self::addMember($email, [
+            "FNAME" => $firstName,
+            "LNAME" => $lastName,
         ]);
-        return self::isSuccess($response);
     }
 
     /**
@@ -237,19 +230,14 @@ class MailChimp {
      * @return bool
      */
     public static function addSubscriberBatch(array $subscribers): bool {
-        if (!Config::isMailchimpActive() || !Config::isMailchimpSubscriberActive()) {
+        if (!self::canEditSubscribers()) {
             return false;
         }
 
-        $route = self::getSubscribersRoute();
         foreach ($subscribers as $subscriber) {
-            self::post($route, [
-                "status"        => "subscribed",
-                "email_address" => $subscriber["email"] ?? "",
-                "merge_fields"  => [
-                    "FNAME" => $subscriber["firstName"] ?? "",
-                    "LNAME" => $subscriber["lastName"] ?? "",
-                ],
+            self::addMember($subscriber["email"] ?? "", [
+                "FNAME" => $subscriber["firstName"] ?? "",
+                "LNAME" => $subscriber["lastName"] ?? "",
             ]);
         }
         return true;
@@ -269,21 +257,10 @@ class MailChimp {
         string $lastName,
         string $status = "subscribed",
     ): bool {
-        if (!Config::isMailchimpActive() || !Config::isMailchimpSubscriberActive()) {
-            return false;
-        }
-
-        $hash     = self::getSubscriberHash($email);
-        $route    = self::getSubscribersRoute($hash);
-        $response = self::patch($route, [
-            "status"        => $status,
-            "email_address" => $email,
-            "merge_fields"  => [
-                "FNAME" => $firstName,
-                "LNAME" => $lastName,
-            ],
-        ]);
-        return self::isSuccess($response);
+        return self::editMember($email, [
+            "FNAME" => $firstName,
+            "LNAME" => $lastName,
+        ], $status);
     }
 
     /**
@@ -292,13 +269,13 @@ class MailChimp {
      * @return bool
      */
     public static function deleteSubscriber(string $email): bool {
-        if (!Config::isMailchimpActive() || !Config::isMailchimpSubscriberActive()) {
+        if (!self::canEditSubscribers()) {
             return false;
         }
 
         $hash     = self::getSubscriberHash($email);
         $route    = self::getSubscribersRoute($hash);
-        $response = self::delete($route);
+        $response = self::request(CurlMethod::DELETE, $route);
         return self::isSuccess($response);
     }
 
@@ -313,7 +290,7 @@ class MailChimp {
             return [];
         }
 
-        $response = self::get("templates");
+        $response = self::request(CurlMethod::GET, "templates");
         if ($response->hasValue("templates")) {
             $templates = $response->getList("templates");
             return Select::create($templates, "id", "name");
@@ -322,29 +299,31 @@ class MailChimp {
     }
 
     /**
-     * Sends a Campaign
-     * @param string                          $subject
-     * @param Date                            $time
-     * @param int                             $templateID
-     * @param list<array<string,string>>|null $sections   Optional.
-     * @param list<string>|null               $emails     Optional.
-     * @param int                             $folderID   Optional.
+     * Sends a Campaign now, without a time or with one that is not in the future, or schedules it
+     * @param string                    $subject
+     * @param Date|null                 $time
+     * @param int                       $templateID
+     * @param array<string,string>|null $sections   Optional.
+     * @param list<string>|null         $emails     Optional.
+     * @param string                    $folderID   Optional.
+     * @param string                    $toName     Optional.
      * @return string|null
      */
     public static function sendCampaign(
         string $subject,
-        Date $time,
+        ?Date $time,
         int $templateID,
         ?array $sections = null,
         ?array $emails = null,
-        int $folderID = 0,
+        string $folderID = "",
+        string $toName = "*|FNAME|*",
     ): ?string {
         if (!Config::isMailchimpActive() || !Config::isMailchimpCreateActive()) {
-            return "disabled";
+            return self::Disabled;
         }
 
         // Create the Campaign
-        $mailChimpID = self::createCampaign($subject, $emails, $folderID);
+        $mailChimpID = self::createCampaign($subject, $emails, $folderID, $toName);
         if ($mailChimpID === "") {
             return null;
         }
@@ -369,31 +348,33 @@ class MailChimp {
     }
 
     /**
-     * Updates a Campaign
-     * @param string                          $mailChimpID
-     * @param string                          $subject
-     * @param Date                            $time
-     * @param int                             $templateID
-     * @param list<array<string,string>>|null $sections    Optional.
-     * @param list<string>|null               $emails      Optional.
-     * @param int                             $folderID    Optional.
+     * Updates a Campaign, sending it now without a time or with one that is not in the future
+     * @param string                    $mailChimpID
+     * @param string                    $subject
+     * @param Date|null                 $time
+     * @param int                       $templateID
+     * @param array<string,string>|null $sections    Optional.
+     * @param list<string>|null         $emails      Optional.
+     * @param string                    $folderID    Optional.
+     * @param string                    $toName      Optional.
      * @return bool
      */
     public static function updateCampaign(
         string $mailChimpID,
         string $subject,
-        Date $time,
+        ?Date $time,
         int $templateID,
         ?array $sections = null,
         ?array $emails = null,
-        int $folderID = 0,
+        string $folderID = "",
+        string $toName = "*|FNAME|*",
     ): bool {
         if (!Config::isMailchimpActive() || !Config::isMailchimpCreateActive()) {
             return false;
         }
 
         // Edit the Campaign
-        if (!self::editCampaign($mailChimpID, $subject, $emails, $folderID)) {
+        if (!self::editCampaign($mailChimpID, $subject, $emails, $folderID, $toName)) {
             return false;
         }
 
@@ -420,13 +401,15 @@ class MailChimp {
      * Creates a Campaign
      * @param string            $subject
      * @param list<string>|null $emails   Optional.
-     * @param int               $folderID Optional.
+     * @param string            $folderID Optional.
+     * @param string            $toName   Optional.
      * @return string
      */
     private static function createCampaign(
         string $subject,
         ?array $emails = null,
-        int $folderID = 0,
+        string $folderID = "",
+        string $toName = "*|FNAME|*",
     ): string {
         $recipients = self::parseRecipients($emails);
         if ($recipients === null || count($recipients) === 0) {
@@ -441,13 +424,13 @@ class MailChimp {
                 "title"        => $subject,
                 "from_name"    => Config::getMailchimpName(),
                 "reply_to"     => Config::getMailchimpReplyTo(),
-                "to_name"      => "*|FNAME|*",
+                "to_name"      => $toName,
             ],
         ];
-        if ($folderID !== 0) {
+        if ($folderID !== "") {
             $post["settings"]["folder_id"] = $folderID;
         }
-        $response = self::post("campaigns", $post);
+        $response = self::request(CurlMethod::POST, "campaigns", $post);
 
         if (self::isSuccess($response)) {
             return $response->getString("id");
@@ -460,14 +443,16 @@ class MailChimp {
      * @param string            $mailChimpID
      * @param string            $subject
      * @param list<string>|null $emails      Optional.
-     * @param int               $folderID    Optional.
+     * @param string            $folderID    Optional.
+     * @param string            $toName      Optional.
      * @return bool
      */
     private static function editCampaign(
         string $mailChimpID,
         string $subject,
         ?array $emails = null,
-        int $folderID = 0,
+        string $folderID = "",
+        string $toName = "*|FNAME|*",
     ): bool {
         $recipients = self::parseRecipients($emails);
         if ($recipients === null || count($recipients) === 0) {
@@ -479,13 +464,14 @@ class MailChimp {
             "settings"   => [
                 "subject_line" => $subject,
                 "title"        => $subject,
+                "to_name"      => $toName,
             ],
         ];
-        if ($folderID !== 0) {
+        if ($folderID !== "") {
             $post["settings"]["folder_id"] = $folderID;
         }
 
-        $response = self::patch("campaigns/$mailChimpID", $post);
+        $response = self::request(CurlMethod::PATCH, "campaigns/$mailChimpID", $post);
         return self::isSuccess($response);
     }
 
@@ -525,9 +511,9 @@ class MailChimp {
 
     /**
      * Puts the content into the given MailChimp campaign
-     * @param string                          $mailChimpID
-     * @param int                             $templateID
-     * @param list<array<string,string>>|null $sections    Optional.
+     * @param string                    $mailChimpID
+     * @param int                       $templateID
+     * @param array<string,string>|null $sections    Optional.
      * @return bool
      */
     private static function placeContent(
@@ -540,26 +526,23 @@ class MailChimp {
             $post["template"]["sections"] = $sections;
         }
 
-        $response = self::put("campaigns/{$mailChimpID}/content", $post);
+        $response = self::request(CurlMethod::PUT, "campaigns/{$mailChimpID}/content", $post);
         return self::isSuccess($response);
     }
 
     /**
-     * Schedules the given MailChimp campaign
-     * @param string $mailChimpID
-     * @param Date   $time
+     * Sends the given MailChimp campaign now, or schedules it if the time is in the future
+     * @param string    $mailChimpID
+     * @param Date|null $time        Optional.
      * @return bool
      */
-    private static function mailCampaign(string $mailChimpID, Date $time): bool {
-        if ($time->isEmpty()) {
-            return false;
-        }
-
-        if ($time->isPast()) {
-            $response = self::post("campaigns/{$mailChimpID}/actions/send");
+    private static function mailCampaign(string $mailChimpID, ?Date $time = null): bool {
+        $route = "campaigns/{$mailChimpID}/actions";
+        if ($time === null || !$time->isFuture()) {
+            $response = self::request(CurlMethod::POST, "$route/send");
         } else {
-            $response = self::post("campaigns/{$mailChimpID}/actions/schedule", [
-                "schedule_time" => $time->toString(DateFormat::ReverseSeconds),
+            $response = self::request(CurlMethod::POST, "$route/schedule", [
+                "schedule_time" => self::getScheduleTime($time),
                 "timewarp"      => false,
             ]);
         }
@@ -567,16 +550,28 @@ class MailChimp {
     }
 
     /**
-     * Un-schedules the given MailChimp campaign
+     * Returns the given time as MailChimp schedules it, which is in UTC
+     * @param Date $time
+     * @return string
+     */
+    private static function getScheduleTime(Date $time): string {
+        return gmdate(DateFormat::ReverseSeconds->value, $time->toTime());
+    }
+
+    /**
+     * Un-schedules the given MailChimp campaign, where a disabled one has nothing to un-schedule
      * @param string $mailChimpID
      * @return bool
      */
     public static function unscheduleCampaign(string $mailChimpID): bool {
+        if ($mailChimpID === self::Disabled) {
+            return true;
+        }
         if (!Config::isMailchimpActive()) {
             return false;
         }
 
-        $response = self::post("campaigns/{$mailChimpID}/actions/unschedule");
+        $response = self::request(CurlMethod::POST, "campaigns/{$mailChimpID}/actions/unschedule");
         return self::isSuccess($response);
     }
 
@@ -590,11 +585,24 @@ class MailChimp {
             return false;
         }
 
-        $response = self::delete("campaigns/{$mailChimpID}");
+        $response = self::request(CurlMethod::DELETE, "campaigns/{$mailChimpID}");
         return self::isSuccess($response);
     }
 
 
+
+    /**
+     * Returns true if the given MailChimp campaign can have a Report, without asking MailChimp
+     * @param string $mailChimpID
+     * @return bool
+     */
+    public static function hasReport(string $mailChimpID): bool {
+        return (
+            Config::isMailchimpActive() &&
+            $mailChimpID !== "" &&
+            $mailChimpID !== self::Disabled
+        );
+    }
 
     /**
      * Returns the Content of the given MailChimp campaign
@@ -606,29 +614,30 @@ class MailChimp {
             return [];
         }
 
-        $response = self::get("campaigns/{$mailChimpID}/content");
+        $response = self::request(CurlMethod::GET, "campaigns/{$mailChimpID}/content");
         return $response->toArray();
     }
 
     /**
      * Returns the Report for the given MailChimp campaign
      * @param string $mailChimpID
-     * @return array<string,bool|int|float>
+     * @return array{hasReport:bool,emailsSent:int,opensUnique:int,opensRate:float,clicksUnique:int,clicksRate:float}
      */
     public static function getReport(string $mailChimpID): array {
         $result = [
             "hasReport"    => false,
+            "emailsSent"   => 0,
             "opensUnique"  => 0,
-            "opensRate"    => 0,
+            "opensRate"    => 0.0,
             "clicksUnique" => 0,
-            "clicksRate"   => 0,
+            "clicksRate"   => 0.0,
         ];
-        if (!Config::isMailchimpActive() || $mailChimpID === "" || $mailChimpID === "disabled") {
+        if (!self::hasReport($mailChimpID)) {
             return $result;
         }
 
-        $response = self::get("reports/{$mailChimpID}");
-        if (!self::isSuccess($response)) {
+        $response = self::request(CurlMethod::GET, "reports/{$mailChimpID}");
+        if ($response->isEmpty() || !self::isSuccess($response)) {
             return $result;
         }
 
@@ -647,66 +656,74 @@ class MailChimp {
     /**
      * Returns the Send Details Report for the given MailChimp campaign
      * @param string $mailChimpID
+     * @param string $mergeField  Optional.
      * @return list<string>
      */
-    public static function getSendDetails(string $mailChimpID): array {
-        $result = [];
-        if (!Config::isMailchimpActive() || $mailChimpID === "" || $mailChimpID === "disabled") {
-            return $result;
+    public static function getSendDetails(string $mailChimpID, string $mergeField = ""): array {
+        if (!self::hasReport($mailChimpID)) {
+            return [];
         }
 
-        $response = self::get("reports/{$mailChimpID}/sent-to", [
+        $response = self::request(CurlMethod::GET, "reports/{$mailChimpID}/sent-to", [
             "count" => 2000,
         ]);
-
-        foreach ($response->getList("sent_to") as $member) {
-            $result[] = $member->getString("email_address");
-        }
-        return $result;
+        return self::getMemberValues($response->getList("sent_to"), $mergeField);
     }
 
     /**
      * Returns the Open Details Report for the given MailChimp campaign
      * @param string $mailChimpID
+     * @param string $mergeField  Optional.
      * @return list<string>
      */
-    public static function getOpenDetails(string $mailChimpID): array {
-        $result = [];
-        if (!Config::isMailchimpActive() || $mailChimpID === "" || $mailChimpID === "disabled") {
-            return $result;
+    public static function getOpenDetails(string $mailChimpID, string $mergeField = ""): array {
+        if (!self::hasReport($mailChimpID)) {
+            return [];
         }
 
-        $response = self::get("reports/{$mailChimpID}/open-details", [
+        $response = self::request(CurlMethod::GET, "reports/{$mailChimpID}/open-details", [
             "count" => 2000,
         ]);
-
-        foreach ($response->getList("members") as $member) {
-            $result[] = $member->getString("email_address");
-        }
-        return $result;
+        return self::getMemberValues($response->getList("members"), $mergeField);
     }
 
     /**
-     * Returns the Click Details Report for the given MailChimp campaign
+     * Returns the Click Details Report of the first url clicked in the given MailChimp campaign
      * @param string $mailChimpID
+     * @param string $mergeField  Optional.
      * @return list<string>
      */
-    public static function getClickDetails(string $mailChimpID): array {
-        $result = [];
-        if (!Config::isMailchimpActive() || $mailChimpID === "" || $mailChimpID === "disabled") {
-            return $result;
+    public static function getClickDetails(string $mailChimpID, string $mergeField = ""): array {
+        if (!self::hasReport($mailChimpID)) {
+            return [];
         }
 
-        $response   = self::get("reports/{$mailChimpID}/click-details");
+        $response   = self::request(CurlMethod::GET, "reports/{$mailChimpID}/click-details");
         $urlClicked = $response->getFirst("urls_clicked");
+        $clickID    = $urlClicked->getString("id");
+        if ($clickID === "") {
+            return [];
+        }
 
-        if ($urlClicked->isNotEmpty()) {
-            $clickID = $urlClicked->getString("id");
-            $report  = self::get("reports/{$mailChimpID}/click-details/{$clickID}/members", [
-                "count" => 2000,
-            ]);
+        $route  = "reports/{$mailChimpID}/click-details/{$clickID}/members";
+        $report = self::request(CurlMethod::GET, $route, [
+            "count" => 2000,
+        ]);
+        return self::getMemberValues($report->getList("members"), $mergeField);
+    }
 
-            foreach ($report->getList("members") as $member) {
+    /**
+     * Returns the email of each member, or the given Merge Field when there is one
+     * @param list<Dictionary> $members
+     * @param string           $mergeField Optional.
+     * @return list<string>
+     */
+    private static function getMemberValues(array $members, string $mergeField = ""): array {
+        $result = [];
+        foreach ($members as $member) {
+            if ($mergeField !== "") {
+                $result[] = $member->getDict("merge_fields")->getString($mergeField);
+            } else {
                 $result[] = $member->getString("email_address");
             }
         }
