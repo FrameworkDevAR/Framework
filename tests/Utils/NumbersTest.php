@@ -441,6 +441,24 @@ class NumbersTest extends TestCase {
     }
 
 
+    #[DataProvider("providerAddTax")]
+    public function testAddTax(int|float $value, int|float $percent, int|float $expected): void {
+        $this->assertEqualsWithDelta($expected, Numbers::addTax($value, $percent), 0.0001);
+    }
+
+    public static function providerAddTax(): array {
+        return [
+            "vat"              => [ 274.56, 21, 332.2176 ],
+            "ten percent"      => [ 100, 10, 110 ],
+            "decimal percent"  => [ 200, 2.5, 205 ],
+            "zero percent"     => [ 100, 0, 100 ],
+            "negative percent" => [ 100, -10, 100 ],
+            "over 100 percent" => [ 100, 150, 250 ],
+            "zero price"       => [ 0, 21, 0 ],
+        ];
+    }
+
+
     #[DataProvider("providerGetCommonDivisor")]
     public function testGetCommonDivisor(int $a, int $b, int $expected): void {
         $this->assertEquals($expected, Numbers::getCommonDivisor($a, $b));

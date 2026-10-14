@@ -361,6 +361,21 @@ class Numbers {
     }
 
     /**
+     * Adds the Tax to the given Number
+     * @param int|float $number
+     * @param int|float $percent
+     * @return int|float
+     */
+    public static function addTax(int|float $number, int|float $percent): int|float {
+        // The Tax is a percent of the Number added over it, like a VAT, unlike the Increment,
+        // which is the percent of the result
+        if ($percent <= 0) {
+            return $number;
+        }
+        return $number + $number * $percent / 100;
+    }
+
+    /**
      * Returns the Greatest Common Divisor
      * @param int $a
      * @param int $b
