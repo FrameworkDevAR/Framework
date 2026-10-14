@@ -1132,6 +1132,37 @@ class Strings {
     }
 
     /**
+     * Returns the given HTML as plain text, with a paragraph per line
+     * @param string $string
+     * @return string
+     */
+    public static function fromHtml(string $string): string {
+        // The entities are decoded first, so a tag that comes encoded is removed with the others
+        $result = self::decodeHtml($string);
+
+        // In HTML the line breaks of the source are spaces, as only the tags break a line, while
+        // a text with no tags keeps the ones it was written with
+        if (self::hasHtml($result)) {
+            $result = self::replacePattern($result, '/\s*[\r\n]+\s*/', " ");
+        }
+        $result = self::replacePattern($result, '/<br\s*\/?>|<\/p>|<\/li>|<\/div>/i', "\n");
+        $result = self::removeHtml($result);
+        $result = self::replace($result, [ "\r", "\u{00A0}" ], [ "", " " ]);
+        $result = self::replacePattern($result, '/[^\S\n]+/u', " ");
+
+        // The empty lines between two paragraphs are kept as a single one
+        $lines = [];
+        foreach (self::split($result, "\n", trim: true) as $line) {
+            $lastLine = $lines[count($lines) - 1] ?? "";
+            if ($line === "" && $lastLine === "") {
+                continue;
+            }
+            $lines[] = $line;
+        }
+        return trim(self::join($lines, "\n"));
+    }
+
+    /**
      * Returns the given string without HTML
      * @param string $string
      * @return string
