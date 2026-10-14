@@ -1412,6 +1412,26 @@ class StringsTest extends TestCase {
     }
 
 
+    #[DataProvider("providerFromHtml")]
+    public function testFromHtml(string $value, string $expected): void {
+        $this->assertEquals($expected, Strings::fromHtml($value));
+    }
+
+    public static function providerFromHtml(): array {
+        return [
+            "paragraphs"        => [ "<p>One</p>\r\n<p>Two</p>", "One\nTwo" ],
+            "line breaks"       => [ "One<br>Two<br />Three", "One\nTwo\nThree" ],
+            "empty lines"       => [ "One<br><br><br>Two", "One\n\nTwo" ],
+            "list"              => [ "<ul>\n  <li>Wifi</li>\n  <li>TV</li>\n</ul>", "Wifi\nTV" ],
+            "encoded tags"      => [ "&lt;b&gt;Bold&lt;/b&gt; text", "Bold text" ],
+            "non-breaking"      => [ "<p>A&nbsp;&nbsp;B</p>", "A B" ],
+            "repeated spaces"   => [ "<p>A    B</p>", "A B" ],
+            "plain text"        => [ "One\nTwo\n\n\n\nThree", "One\nTwo\n\nThree" ],
+            "empty"             => [ "", "" ],
+        ];
+    }
+
+
     #[DataProvider("providerRemoveHtml")]
     public function testRemoveHtml(string $value, string $expected): void {
         $this->assertEquals($expected, Strings::removeHtml($value));

@@ -94,7 +94,7 @@ Strings::replacePattern($text, &quot;/\d+/&quot;, &quot;#&quot;);
 Strings::replaceCallback($text, &quot;/\{(\w+)\}/&quot;, $callback);
 
 Strings::sanitize($input);        // safe to store
-Strings::removeHtml($html);       // and toHtml, decodeHtml
+Strings::removeHtml($html);       // and toHtml, fromHtml, decodeHtml
 Strings::normalized($text);       // strip accents for comparing
 
 Strings::random(12);              // a random string
@@ -169,7 +169,7 @@ Numbers::divide($a, $b);            // and divideInt — no division by zero</co
 Numbers::fromCents(1999);       // 19.99
 Numbers::formatCents(1999);     // &quot;19.99&quot;
 Numbers::formatPrice(1999);     // &quot;$19.99&quot;
-Numbers::applyDiscount($price, 20);    // and applyIncrement</code></pre>
+Numbers::applyDiscount($price, 20);    // and applyIncrement, addTax</code></pre>
 <pre><code class="language-php">Numbers::formatInt(1234567);        // &quot;1,234,567&quot;
 Numbers::formatFloat(1234.5, 2);    // &quot;1,234.50&quot;
 Numbers::toBytesString(1048576);    // &quot;1 MB&quot;
