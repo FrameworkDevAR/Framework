@@ -6,6 +6,7 @@ use Framework\Notification\NotificationResult;
 
 use Framework\Database\Model\Model;
 use Framework\Database\Model\Field;
+use Framework\Database\Model\Index;
 use Framework\Database\Model\Requested;
 use Framework\Database\Model\Expression;
 use Framework\Database\Model\Relation;
@@ -22,6 +23,8 @@ use Framework\Utils\JSON;
     canCreate:     true,
     canEdit:       true,
 )]
+#[Index([ "credentialID", "currentUser", "createdTime" ])]
+#[Index([ "notificationResult", "createdTime" ])]
 class NotificationQueueModel {
 
     #[Field(isID: true), Requested(isMultiID: true)]
