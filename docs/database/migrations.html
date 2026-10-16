@@ -168,6 +168,28 @@ class M20260805T143022 implements DataMigration {
 table. Pending files are found by comparing the folder against that table, so an applied migration is never run
 again — and <a href="#config">setLastApplied()</a> pre-marks everything up to a point when adopting the system.</p>
 
+<h2 id="dev">Dev migrations</h2>
+<p>While a feature is built its data changes many times, and most of those changes only matter to the databases
+of development. A dev migration is one of those: it is created with <code>--dev</code>, goes into a
+<code>dev</code> directory of its own and is named with a <code>dev-</code> prefix, so it never clashes with the
+ones that are kept:</p>
+<pre><code class="language-bash">./framework migration --dev --title=&quot;Rename the draft column&quot;</code></pre>
+<pre><code class="language-bash">config/migrations/
+├── 2026/
+│   └── 10/
+│       └── 2026-10-16-101500.php
+└── dev/
+    └── dev-2026-10-16-101800.php</code></pre>
+<p>It is written like any other data migration, and <code>migrate</code> runs it and stores it by name only in
+the environments set with <code>setDevEnvironments()</code>, which are the local one by default. Everywhere else
+it is skipped, so one that is left in a release does nothing there:</p>
+<figure class="code"><figcaption class="code-tab">config/Migration.config.php</figcaption><pre><code class="language-php">Migration::setDevEnvironments(&quot;local&quot;, &quot;dev&quot;);</code></pre></figure>
+<p>Once it ran everywhere it had to, the file is no longer needed and is deleted, which is safe since a
+migration is only read while it is pending. <code>getDevNames()</code> returns the ones still there, which the
+<code>migrate</code> also counts, and <code>deleteDev()</code> removes one. What a feature needs in production
+goes into a normal migration that leads to the final state, and as it also runs where the dev ones already did,
+it checks the data before it changes it.</p>
+
 <h2 id="post-deploy">A step for after the deploy</h2>
 <p>A deploy usually migrates the database first and swaps the code afterwards, so for a while the old code keeps
 writing to a schema that is already the new one. A migration that fills a new column from existing data fills
