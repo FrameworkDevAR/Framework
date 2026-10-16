@@ -31,8 +31,9 @@ class DataMigrationLiveTest extends LiveTestCase {
 
     private const FixtureDir = "tests/Database/.tmp_migrations";
 
-    private mixed $lastApplied    = null;
-    private mixed $migrationsPath = null;
+    private mixed $lastApplied     = null;
+    private mixed $migrationsPath  = null;
+    private mixed $devEnvironments = null;
 
 
     protected function setUp(): void {
@@ -41,6 +42,7 @@ class DataMigrationLiveTest extends LiveTestCase {
 
         $this->lastApplied    = $this->getPrivateStaticProperty(Migration::class, "lastApplied");
         $this->migrationsPath = $this->getPrivateStaticProperty(Migration::class, "migrationsPath");
+        $this->devEnvironments = $this->getPrivateStaticProperty(Migration::class, "devEnvironments");
         $this->query("DELETE FROM `migrations`");
         RanMigrations::reset();
         Storage::createDir($this->basePath());
@@ -50,6 +52,7 @@ class DataMigrationLiveTest extends LiveTestCase {
     protected function tearDown(): void {
         $this->setPrivateStaticProperty(Migration::class, "lastApplied", $this->lastApplied);
         $this->setPrivateStaticProperty(Migration::class, "migrationsPath", $this->migrationsPath);
+        $this->setPrivateStaticProperty(Migration::class, "devEnvironments", $this->devEnvironments);
         Storage::deleteDir($this->basePath());
         RanMigrations::reset();
     }
@@ -139,15 +142,16 @@ class DataMigrationLiveTest extends LiveTestCase {
      * would leave a handful of migrations open. So the variable it reads to
      * know where it is running is taken away for as long as this takes
      * @param string $title
+     * @param bool   $dev   Optional.
      * @return string
      */
-    private function create(string $title): string {
+    private function create(string $title, bool $dev = false): string {
         $termProgram = getenv("TERM_PROGRAM");
         putenv("TERM_PROGRAM");
 
         ob_start();
         try {
-            Migration::createMigration($title);
+            Migration::createMigration($title, $dev);
         } finally {
             $output = ob_get_clean();
             if ($termProgram !== false) {
@@ -165,6 +169,16 @@ class DataMigrationLiveTest extends LiveTestCase {
     private function fileOf(string $name): string {
         $parts = explode("-", $name);
         return $this->basePath("{$parts[0]}/{$parts[1]}") . "/$name.php";
+    }
+
+    /**
+     * Makes the Dev Migrations run in the Environment of the tests, or in no other
+     * @param bool $canRun
+     * @return void
+     */
+    private function setDevRuns(bool $canRun): void {
+        $environment = $canRun ? Configs::getEnvironment() : "nowhere";
+        Migration::setDevEnvironments($environment);
     }
 
     /**
@@ -195,6 +209,21 @@ class DataMigrationLiveTest extends LiveTestCase {
             $output = ob_get_clean();
         }
         return (string)$output;
+    }
+
+    /**
+     * Returns the Dev Migrations to delete against the given applied ones, with what it printed
+     * @param list<string> $envApplied
+     * @return array{names:list<string>,text:string}
+     */
+    private function getToDelete(array $envApplied): array {
+        ob_start();
+        try {
+            $names = Migration::getDevToDelete($envApplied, "dev");
+        } finally {
+            $output = ob_get_clean();
+        }
+        return [ "names" => $names, "text" => (string)$output ];
     }
 
     /**
@@ -627,5 +656,138 @@ class DataMigrationLiveTest extends LiveTestCase {
         }
 
         $this->assertStringContainsString("Using ENV file: staging", $output);
+    }
+
+
+
+    public function testADevMigrationIsCreatedInItsFolder(): void {
+        $this->setDevRuns(true);
+        $output = $this->create("The dev one", dev: true);
+
+        $names = Migration::getDevNames();
+        $this->assertCount(1, $names);
+        $this->assertMatchesRegularExpression("/^dev-\d{4}-\d{2}-\d{2}-\d{6}$/", $names[0]);
+        $this->assertStringContainsString("Created the migration", $output);
+        $this->assertTrue(Storage::fileExists($this->basePath("dev"), "{$names[0]}.php"));
+    }
+
+    public function testADevMigrationCarriesAClassOfItsOwn(): void {
+        // A normal one created in the same second has the same date, so the
+        // Dev one changes the letter of the class to not clash with it
+        $this->create("The dev one", dev: true);
+
+        $name     = Migration::getDevNames()[0];
+        $contents = Storage::readFile($this->basePath("dev") . "/$name.php");
+        $this->assertMatchesRegularExpression("/class D\d{8}T\d{6} implements/", $contents);
+    }
+
+    public function testADevMigrationRunsWhereItCan(): void {
+        $this->writeMigration("2020-01-01-000040");
+        $this->writeMigration("dev-2020-01-01-000041", dir: "dev");
+        $this->setDevRuns(true);
+
+        $output = $this->apply();
+
+        $this->assertSame(
+            [ "2020-01-01-000040", "dev-2020-01-01-000041" ],
+            RanMigrations::getAll(),
+        );
+        $this->assertContains("dev-2020-01-01-000041", MigrationData::getAppliedNames());
+        $this->assertStringContainsString("There are 1 dev migrations", $output);
+    }
+
+    public function testADevMigrationIsSkippedElsewhere(): void {
+        $this->writeMigration("2020-01-01-000042");
+        $this->writeMigration("dev-2020-01-01-000043", dir: "dev");
+        $this->setDevRuns(false);
+
+        $output = $this->apply();
+
+        $this->assertSame([ "2020-01-01-000042" ], RanMigrations::getAll());
+        $this->assertSame([ "2020-01-01-000042" ], array_keys($this->find()));
+        $this->assertStringContainsString("Skipped 1 dev migrations", $output);
+    }
+
+    public function testADevMigrationIsNotOnlyLocal(): void {
+        // The Environments replace the default one, which is only the local
+        Migration::setDevEnvironments("local", "dev");
+
+        $this->assertSame(
+            [ "local", "dev" ],
+            $this->getPrivateStaticProperty(Migration::class, "devEnvironments"),
+        );
+    }
+
+    public function testTheDevNamesAreSorted(): void {
+        $this->writeMigration("dev-2021-01-01-000044", dir: "dev");
+        $this->writeMigration("dev-2020-01-01-000045", dir: "dev");
+        $this->writeMigration("2020-01-01-000046");
+
+        $this->assertSame(
+            [ "dev-2020-01-01-000045", "dev-2021-01-01-000044" ],
+            Migration::getDevNames(),
+        );
+    }
+
+    public function testThereAreNoDevNames(): void {
+        $this->assertSame([], Migration::getDevNames());
+    }
+
+    public function testADevMigrationIsDeleted(): void {
+        $this->writeMigration("dev-2020-01-01-000047", dir: "dev");
+
+        $this->assertTrue(Migration::deleteDev("dev-2020-01-01-000047"));
+        $this->assertSame([], Migration::getDevNames());
+    }
+
+    public function testADevMigrationAppliedEverywhereIsToDelete(): void {
+        $this->writeMigration("dev-2020-01-01-000049", dir: "dev");
+        $this->setDevRuns(true);
+        $this->apply();
+
+        $output = $this->getToDelete([ "dev-2020-01-01-000049" ]);
+
+        $this->assertSame([ "dev-2020-01-01-000049" ], $output["names"]);
+        $this->assertStringContainsString("Applied everywhere: dev-2020-01-01-000049", $output["text"]);
+    }
+
+    public function testADevMigrationNotAppliedHereIsKept(): void {
+        $this->writeMigration("dev-2020-01-01-000050", dir: "dev");
+
+        $output = $this->getToDelete([ "dev-2020-01-01-000050" ]);
+
+        $this->assertSame([], $output["names"]);
+        $this->assertStringContainsString("Keeping dev-2020-01-01-000050: not applied here", $output["text"]);
+    }
+
+    public function testADevMigrationNotAppliedInTheEnvironmentIsKept(): void {
+        $this->writeMigration("dev-2020-01-01-000051", dir: "dev");
+        $this->setDevRuns(true);
+        $this->apply();
+
+        $output = $this->getToDelete([]);
+
+        $this->assertSame([], $output["names"]);
+        $this->assertStringContainsString("Keeping dev-2020-01-01-000051: not applied in dev", $output["text"]);
+    }
+
+    public function testOnlyTheDevMigrationsAreToDelete(): void {
+        // A normal one applied in both places is never a Dev one to delete
+        $this->writeMigration("2020-01-01-000052");
+        $this->apply();
+
+        $output = $this->getToDelete([ "2020-01-01-000052" ]);
+
+        $this->assertSame([], $output["names"]);
+        $this->assertSame("", $output["text"]);
+    }
+
+    public function testOnlyADevMigrationIsDeleted(): void {
+        // The name of a normal one is never a Dev one, so it is left alone
+        $this->writeMigration("2020-01-01-000048", dir: "2020/01");
+
+        $this->assertFalse(Migration::deleteDev("2020-01-01-000048"));
+        $this->assertFalse(Migration::deleteDev("../2020/01/2020-01-01-000048"));
+        $this->assertCount(1, $this->find());
     }
 }

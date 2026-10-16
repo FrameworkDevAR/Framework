@@ -29,9 +29,13 @@ use Framework\Utils\Strings;
 class Migration {
 
     private const Template = "src/Database/Template/Migration.mu";
+    private const DevName  = "dev";
 
     private static string $migrationsPath = "config/migrations";
     private static string $lastApplied    = "";
+
+    /** @var list<string> */
+    private static array $devEnvironments = [ "local" ];
 
 
     /** @var list<array{from:string,to:string}> */
@@ -65,6 +69,16 @@ class Migration {
     #[NotTested("It needs a Database")]
     public static function setLastApplied(string $lastApplied): void {
         self::$lastApplied = $lastApplied;
+    }
+
+    /**
+     * Sets the Environments where the Dev Migrations run, which are never run anywhere else
+     * @param string ...$environments
+     * @return void
+     */
+    #[NotTested("It needs a Database")]
+    public static function setDevEnvironments(string ...$environments): void {
+        self::$devEnvironments = array_values($environments);
     }
 
     /**
@@ -118,11 +132,12 @@ class Migration {
     /**
      * Creates a new Data Migration with the given Title
      * @param string $title Optional.
+     * @param bool   $dev   Optional.
      * @return void
      */
     #[ConsoleCommand("migration")]
     #[NotTested("It needs a Database")]
-    public static function createMigration(string $title = ""): void {
+    public static function createMigration(string $title = "", bool $dev = false): void {
         DiscoveryConfig::load();
 
         $title = Strings::trim($title);
@@ -135,26 +150,26 @@ class Migration {
         }
 
         // The name is the date, so the migrations of every branch can live together,
-        // and they are grouped in a directory per year and month
+        // and they are grouped in a directory per year and month, while the Dev ones
+        // go together in their own directory, so they are easy to find and delete
         $date     = Date::now();
-        $dirName  = Storage::parsePath($date->getYear(), $date->getMonthZero());
+        $dirName  = self::getNewDirName($date, $dev);
         $basePath = Application::getBasePath(self::$migrationsPath, $dirName);
 
         // Move to the next second while there is a migration with the same name
-        $name     = $date->format("Y-m-d-His");
-        $fileName = "$name.php";
+        $fileName = self::getNewFileName($date, $dev);
         while (Storage::fileExists($basePath, $fileName)) {
             $date     = $date->add(seconds: 1);
-            $dirName  = Storage::parsePath($date->getYear(), $date->getMonthZero());
+            $dirName  = self::getNewDirName($date, $dev);
             $basePath = Application::getBasePath(self::$migrationsPath, $dirName);
-            $name     = $date->format("Y-m-d-His");
-            $fileName = "$name.php";
+            $fileName = self::getNewFileName($date, $dev);
         }
 
         // The class has the same date as the name, so it is unique too
+        $prefix   = $dev ? "D" : "M";
         $template = Storage::readFile(Package::getBasePath(self::Template));
         $contents = Mustache::render($template, [
-            "class" => "M" . $date->format("Ymd") . "T" . $date->format("His"),
+            "class" => $prefix . $date->format("Ymd") . "T" . $date->format("His"),
             "title" => $title,
         ]);
 
@@ -166,6 +181,30 @@ class Migration {
 
         // Open the new Migration, so it can be edited right away
         Console::openFile(Storage::parsePath($basePath, $fileName));
+    }
+
+    /**
+     * Returns the Directory of a new Migration
+     * @param Date $date
+     * @param bool $dev
+     * @return string
+     */
+    private static function getNewDirName(Date $date, bool $dev): string {
+        if ($dev) {
+            return self::DevName;
+        }
+        return Storage::parsePath($date->getYear(), $date->getMonthZero());
+    }
+
+    /**
+     * Returns the File Name of a new Migration
+     * @param Date $date
+     * @param bool $dev
+     * @return string
+     */
+    private static function getNewFileName(Date $date, bool $dev): string {
+        $prefix = $dev ? self::DevName . "-" : "";
+        return $prefix . $date->format("Y-m-d-His") . ".php";
     }
 
 
@@ -283,6 +322,15 @@ class Migration {
         } else {
             print("- No data migrations required\n");
         }
+
+        // The Dev Migrations are deleted once they ran everywhere, so the ones
+        // still there are shown to keep them from piling up
+        $devAmount = count(self::getDevNames());
+        if ($devAmount > 0 && self::canRunDev()) {
+            print("- There are $devAmount dev migrations\n");
+        } elseif ($devAmount > 0) {
+            print("- Skipped $devAmount dev migrations\n");
+        }
         return $amount > 0;
     }
 
@@ -373,11 +421,16 @@ class Migration {
     #[NotTested("It needs a Database")]
     public static function getMigrations(string $interface): array {
         $basePath  = Application::getBasePath(self::$migrationsPath);
+        $devPath   = Storage::addLastSlash(self::getDevPath());
+        $canRunDev = self::canRunDev();
         $filePaths = Storage::getFilesInDir($basePath, recursive: true);
         $result    = [];
 
         foreach ($filePaths as $filePath) {
             if (!Strings::endsWith($filePath, ".php")) {
+                continue;
+            }
+            if (!$canRunDev && Strings::startsWith($filePath, $devPath)) {
                 continue;
             }
 
@@ -433,5 +486,79 @@ class Migration {
         }
 
         print("- Stored $index migrations that were already applied\n");
+    }
+
+
+
+    /**
+     * Returns true if the Dev Migrations can run in the current Environment
+     * @return bool
+     */
+    #[NotTested("It needs a Database")]
+    public static function canRunDev(): bool {
+        return Arrays::contains(self::$devEnvironments, Configs::getEnvironment());
+    }
+
+    /**
+     * Returns the Names of the Dev Migrations, sorted
+     * @return list<string>
+     */
+    #[NotTested("It needs a Database")]
+    public static function getDevNames(): array {
+        $result = [];
+        foreach (Storage::getFilesInDir(self::getDevPath()) as $fileName) {
+            if (Strings::endsWith($fileName, ".php")) {
+                $result[] = Storage::getFileName($fileName);
+            }
+        }
+        sort($result, SORT_NATURAL | SORT_FLAG_CASE);
+        return $result;
+    }
+
+    /**
+     * Returns the Names of the Dev Migrations applied here and in the given Environment
+     * @param list<string> $envApplied
+     * @param string       $envName
+     * @return list<string>
+     */
+    #[NotTested("It needs a Database")]
+    public static function getDevToDelete(array $envApplied, string $envName): array {
+        // A Dev Migration is only deleted once it ran in both places, as the ones
+        // of a branch that did not reach the Environment yet still have to run there
+        $localApplied = MigrationData::getAppliedNames();
+        $result       = [];
+
+        foreach (self::getDevNames() as $name) {
+            if (!Arrays::contains($localApplied, $name)) {
+                print("- Keeping $name: not applied here\n");
+            } elseif (!Arrays::contains($envApplied, $name)) {
+                print("- Keeping $name: not applied in $envName\n");
+            } else {
+                print("- Applied everywhere: $name\n");
+                $result[] = $name;
+            }
+        }
+        return $result;
+    }
+
+    /**
+     * Deletes the Dev Migration with the given Name
+     * @param string $name
+     * @return bool
+     */
+    #[NotTested("It needs a Database")]
+    public static function deleteDev(string $name): bool {
+        if (!Arrays::contains(self::getDevNames(), $name)) {
+            return false;
+        }
+        return Storage::deleteFile(self::getDevPath(), "$name.php");
+    }
+
+    /**
+     * Returns the Path of the Directory with the Dev Migrations
+     * @return string
+     */
+    private static function getDevPath(): string {
+        return Application::getBasePath(self::$migrationsPath, self::DevName);
     }
 }
