@@ -174,6 +174,7 @@ class SchemaFactory {
 
             // Get data from the Properties
             $hasStatus       = false;
+            $statusIsKey     = true;
             $mainFields      = [];
             $validates       = [];
             $virtualFields   = [];
@@ -219,6 +220,7 @@ class SchemaFactory {
                 // Get the Attributes
                 $propAttributes = $prop->getAttributes();
                 $field          = null;
+                $fieldArgs      = [];
                 $validate       = null;
                 $virtual        = null;
                 $requested      = null;
@@ -236,7 +238,8 @@ class SchemaFactory {
                     }
 
                     if ($instance instanceof Field) {
-                        $field = $instance;
+                        $field     = $instance;
+                        $fieldArgs = $propAttribute->getArguments();
                     } elseif ($instance instanceof Validate) {
                         $validate = $instance;
                     } elseif ($instance instanceof Virtual) {
@@ -259,6 +262,13 @@ class SchemaFactory {
                 // STATUS: If the Type is Status, mark it in the Model.
                 if ($isStatus) {
                     $hasStatus = true;
+
+                    // The isKey of a Field defaults to false, and the status is keyed
+                    // unless its Field turns it off by name
+                    if (isset($fieldArgs["isKey"])) {
+                        $statusIsKey = (bool)$fieldArgs["isKey"];
+                    }
+
                     foreach ($propAttributes as $attribute) {
                         $instance = $attribute->newInstance();
                         if ($instance instanceof State) {
@@ -366,6 +376,7 @@ class SchemaFactory {
                 canEdit:         $model->canEdit,
                 canDelete:       $model->canDelete,
                 skipList:        $model->skipList,
+                statusIsKey:     $statusIsKey,
                 validates:       $validates,
                 mainFields:      $mainFields,
                 virtualFields:   $virtualFields,

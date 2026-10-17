@@ -346,6 +346,9 @@ state out of the pickers while still being a valid stored value, which is what y
 <a href="schema.html#status"><code>&lt;Name&gt;Status</code></a> enum with its names, colors and select list ready
 to use. A model that declares no states falls back to the framework&#39;s <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Database/Status/Status.php" target="_blank" rel="noopener noreferrer"><code>Status</code></a> — a plain
 <code>Active</code> / <code>Inactive</code> pair.</p>
+<p>The status column gets its own index, as the listings filter by it. A status of a few values is a poor index
+alone, so a model whose <a href="#index">indexes</a> already cover it with a more selective column turns it off
+with <code>#[Field(isKey: false)]</code> on the status.</p>
 <p>Like a <a href="#field-files">file</a>, a status is worth more than its column. The
 <a href="schema.html#entity">entity</a> gains two extra properties beside it, already resolved — so a listing can
 render the label and its colored badge straight from the row:</p>
