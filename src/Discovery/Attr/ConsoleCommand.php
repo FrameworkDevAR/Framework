@@ -111,14 +111,17 @@ class ConsoleCommand {
 
         // Parse the Arguments
         $argsData = [];
+        $argsText = [];
         foreach ($arguments as $argument) {
             $name  = Strings::substringBefore($argument, "=");
             $name  = Strings::stripStart($name, "--");
             $name  = Strings::toLowerCase($name);
 
             $value = true;
+            unset($argsText[$name]);
             if (Strings::contains($argument, "=")) {
                 $value = Strings::substringAfter($argument, "=");
+                $argsText[$name] = $value;
                 if (Numbers::isValid($value)) {
                     // Kept apart, since casting every number the same way handed
                     // a float parameter asked for 1.5 the integer 1
@@ -148,7 +151,15 @@ class ConsoleCommand {
                 }
                 continue;
             }
-            $argValues[$name] = $argsData[$nameIdx];
+            // A string parameter takes what was written, as the number it was read as
+            // turned a version like 4.0 into 4
+            $type     = $param->getType();
+            $isString = $type instanceof ReflectionNamedType && $type->getName() === "string";
+            if ($isString && isset($argsText[$nameIdx])) {
+                $argValues[$name] = $argsText[$nameIdx];
+            } else {
+                $argValues[$name] = $argsData[$nameIdx];
+            }
         }
 
         try {

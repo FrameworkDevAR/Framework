@@ -185,6 +185,8 @@ class ConsoleCommandTest extends TestCase {
 
             // A number reaching a string parameter comes back as it was written
             "a number as text" => [ "withArgs", [ "--name=2024" ], [ "name" => "2024", "amount" => 0, "force" => false ] ],
+            "a decimal as text" => [ "withArgs", [ "--name=4.0" ], [ "name" => "4.0", "amount" => 0, "force" => false ] ],
+            "a version as text" => [ "withArgs", [ "--name=4.10" ], [ "name" => "4.10", "amount" => 0, "force" => false ] ],
 
             // A bare flag is true whatever the parameter asks for, which a
             // string one is handed as "1"
