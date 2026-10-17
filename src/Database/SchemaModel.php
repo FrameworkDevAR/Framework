@@ -39,6 +39,7 @@ class SchemaModel {
     public bool $canEdit          = false;
     public bool $canDelete        = false;
     public bool $skipList         = false;
+    public bool $statusIsKey      = true;
 
 
     // Subclass Names
@@ -116,6 +117,7 @@ class SchemaModel {
      * @param bool             $canEdit         Optional.
      * @param bool             $canDelete       Optional.
      * @param bool             $skipList        Optional.
+     * @param bool             $statusIsKey     Optional.
      * @param list<Validate>   $validates       Optional.
      * @param list<Field>      $mainFields      Optional.
      * @param list<Virtual>    $virtualFields   Optional.
@@ -141,6 +143,7 @@ class SchemaModel {
         bool $canEdit = false,
         bool $canDelete = false,
         bool $skipList = false,
+        bool $statusIsKey = true,
         array $validates = [],
         array $mainFields = [],
         array $virtualFields = [],
@@ -169,6 +172,7 @@ class SchemaModel {
         $this->canEdit         = $canEdit;
         $this->canDelete       = $canDelete;
         $this->skipList        = $skipList;
+        $this->statusIsKey     = $statusIsKey;
 
         $this->validates       = $validates;
         $this->mainFields      = $mainFields;
@@ -239,7 +243,7 @@ class SchemaModel {
             $this->extraFields[] = Field::create(
                 type:     FieldType::String,
                 name:     "status",
-                isKey:    true,
+                isKey:    $this->statusIsKey,
                 isStatus: true,
             );
         }

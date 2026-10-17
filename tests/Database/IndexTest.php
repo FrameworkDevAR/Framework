@@ -155,6 +155,36 @@ class IndexTest extends TestCase {
         $this->assertSame([ "STORE_ID", "name" ], $model->indexes[0]->dbColumns);
     }
 
+    /**
+     * The status of a Model gets its own key unless its Field turns it off
+     * @param bool $statusIsKey
+     * @param bool $isKey
+     * @return void
+     */
+    #[DataProvider("providerStatusKey")]
+    public function testTheStatusKeyCanBeTurnedOff(bool $statusIsKey, bool $isKey): void {
+        $model = new SchemaModel(
+            name:        "Product",
+            hasStatus:   true,
+            statusIsKey: $statusIsKey,
+            mainFields:  self::fields(),
+        );
+
+        $statuses = array_values(array_filter($model->fields, fn(Field $field) => $field->isStatus));
+        $this->assertCount(1, $statuses);
+        $this->assertSame($isKey, $statuses[0]->isKey);
+    }
+
+    /**
+     * @return array<string,array{bool,bool}>
+     */
+    public static function providerStatusKey(): array {
+        return [
+            "keyed by default" => [ true, true ],
+            "turned off"       => [ false, false ],
+        ];
+    }
+
     public function testAnIndexWithANameTooLongIsLeftOut(): void {
         $name  = str_repeat("a", Index::MaxNameLength + 1);
         $model = new SchemaModel(
