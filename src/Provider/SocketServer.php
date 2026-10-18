@@ -3,9 +3,12 @@ namespace Framework\Provider;
 
 use Framework\Analysis\Attr\NotTested;
 use Framework\Date\Date;
+use Framework\Log\SocketLog;
 use Framework\Provider\Curl;
 use Framework\Provider\Type\CurlMethod;
 use Framework\System\Config;
+use Framework\Utils\Arrays;
+use Framework\Utils\Dictionary;
 
 use Firebase\JWT\JWT;
 
@@ -89,7 +92,7 @@ class SocketServer {
 
         // A failure is not retried, as the polling of the Apps brings the change. The
         // timeout is not of a second, as curl then fails to resolve the host now and then
-        Curl::execute(
+        $result = new Dictionary(Curl::execute(
             CurlMethod::POST,
             Config::getSocketServer() . "publish",
             params:      [ "topics" => $topics, "sender" => self::$sender ],
@@ -97,7 +100,32 @@ class SocketServer {
             jsonBody:    true,
             returnError: true,
             timeout:     2,
+        ));
+
+        // It is only counted, to see in the Dashboard what the Socket Server did not take
+        if ($result->isEmpty() || $result->has("error")) {
+            SocketLog::add($result->getString("error", "No answer"));
+        }
+    }
+
+    /**
+     * Returns the status of the Socket Server, or an empty list when it does not answer
+     * @return array<string,mixed>
+     */
+    #[NotTested("It needs a Socket Server")]
+    public static function getStatus(): array {
+        $result = Curl::execute(
+            CurlMethod::GET,
+            Config::getSocketServer() . "status",
+            headers:     [ "Authorization" => "Bearer " . Config::getSocketSecret() ],
+            returnError: true,
+            timeout:     2,
         );
+        $status = Arrays::toStringMixedMap($result);
+        if (!isset($status["status"])) {
+            return [];
+        }
+        return $status;
     }
 
     /**

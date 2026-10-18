@@ -705,6 +705,46 @@
             }
         ]
     },
+    "log_socket": {
+        "description": "The publishes the Socket Server did not take, counted per minute.",
+        "fields": [
+            {
+                "name": "LOG_ID",
+                "type": "number",
+                "isPrimary": true
+            },
+            {
+                "name": "minute",
+                "type": "number",
+                "isKey": true
+            },
+            {
+                "name": "environment",
+                "type": "string"
+            },
+            {
+                "name": "error",
+                "type": "string"
+            },
+            {
+                "name": "amount",
+                "type": "number"
+            },
+            {
+                "name": "isResolved",
+                "type": "boolean"
+            },
+            {
+                "name": "createdTime",
+                "type": "date"
+            },
+            {
+                "name": "modifiedTime",
+                "type": "date"
+            }
+        ],
+        "foreigns": []
+    },
     "migrations": {
         "description": "The data migrations that already ran, so each one is applied once.",
         "fields": [
