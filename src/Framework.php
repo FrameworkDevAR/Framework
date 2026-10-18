@@ -7,6 +7,7 @@ use Framework\Auth\Auth;
 use Framework\Discovery\DiscoveryConfig;
 use Framework\Intl\NLS;
 use Framework\Log\ErrorLog;
+use Framework\Provider\SocketServer;
 use Framework\System\Access;
 use Framework\System\Config;
 use Framework\System\Router;
@@ -44,6 +45,7 @@ class Framework {
         $refreshToken = $request->getString("xRefreshToken");
         $langcode     = $request->getString("xLangcode");
         $timezone     = $request->getInt("xTimezone");
+        $socketID     = $request->getString("xSocketID");
 
         // Remove sensitive data
         $request->remove("route");
@@ -52,12 +54,14 @@ class Framework {
         $request->remove("xRefreshToken");
         $request->remove("xLangcode");
         $request->remove("xTimezone");
+        $request->remove("xSocketID");
 
         // The Route is required
         if ($route === "") {
             return false;
         }
         self::$route = $route;
+        SocketServer::setSender($socketID);
 
         // Try getting the Token from the Header
         if ($token === "") {

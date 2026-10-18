@@ -305,6 +305,35 @@ class ConfigsTest extends TestCase {
         $this->assertSame("local", $result["environment"]);
     }
 
+    public function testTheLocalFileWritesOverTheApp(): void {
+        $appPath = $this->writeFiles([
+            ".env"       => "ONE = 1\nTWO = 2",
+            ".env.local" => "TWO = 22",
+        ]);
+
+        $result = Configs::readConfigs($appPath, $appPath, "nobody.test");
+
+        $this->assertSame([ "ONE" => 1, "TWO" => 22 ], $result["data"]);
+        $this->assertSame("local", $result["environment"]);
+        $this->assertSame([], $result["environments"]);
+    }
+
+    public function testTheLocalFileIsNotReadInAnotherEnvironment(): void {
+        // A server has no local file, but a checkout that runs a command against
+        // a server must not take the values of the machine there
+        $appPath = $this->writeFiles([
+            ".env"            => "TWO = 2",
+            ".env.local"      => "TWO = 22",
+            ".env.production" => "URL = \"https://app.test/\"",
+        ]);
+
+        $byHost = Configs::readConfigs($appPath, $appPath, "app.test");
+        $byName = Configs::readConfigs($appPath, $appPath, "nobody.test", ".env.production");
+
+        $this->assertSame(2, $byHost["data"]["TWO"]);
+        $this->assertSame(2, $byName["data"]["TWO"]);
+    }
+
     public function testTheFileOfTheHostIsTheOneRead(): void {
         $appPath = $this->writeFiles([
             ".env"            => "URL = \"https://local.test/\"\nNAME = \"the app\"",

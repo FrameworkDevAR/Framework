@@ -6,6 +6,7 @@ use Framework\Auth\Auth;
 use Framework\IO\Request;
 use Framework\IO\Response;
 use Framework\Log\ErrorLog;
+use Framework\Provider\SocketServer;
 use Framework\System\Access;
 
 use Tests\LiveTestCase;
@@ -45,6 +46,7 @@ class FrameworkTest extends LiveTestCase {
         $this->setPrivateStaticProperty(Framework::class, "route", "");
         $this->setPrivateStaticProperty(Auth::class, "accessName", Access::General);
         $this->setPrivateStaticProperty(Auth::class, "apiToken", "");
+        SocketServer::setSender("");
         Framework::setResponse(null);
     }
 
@@ -120,6 +122,17 @@ class FrameworkTest extends LiveTestCase {
         $this->assertFalse($request->hasValue("xAccessToken"));
         $this->assertFalse($request->hasValue("xRefreshToken"));
         $this->assertTrue($request->hasValue("name"));
+    }
+
+    public function testTheSocketOfTheAppGoesToTheSocketServer(): void {
+        // The App sends the ID of its Socket, so the events of the request
+        // can say which one caused them
+        $this->useRequest([ "route" => "nothing/here", "xSocketID" => "a-tab" ]);
+
+        $this->execute();
+
+        $this->assertFalse(Framework::getRequest()->hasValue("xSocketID"));
+        $this->assertSame("a-tab", $this->getPrivateStaticProperty(SocketServer::class, "sender"));
     }
 
     public function testTheAnswerIsJson(): void {

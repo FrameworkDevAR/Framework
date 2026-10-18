@@ -119,8 +119,8 @@ class Configs implements DiscoveryBuilder {
         } else {
             $files = Storage::getFilesInDir($appPath);
             foreach ($files as $file) {
-                // Skip the example and main env files
-                if ($file === ".env.example" || $file === ".env" ||
+                // Skip the example, the main and the local env files
+                if ($file === ".env.example" || $file === ".env" || $file === ".env.local" ||
                     !Strings::startsWith($file, ".env.")
                 ) {
                     continue;
@@ -144,6 +144,12 @@ class Configs implements DiscoveryBuilder {
                 }
                 $environments[] = $name;
             }
+        }
+
+        // The local file is not in the repository, so each checkout of the App can
+        // change what it needs, like its ports, without touching the shared files
+        if ($environment === "local") {
+            $replace = Arrays::merge($replace, self::loadENV($appPath, ".env.local"));
         }
 
         return [
