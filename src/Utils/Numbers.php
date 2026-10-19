@@ -2,9 +2,6 @@
 namespace Framework\Utils;
 
 use Framework\Date\Date;
-use Framework\Utils\Strings;
-
-use Throwable;
 
 /**
  * Several Numbers Utils
@@ -571,56 +568,5 @@ class Numbers {
         $result       = rad2deg($result);
         $result       = $result * 60 * 1.1515 * 1.609344;
         return $result;
-    }
-
-    /**
-     * Calculates the Expression
-     * @param string $expression
-     * @return int|float
-     */
-    public static function calcExpression(string $expression): int|float {
-        $expression = Strings::toLowerCase(trim($expression));
-
-        // Check for functions
-        $functions  = [ "floor", "ceil", "round" ];
-        $function   = "";
-        foreach ($functions as $func) {
-            if (Strings::startsWith($expression, $func)) {
-                $expression = Strings::substringAfter($expression, $func);
-                $function   = $func;
-            }
-        }
-
-        // Sanitize the input
-        $expression = Strings::replacePattern($expression, "/[^0-9.,+\-\*\/\^%()]/", "");
-
-        // Convert percentages to decimal
-        $expression = Strings::replacePattern($expression, "/([+-])([0-9]+)(%)/", "(\$1\$2/100)");
-        $expression = Strings::replacePattern($expression, "/([0-9]+)(%)/", "(\$1/100)");
-
-        // Fixes some errors
-        $expression = Strings::replacePattern($expression, "/,/", ".");
-        $expression = Strings::replacePattern($expression, "/\.+/", ".");
-        $expression = Strings::replacePattern($expression, "/\(\)/", "");
-        $expression = Strings::replacePattern($expression, "/\+\-/", "-");
-        $expression = Strings::replacePattern($expression, "/--/", "+");
-
-        // There is no expression
-        if ($expression === "") {
-            return 0;
-        }
-
-        // Add the function
-        if ($function !== "") {
-            $expression = "$function($expression)";
-        }
-
-        // Calculate
-        try {
-            $result = @eval("return $expression;"); // phpcs:ignore
-            return self::toIntOrFloat($result);
-        } catch (Throwable $e) {
-            return 0;
-        }
     }
 }

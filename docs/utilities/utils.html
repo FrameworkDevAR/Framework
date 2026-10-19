@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Utils — Framework</title>
-    <meta name="description" content="Strings, Arrays, Numbers, Dictionary and more.">
+    <meta name="description" content="Strings, Arrays, Numbers, Calculator, Dictionary and more.">
     <meta name="theme-color" content="#2f6fd0">
     <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
     <link rel="mask-icon" href="../assets/favicon.svg" color="#2f6fd0">
@@ -176,6 +176,42 @@ Numbers::toBytesString(1048576);    // &quot;1 MB&quot;
 Numbers::percent(30, 200);          // 15
 Numbers::zerosPad(7, 3);            // &quot;007&quot;
 Numbers::coordinatesDistance($lat1, $lng1, $lat2, $lng2);</code></pre>
+
+<h2 id="calculator">Calculator</h2>
+<p><a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Utils/Calculator.php" target="_blank" rel="noopener noreferrer"><code>Calculator</code></a> works out an expression written by a user. Anything that is
+not a number, an operator or one of <code>floor</code>, <code>ceil</code> and <code>round</code> is dropped, and an
+invalid expression gives 0:</p>
+<pre><code class="language-php">use Framework\Utils\Calculator;
+
+Calculator::calculate(&quot;2 + 3 * 4&quot;);     // 14
+Calculator::calculate(&quot;200 * 10%&quot;);     // 20
+Calculator::calculate(&quot;round(1,6)&quot;);    // 2</code></pre>
+<p>A text can also have Conditions, written as <code>if(expression, content)</code>. Each one is
+replaced with its content when the expression is true, which is when it is not empty and not 0, and
+a line that only had a false one is removed. The function, when given, returns the value of each
+expression, so the content keeps its own variables to be replaced later:</p>
+<pre><code class="language-php">Calculator::resolveConditions(&quot;Hi if(1, again)&quot;);    // &quot;Hi again&quot;
+Calculator::resolveConditions(&quot;Hi if(0, again)&quot;);    // &quot;Hi &quot;
+
+Calculator::resolveConditions($message, fn (string $expression) =&gt; replaceVariables($expression));</code></pre>
+<p>A value that is shown as several numbers, like a price with an offer, is written as a Vector: a
+template followed by its numbers. The expression is worked out once for each number, and the
+results fill the template, or the last one is used without a format:</p>
+<pre><code class="language-php">$price = Calculator::createVector(&quot;~~USD {0}~~ USD {1}&quot;, [ 120, 95 ]);
+// [[N|~~USD {0}~~ USD {1}|120|95]]
+
+Calculator::calculateVectors(&quot;$price * 2&quot;, withFormat: true);   // &quot;~~USD 240,00~~ USD 190,00&quot;
+Calculator::calculateVectors(&quot;$price * 2&quot;);                     // &quot;190&quot;
+Calculator::formatVector($price);                                 // &quot;~~USD 120,00~~ USD 95,00&quot;
+Calculator::resolveVectors(&quot;$price * 2&quot;);                       // &quot;95 * 2&quot;</code></pre>
+<p>A Vector whose numbers have no single meaning, like a list of prices, is created with
+<code>resolveAsText</code>, so outside a calculation it is its template with its numbers instead of
+its last number. The <code>|</code>, <code>[</code> and <code>]</code> of a template are escaped, so any
+text can be used in it:</p>
+<pre><code class="language-php">$prices = Calculator::createVector(&quot;Single: {0}, Double: {1}&quot;, [ 80, 120 ], resolveAsText: true);
+
+Calculator::resolveVectors($prices);                 // &quot;Single: 80,00, Double: 120,00&quot;
+Calculator::calculateVectors(&quot;$prices * 2&quot;);       // &quot;Single: 160,00, Double: 240,00&quot;</code></pre>
 
 <h2 id="dictionary">Dictionary</h2>
 <p><a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Utils/Dictionary.php" target="_blank" rel="noopener noreferrer"><code>Dictionary</code></a> wraps an array of loose values — decoded JSON, a config block, a database row — and

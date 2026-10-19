@@ -688,37 +688,4 @@ class NumbersTest extends TestCase {
             "symmetry ba"          => [ 51.5074, -0.1278, 40.7128, -74.0060, 5570, 50 ],
         ];
     }
-
-
-    #[DataProvider("providerCalcExpression")]
-    public function testCalcExpression(string $expression, int|float $expected): void {
-        $this->assertEquals($expected, Numbers::calcExpression($expression));
-    }
-
-    public static function providerCalcExpression(): array {
-        return [
-            "basic arithmetic"          => [ "2+3*4", 14 ],
-            "text mixed with numbers"   => [ "a2+3b*4c", 14 ],
-            "text mixed with spaces"    => [ " 2 + abc3*4 ", 14 ],
-            "floor with parentheses"    => [ "floor(2.7)", 2 ],
-            "floor without parentheses" => [ "floor2.7", 2 ],
-            "floor with space"          => [ "floor 2.7", 2 ],
-            "ceil with parentheses"     => [ "ceil(2.1)", 3 ],
-            "round with parentheses"    => [ "round(1.6)", 2 ],
-            "function name with text"   => [ "floor abc2.9", 2 ],
-            "percent basic"             => [ "100*5%", 5 ],
-            "percent 200"               => [ "200*10%", 20 ],
-            "percent negative 1"        => [ "100*-5%", -5 ],
-            "percent negative 2"        => [ "200*-10%", -20 ],
-            "comma decimal separator"   => [ "1,5+2,5", 4 ],
-            "plus minus becomes minus"  => [ "10+-5", 5 ],
-            "minus minus becomes plus"  => [ "10--5", 15 ],
-            "power operator"            => [ "10**5", 100_000 ],
-            "backslash removed"         => [ "2\\+3", 5 ],
-            "empty expression"          => [ "", 0 ],
-            "invalid abc"               => [ "abc", 0 ],
-            "invalid operator sequence" => [ "2+*3", 0 ],
-            "invalid function argument" => [ "round(abc)", 0 ],
-        ];
-    }
 }
