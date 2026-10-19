@@ -263,7 +263,7 @@ class Schema {
         bool $skipSubRequest = false,
         array $withoutSubRequests = [],
     ): Dictionary {
-        $query   = self::generateQuerySort($query, $sort);
+        $query   = self::generateQuerySort($query, $sort, $selects);
         $request = self::requestSchemaData(
             $query,
             $selects,
@@ -329,7 +329,7 @@ class Schema {
         array $joins = [],
         bool $decrypted = false,
     ): string {
-        $query = self::generateQuerySort($query, $sort);
+        $query = self::generateQuerySort($query, $sort, $selects);
         return SelectionBuilder::create(static::getModel(), $query)
             ->addFields($decrypted)
             ->addExpressions()
@@ -665,21 +665,27 @@ class Schema {
 
     /**
      * Generates a Query with Sorting
-     * @param QueryLike|null     $query Optional.
-     * @param SchemaRequest|null $sort  Optional.
+     * @param QueryLike|null       $query   Optional.
+     * @param SchemaRequest|null   $sort    Optional.
+     * @param array<string,string> $selects Optional.
      * @return Query
      */
     private static function generateQuerySort(
         ?QueryLike $query = null,
         ?SchemaRequest $sort = null,
+        array $selects = [],
     ): Query {
         $query = self::generateQuery($query);
 
         if ($sort !== null) {
             // The order comes from the request, so it goes into the SQL only when it names a
-            // column of the Model, or it could break the query or inject another one
-            if (static::getModel()->canSortBy($sort->orderBy)) {
-                $query->orderBy($sort->orderBy, $sort->orderAsc);
+            // column of the Model, or it could break the query or inject another one. The
+            // Selects are named by the code and not by the request, so their names are
+            // also valid, like the sub-select a list adds to sort by a Custom Field
+            $orderBy = $sort->orderBy;
+            $canSort = static::getModel()->canSortBy($orderBy);
+            if ($canSort || Arrays::containsKey($selects, $orderBy)) {
+                $query->orderBy($orderBy, $sort->orderAsc);
             }
             if ($sort->page !== -1 && $sort->amount > 0) {
                 $query->paginate($sort->page, $sort->amount);

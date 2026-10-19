@@ -304,4 +304,44 @@ class SchemaQueryTest extends TestCase {
             "a second statement"    => [ "email; DROP TABLE credential", "" ],
         ];
     }
+
+    /**
+     * The order a request asks for when the list adds its own Selects
+     * @param string $orderBy
+     * @param string $expected
+     * @return void
+     */
+    #[DataProvider("providerSelectSort")]
+    public function testTheListCanBeSortedByASelect(string $orderBy, string $expected): void {
+        $sort    = new SchemaRequest(new Request([ "orderBy" => $orderBy, "orderAsc" => 1 ]));
+        $method  = new ReflectionMethod(CredentialSchema::class, "generateQuerySort");
+        $selects = [ "field5" => "(SELECT 1) AS field5" ];
+        $query   = $method->invoke(null, null, $sort, $selects);
+
+        $this->assertSame($expected, trim(Strings::substringAfter($query->toSQL(), "= ?")));
+    }
+
+    /**
+     * @return array<string,array{string,string}>
+     */
+    public static function providerSelectSort(): array {
+        return [
+            "the name of a select"  => [ "field5", "ORDER BY field5 ASC" ],
+            "a column of the model" => [ "email", "ORDER BY email ASC" ],
+            "another select"        => [ "field6", "" ],
+            "the text of a select"  => [ "(SELECT 1) AS field5", "" ],
+        ];
+    }
+
+    /**
+     * The Selects given as a list have no names, so their positions can not sort it
+     * @return void
+     */
+    public function testAListOfSelectsCanNotSortIt(): void {
+        $sort   = new SchemaRequest(new Request([ "orderBy" => "0", "orderAsc" => 1 ]));
+        $method = new ReflectionMethod(CredentialSchema::class, "generateQuerySort");
+        $query  = $method->invoke(null, null, $sort, [ "(SELECT 1) AS one" ]);
+
+        $this->assertSame("", trim(Strings::substringAfter($query->toSQL(), "= ?")));
+    }
 }
