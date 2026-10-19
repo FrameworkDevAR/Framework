@@ -28,10 +28,12 @@ use Framework\Utils\Strings;
  */
 class Migration {
 
-    private const Template = "src/Database/Template/Migration.mu";
-    private const DevName  = "dev";
+    private const Template  = "src/Database/Template/Migration.mu";
+    private const DevName   = "dev";
+    private const MediaName = "media";
 
     private static string $migrationsPath = "config/migrations";
+    private static string $dataDir        = "";
     private static string $lastApplied    = "";
 
     /** @var list<string> */
@@ -53,11 +55,21 @@ class Migration {
      * @param string $migrationsPath
      * @return void
      */
-    #[NotTested("It needs a Database")]
     public static function setPath(string $migrationsPath): void {
         if ($migrationsPath !== "") {
             self::$migrationsPath = $migrationsPath;
         }
+    }
+
+    /**
+     * Sets the Directory inside the one of the Migrations where the new Data Migrations go
+     * @param string $dataDir
+     * @return void
+     */
+    public static function setDataDir(string $dataDir): void {
+        // Without one they go right in the Directory of the Migrations, next to the dev and
+        // the media ones, which is how the Apps that adopted the Migrations first have them
+        self::$dataDir = $dataDir;
     }
 
     /**
@@ -192,6 +204,9 @@ class Migration {
     private static function getNewDirName(Date $date, bool $dev): string {
         if ($dev) {
             return self::DevName;
+        }
+        if (self::$dataDir !== "") {
+            return Storage::parsePath(self::$dataDir, $date->getYear(), $date->getMonthZero());
         }
         return Storage::parsePath($date->getYear(), $date->getMonthZero());
     }
@@ -560,5 +575,14 @@ class Migration {
      */
     private static function getDevPath(): string {
         return Application::getBasePath(self::$migrationsPath, self::DevName);
+    }
+
+    /**
+     * Returns the Path of the Directory with the Files that the Data Migrations upload
+     * @param string ...$pathParts
+     * @return string
+     */
+    public static function getMediaPath(string ...$pathParts): string {
+        return Application::getBasePath(self::$migrationsPath, self::MediaName, ...$pathParts);
     }
 }

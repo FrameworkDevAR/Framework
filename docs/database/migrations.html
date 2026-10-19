@@ -164,6 +164,20 @@ class M20260805T143022 implements DataMigration {
         // Move or transform rows here…
     }
 }</code></pre>
+<p>The year directories can go inside one of their own, which leaves the directory of the migrations with one
+directory for each kind of them, the data, the <a href="#dev">dev</a> and the <a href="#media">media</a> ones.
+The runner finds the migrations in any of them, so only the new ones need to know where to go:</p>
+<figure class="code"><figcaption class="code-tab">config/Migration.console.php</figcaption><pre><code class="language-php">use Framework\Database\Migration\Migration;
+
+Migration::setPath(&quot;migrations&quot;);
+Migration::setDataDir(&quot;data&quot;);</code></pre></figure>
+<pre><code class="language-bash">migrations/
+├── data/
+│   └── 2026/
+│       └── 10/
+│           └── 2026-10-16-101500.php
+├── dev/
+└── media/</code></pre>
 <p>When <code>migrate</code> runs, each file is applied once and its name stored in the <code>Migrations</code>
 table. Pending files are found by comparing the folder against that table, so an applied migration is never run
 again — and <a href="#config">setLastApplied()</a> pre-marks everything up to a point when adopting the system.</p>
@@ -189,6 +203,22 @@ migration is only read while it is pending. <code>getDevNames()</code> returns t
 <code>migrate</code> also counts, and <code>deleteDev()</code> removes one. What a feature needs in production
 goes into a normal migration that leads to the final state, and as it also runs where the dev ones already did,
 it checks the data before it changes it.</p>
+
+<h2 id="media">Uploading files</h2>
+<p>Some data needs a file, like the logo of a row that a migration adds. The files are not kept in the repo but
+in a <code>media</code> directory of the migrations, which the deploy uploads with the rest, and a migration
+names the ones it needs with the path they take in the media of the App:</p>
+<pre><code class="language-php">use Framework\Database\Migration\MediaMigration;
+
+MediaMigration::upload(&quot;logos/brand.svg&quot;);</code></pre>
+<p>As the migration only runs once, each file is uploaded once. One that is not in the directory is skipped, so
+a server that already has it does not need it, and one that fails to upload stops the migration, which is not
+stored and runs again the next time. The media lives in the App, so the App says how a file reaches it, with a
+function that returns whether it did:</p>
+<figure class="code"><figcaption class="code-tab">config/Migration.console.php</figcaption><pre><code class="language-php">use Framework\Database\Migration\MediaMigration;
+use Framework\File\File;
+
+MediaMigration::setUploader(fn(File $file, string $path): bool =&gt; Media::upload($file, $path));</code></pre></figure>
 
 <h2 id="post-deploy">A step for after the deploy</h2>
 <p>A deploy usually migrates the database first and swaps the code afterwards, so for a while the old code keeps
