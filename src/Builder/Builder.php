@@ -9,6 +9,7 @@ use Framework\Discovery\Type\DiscoveryBuilder;
 use Framework\Discovery\Attr\ConsoleCommand;
 use Framework\File\Storage;
 use Framework\Provider\Mustache;
+use Framework\Date\Date;
 use Framework\Date\Timer;
 use Framework\Utils\Arrays;
 use Framework\Utils\Strings;
@@ -17,6 +18,9 @@ use Framework\Utils\Strings;
  * The Builder
  */
 class Builder {
+
+    private const BuildingFile = ".building";
+    private const BuildingTime = 120;
 
     /** @var array<string,string> */
     private static array $templates = [];
@@ -44,6 +48,9 @@ class Builder {
         $writePath = Package::getBuildPath();
         $created   = 0;
 
+        // The requests that arrive while the code is generated fail with classes that are
+        // not there yet, so the file tells the Error Log that those errors are not real
+        Storage::createFile(Package::getBasePath(), self::BuildingFile, "");
         Storage::createDir($writePath);
         Storage::emptyDir($writePath);
 
@@ -64,9 +71,21 @@ class Builder {
         }
 
 
+        Storage::deleteFile(Package::getBasePath(), self::BuildingFile);
+
         // Calculate and show the time taken
         $time = $timer->getElapsedText();
         print("\nGenerated $created files in $time\n");
+    }
+
+    /**
+     * Returns true while the Code is being built
+     * @return bool
+     */
+    public static function isBuilding(): bool {
+        // A build that failed leaves the file behind, so it only counts for some time
+        $time = Storage::getModifiedTime(Package::getBasePath(self::BuildingFile));
+        return $time > 0 && Date::now()->toTime() - $time < self::BuildingTime;
     }
 
     /**

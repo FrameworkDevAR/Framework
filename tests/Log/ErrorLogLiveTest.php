@@ -171,6 +171,21 @@ class ErrorLogLiveTest extends LiveTestCase {
 
 
 
+    public function testNothingIsLoggedWhileBuilding(): void {
+        // The classes are missing while the code is generated, so those errors are not real
+        $filePath = Package::getBasePath(".building");
+        touch($filePath);
+        try {
+            $this->assertFalse(ErrorLog::handler(E_ERROR, "Class not found", "/tmp/a.php", 1));
+        } finally {
+            @unlink($filePath);
+        }
+
+        $this->assertSame(0, ErrorLog::getEntityTotal());
+    }
+
+
+
     public function testAnErrorIsMarkedAsResolved(): void {
         ErrorLog::handler(E_USER_WARNING, "It broke");
         $logID = $this->onlyOne()->logID;

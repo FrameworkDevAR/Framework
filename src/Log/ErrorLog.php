@@ -3,6 +3,7 @@ namespace Framework\Log;
 
 use Framework\Framework;
 use Framework\Application;
+use Framework\Builder\Builder;
 use Framework\Analysis\Attr\NotTested;
 use Framework\Discovery\Package;
 use Framework\Database\Query\Assign;
@@ -141,7 +142,7 @@ class ErrorLog extends LogErrorSchema {
         int $line = 0,
         string $route = "",
     ): bool {
-        if (!self::hasPrimaryKey()) {
+        if (!self::hasPrimaryKey() || Builder::isBuilding()) {
             return false;
         }
 

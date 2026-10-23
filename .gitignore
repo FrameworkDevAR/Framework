@@ -8,6 +8,7 @@
 src/System
 src/*/Schema
 src/Log/Type
+.building
 
 # misc
 .DS_Store

@@ -52,6 +52,23 @@ class BuilderTest extends TestCase {
     }
 
 
+    public function testIsBuildingWhileTheFileIsThere(): void {
+        $filePath = Package::getBasePath(".building");
+        try {
+            $this->assertFalse(Builder::isBuilding());
+
+            touch($filePath);
+            $this->assertTrue(Builder::isBuilding());
+
+            // A file left behind by a build that failed stops counting after a while
+            touch($filePath, time() - 600);
+            $this->assertFalse(Builder::isBuilding());
+        } finally {
+            @unlink($filePath);
+        }
+    }
+
+
     #[DataProvider("providerGenerateCodeWithoutData")]
     public function testGenerateCodeWithoutData(string $name, string $expected): void {
         $result = 1;
