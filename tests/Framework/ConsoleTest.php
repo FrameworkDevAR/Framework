@@ -180,6 +180,18 @@ class ConsoleTest extends TestCase {
     }
 
     /**
+     * The quiet option leaves only what the command prints
+     * @return void
+     */
+    public function testTheQuietOptionHidesTheLogoAndTheDone(): void {
+        $output = $this->runWith("version", "--quiet");
+
+        $this->assertStringContainsString("Version: " . Application::getVersion(), $output);
+        $this->assertStringNotContainsString("Done!", $output);
+        $this->assertStringNotContainsString("|_|", $output);
+    }
+
+    /**
      * @return array<string,array{string}>
      */
     public static function providerVersion(): array {

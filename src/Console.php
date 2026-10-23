@@ -19,19 +19,27 @@ class Console {
      * @return void
      */
     public static function run(): void {
-        self::printLogo();
-        $commands = self::getCommands();
-
-        // Get the command line arguments
         $argv = is_array($_SERVER["argv"] ?? null) ? $_SERVER["argv"] : [];
         $name = Strings::toString($argv[1] ?? "");
         $args = Arrays::toStrings(array_slice($argv, 2));
 
+        // The quiet option is for a script that reads the output, so it only gets what the
+        // command prints, without the Logo and the Done
+        $isQuiet = Arrays::contains($args, "--quiet");
+        if ($isQuiet) {
+            $args = Arrays::removeValue($args, "--quiet");
+        } else {
+            self::printLogo();
+        }
+
         // Try to execute one of the commands
+        $commands = self::getCommands();
         foreach ($commands as $command) {
             if ($command->shouldInvoke($name)) {
                 if ($command->invoke($args)) {
-                    echo "\033[32m" . "\nDone!\n" . "\033[0m";
+                    if (!$isQuiet) {
+                        echo "\033[32m" . "\nDone!\n" . "\033[0m";
+                    }
                 } else {
                     print("Invalid arguments\n");
                     print("  Usage: {$command->getName()} {$command->getArguments()}\n");

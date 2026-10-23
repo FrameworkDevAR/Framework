@@ -189,6 +189,10 @@ the command does not run, and the CLI prints the usage line it built from the si
   Usage: report (-r) --month=&lt;value&gt; --email</code></pre>
 <p>That usage line is generated, so it always matches the method. It is also why a <code>bool</code> shows as a
 bare flag while everything else shows <code>=&lt;value&gt;</code>.</p>
+<p>Every command also takes <code>--quiet</code>, which the CLI keeps for itself instead of passing it to the
+method. It leaves out the logo and the closing <code>Done!</code>, so a script that reads the output only gets
+what the command printed:</p>
+<pre><code class="language-bash">./framework report --month=2026-08 --quiet</code></pre>
 
 <h3 id="ordering">Order &amp; aliases</h3>
 <p>The second argument of the attribute is an alias, for the commands you type often —
