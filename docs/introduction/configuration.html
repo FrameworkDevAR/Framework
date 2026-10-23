@@ -95,6 +95,11 @@ DEBUG = true</code></pre></figure>
 <p>Each environment also generates an <code>is</code> check — the <code>local</code> one is always present:</p>
 <pre><code class="language-php">Config::isLocal();       // true while developing
 Config::isProduction();  // true on myapp.com</code></pre>
+<p>The build also writes an <code>Environment</code> enum with a case for each one, <code>Local</code>
+included, so an environment can be saved or sent as a value instead of a string:</p>
+<pre><code class="language-php">Environment::getCurrent();             // Environment::Production on myapp.com
+Environment::Production-&gt;isCurrent(); // the same as Config::isProduction()
+Environment::fromValue("staging");     // Environment::Staging</code></pre>
 
 <h3 id="env-filename">Forcing an environment</h3>
 <p>On the command line there is no request URL to match — a deploy script, a migration, a cron. Set the

@@ -447,6 +447,34 @@ class ConfigsTest extends TestCase {
         ], $result["environments"]);
     }
 
+    /**
+     * The environments that have a file, and the cases the Environment enum is given
+     * @param list<string>                                   $environments
+     * @param list<array{name:string,environment:string}> $expected
+     * @return void
+     */
+    #[DataProvider("providerEnvironments")]
+    public function testTheEnvironmentsAreTheCases(array $environments, array $expected): void {
+        $this->assertSame($expected, Configs::collectEnvironments($environments));
+    }
+
+    /**
+     * @return array<string,array{list<string>,list<array{name:string,environment:string}>}>
+     */
+    public static function providerEnvironments(): array {
+        return [
+            "none"           => [ [], [] ],
+            "only the local" => [ [ "local" ], [] ],
+            "several"        => [
+                [ "dev", "local", "production" ],
+                [
+                    [ "name" => "Dev", "environment" => "dev" ],
+                    [ "name" => "Production", "environment" => "production" ],
+                ],
+            ],
+        ];
+    }
+
     public function testTheFileNameIsTheOneSet(): void {
         // The load reads it over the ENV_FILENAME of the environment
         Configs::setFileName(".env.production");

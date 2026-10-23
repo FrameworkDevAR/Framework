@@ -320,10 +320,14 @@ class Configs implements DiscoveryBuilder {
     #[\Override]
     #[NotTested("It generates a file")]
     public static function generateCode(): int {
-        return Builder::generateCode("Config", self::collectConfigs(
+        $result  = Builder::generateCode("Config", self::collectConfigs(
             self::getData(),
             self::getEnvironments(),
         ));
+        $result += Builder::generateCode("Environment", [
+            "environments" => self::collectEnvironments(self::getEnvironments()),
+        ]);
+        return $result;
     }
 
     /**
@@ -337,6 +341,22 @@ class Configs implements DiscoveryBuilder {
             return [];
         }
 
+        // Builds the code
+        [ $urls, $properties ] = self::getProperties($data);
+        return [
+            "environments" => self::collectEnvironments($environments),
+            "urls"         => $urls,
+            "properties"   => $properties,
+            "total"        => count($properties),
+        ];
+    }
+
+    /**
+     * Collects the Environments used to generate the code
+     * @param list<string> $environments
+     * @return list<array{name:string,environment:string}>
+     */
+    public static function collectEnvironments(array $environments): array {
         // The "local" Environment is always generated, so it is skipped here
         $result = [];
         foreach ($environments as $environment) {
@@ -348,15 +368,7 @@ class Configs implements DiscoveryBuilder {
                 "environment" => $environment,
             ];
         }
-
-        // Builds the code
-        [ $urls, $properties ] = self::getProperties($data);
-        return [
-            "environments" => $result,
-            "urls"         => $urls,
-            "properties"   => $properties,
-            "total"        => count($properties),
-        ];
+        return $result;
     }
 
     /**
