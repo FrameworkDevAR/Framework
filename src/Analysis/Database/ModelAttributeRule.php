@@ -94,11 +94,21 @@ class ModelAttributeRule implements Rule {
         $hasAttribute   = false;
         $totalExclusive = 0;
 
+        $fileOwner      = "";
+        $holdsFile      = false;
+
         $attributes = $nativeProperty->getAttributes();
         foreach ($attributes as $attribute) {
             $attrName = $attribute->getName();
             if ($attrName === Field::class) {
-                $hasField = true;
+                $hasField  = true;
+                $arguments = $attribute->getArguments();
+                if (is_string($arguments["fileOwner"] ?? null)) {
+                    $fileOwner = $arguments["fileOwner"];
+                }
+                $isFile    = ($arguments["isFile"] ?? false) === true;
+                $hasFile   = ($arguments["hasFile"] ?? false) === true;
+                $holdsFile = $isFile || $hasFile;
             } elseif ($attrName === Requested::class) {
                 $hasRequested = true;
             } elseif ($attrName === Validate::class) {
@@ -190,6 +200,26 @@ class ModelAttributeRule implements Rule {
         }
 
 
+        // The Owner of the files must be a #[Field] of the Model, and only a field that
+        // keeps files has one, as a name that is wrong would change the paths of every row
+        if ($fileOwner !== "" && !$holdsFile) {
+            $errors[] = RuleErrorBuilder::message(
+                "Property '{$propName}' has a file owner but keeps no files."
+            )
+                ->line($node->getLine())
+                ->identifier("framework.modelAttribute")
+                ->build();
+        }
+        if ($fileOwner !== "" && !$this->isField($nativeReflection, $fileOwner)) {
+            $errors[] = RuleErrorBuilder::message(
+                "Property '{$propName}' has the file owner '{$fileOwner}', which is not a #[Field]."
+            )
+                ->line($node->getLine())
+                ->identifier("framework.modelAttribute")
+                ->build();
+        }
+
+
         // A property with #[SubRequest] must be an array
         if ($hasSubRequest && !$propType->isArray()->yes()) {
             $errors[] = RuleErrorBuilder::message(
@@ -201,6 +231,20 @@ class ModelAttributeRule implements Rule {
         }
 
         return $errors;
+    }
+
+    /**
+     * Checks if the given class has a property with #[Field] with the given name
+     * @param \ReflectionClass<object> $reflection
+     * @param string                   $propName
+     * @return bool
+     */
+    private function isField(\ReflectionClass $reflection, string $propName): bool {
+        if (!$reflection->hasProperty($propName)) {
+            return false;
+        }
+        $property = $reflection->getProperty($propName);
+        return count($property->getAttributes(Field::class)) > 0;
     }
 
     /**

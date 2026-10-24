@@ -93,6 +93,10 @@ class Field {
     // Indicates that the files are stored as a simple array of file paths as a JSON.
     public bool $jsonFiles = false;
 
+    // The field of the Model with the ID of the Media that the files are in, so a file
+    // that is moved only changes the paths of the rows with its ID.
+    public string $fileOwner = "";
+
     // Used to generate the path and url of the file.
     public string $filePath = "";
 
@@ -130,6 +134,7 @@ class Field {
      * @param bool              $isFile      Optional.
      * @param bool              $hasFile     Optional.
      * @param bool              $jsonFiles   Optional.
+     * @param string            $fileOwner   Optional.
      * @param string            $filePath    Optional.
      * @param DateType          $dateType    Optional.
      * @param string            $dateInput   Optional.
@@ -156,6 +161,7 @@ class Field {
         bool $isFile = false,
         bool $hasFile = false,
         bool $jsonFiles = false,
+        string $fileOwner = "",
         string $filePath = "",
         DateType $dateType = DateType::None,
         string $dateInput = "",
@@ -189,6 +195,7 @@ class Field {
         $this->isFile      = $isFile;
         $this->hasFile     = $hasFile;
         $this->jsonFiles   = $jsonFiles;
+        $this->fileOwner   = $fileOwner;
         $this->filePath    = $filePath;
 
         // Date types

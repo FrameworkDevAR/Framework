@@ -28,18 +28,27 @@ class MediaCodeTest extends TestCase {
      * Builds a model with one file field of the given type
      * @param FieldType $type
      * @param bool      $jsonFiles Optional.
+     * @param bool      $withOwner Optional.
      * @return SchemaModel
      */
-    private function modelWithFile(FieldType $type, bool $jsonFiles = false): SchemaModel {
+    private function modelWithFile(
+        FieldType $type,
+        bool $jsonFiles = false,
+        bool $withOwner = false,
+    ): SchemaModel {
         $fields = [
             Field::create(name: "crateID", type: FieldType::Number, isID: true),
             Field::create(name: "image", type: $type),
         ];
+        if ($withOwner) {
+            $fields[] = Field::create(name: "clientID", dbName: "CLIENT_ID", type: FieldType::Number);
+        }
 
         // Set on the field rather than asked of create(), the same as the
         // attribute does when the build reads a model
         $fields[1]->isFile    = true;
         $fields[1]->jsonFiles = $jsonFiles;
+        $fields[1]->fileOwner = $withOwner ? "clientID" : "";
 
         return new SchemaModel(
             name:       "Crate",
@@ -133,8 +142,12 @@ class MediaCodeTest extends TestCase {
      */
     private function codeFor(FieldType $type, bool $jsonFiles = false): string {
         $fields  = MediaCode::getFields([ $this->modelWithFile($type, jsonFiles: $jsonFiles) ]);
+        $hasText = false;
         $hasJSON = false;
         foreach ($fields as $field) {
+            if ($field["isReplace"]) {
+                $hasText = true;
+            }
             if ($field["isJSON"]) {
                 $hasJSON = true;
             }
@@ -144,6 +157,7 @@ class MediaCodeTest extends TestCase {
             "fields"     => $fields,
             "hasFields"  => count($fields) > 0,
             "hasReplace" => true,
+            "hasText"    => $hasText,
             "hasJSON"    => $hasJSON,
             "total"      => count($fields),
         ]);
@@ -173,6 +187,61 @@ class MediaCodeTest extends TestCase {
             $code,
             '->where(Exp::create("LEFT(`image`, ?)", $length), Op::Equal, $oldDir, caseSensitive: true)',
         ));
+    }
+
+    public function testAPathInsideATextIsReplacedWithBothSlashes(): void {
+        // A JSON saved by the Desktop keeps its slashes and an older one escapes them, so the
+        // quoted Path is looked for both ways, with the Files of a Directory too
+        $code = $this->codeFor(FieldType::JSON);
+
+        $this->assertStringContainsString('self::getTexts($old, $new, withDir: true)', $code);
+        $this->assertStringContainsString('self::getTexts($old, "")', $code);
+        $this->assertStringContainsString('foreach ([ "/", "\\\\/" ] as $slash)', $code);
+        $this->assertSame(2, substr_count(
+            $code,
+            '->where(Exp::create("LOCATE(?, `image`)", $oldText), Op::GreaterThan, 0)',
+        ));
+        $this->assertStringNotContainsString("Op::Like", $code);
+    }
+
+    public function testTheRowsAreTheOnesOfTheOwner(): void {
+        // Each ID has its own Media, with the same Paths as the others, so a Path only
+        // changes in the rows of the ID that the File is in
+        $fields = MediaCode::getFields([ $this->modelWithFile(FieldType::String, withOwner: true) ]);
+
+        $this->assertTrue($fields[0]["hasOwner"]);
+        $this->assertSame("`CLIENT_ID` = ?", $fields[0]["ownerWhere"]);
+    }
+
+    public function testAModelWithoutTheOwnerChangesEveryRow(): void {
+        $fields = MediaCode::getFields([ $this->modelWithFile(FieldType::String) ]);
+
+        $this->assertFalse($fields[0]["hasOwner"]);
+        $this->assertSame("", $fields[0]["ownerWhere"]);
+    }
+
+    public function testTheOwnerIsAskedInEveryUpdate(): void {
+        $fields = MediaCode::getFields([ $this->modelWithFile(FieldType::JSON, withOwner: true) ]);
+        $code   = Builder::render("MediaSchema", [
+            "fields"     => $fields,
+            "hasFields"  => true,
+            "hasReplace" => true,
+            "hasText"    => true,
+            "hasJSON"    => false,
+            "total"      => 1,
+        ]);
+
+        $this->assertStringContainsString("int \$id = 0", $code);
+        $this->assertSame(2, substr_count(
+            $code,
+            '->where(Exp::create("`CLIENT_ID` = ?", $id), condition: $id > 0)',
+        ));
+    }
+
+    public function testAFieldThatIsNotATextHasNoTexts(): void {
+        $code = $this->codeFor(FieldType::String);
+
+        $this->assertStringNotContainsString("getTexts", $code);
     }
 
     public function testAFieldThatIsNoJsonAsksForNoJsonExpression(): void {

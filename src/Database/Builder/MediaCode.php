@@ -11,13 +11,15 @@ use Framework\Utils\Strings;
 /**
  * The Media Code
  * @phpstan-type MediaField array{
- *   name:      string,
- *   query:     string,
- *   tableName: string,
- *   fieldName: string,
- *   isSet:     bool,
- *   isReplace: bool,
- *   isJSON:    bool,
+ *   name:       string,
+ *   query:      string,
+ *   tableName:  string,
+ *   fieldName:  string,
+ *   isSet:      bool,
+ *   isReplace:  bool,
+ *   isJSON:     bool,
+ *   hasOwner:   bool,
+ *   ownerWhere: string,
  * }
  */
 class MediaCode implements DiscoveryBuilder {
@@ -30,11 +32,15 @@ class MediaCode implements DiscoveryBuilder {
     public static function generateCode(): int {
         $fields     = self::getFields(SchemaFactory::getData());
         $hasReplace = false;
+        $hasText    = false;
         $hasJSON    = false;
 
         foreach ($fields as $field) {
             if ($field["isReplace"] || $field["isJSON"]) {
                 $hasReplace = true;
+            }
+            if ($field["isReplace"]) {
+                $hasText = true;
             }
             if ($field["isJSON"]) {
                 $hasJSON = true;
@@ -46,6 +52,7 @@ class MediaCode implements DiscoveryBuilder {
             "fields"     => $fields,
             "hasFields"  => count($fields) > 0,
             "hasReplace" => $hasReplace,
+            "hasText"    => $hasText,
             "hasJSON"    => $hasJSON,
             "total"      => count($fields),
         ]);
@@ -78,18 +85,40 @@ class MediaCode implements DiscoveryBuilder {
                     $isReplace = false;
                 }
 
-                $result[] = [
-                    "name"      => $schemaModel->name,
-                    "query"     => Strings::lowerCaseFirst($schemaModel->queryClass),
-                    "tableName" => $schemaModel->tableName,
-                    "fieldName" => $field->name,
-                    "isSet"     => !$isReplace && !$isJSON,
-                    "isReplace" => $isReplace,
-                    "isJSON"    => $isJSON,
+                $ownerWhere = self::getOwnerWhere($schemaModel, $field->fileOwner);
+                $result[]   = [
+                    "name"       => $schemaModel->name,
+                    "query"      => Strings::lowerCaseFirst($schemaModel->queryClass),
+                    "tableName"  => $schemaModel->tableName,
+                    "fieldName"  => $field->name,
+                    "isSet"      => !$isReplace && !$isJSON,
+                    "isReplace"  => $isReplace,
+                    "isJSON"     => $isJSON,
+                    "hasOwner"   => $ownerWhere !== "",
+                    "ownerWhere" => $ownerWhere,
                 ];
             }
         }
         return $result;
+    }
+
+    /**
+     * Returns the condition that keeps the rows of the Model to the ones of an ID of the Media
+     * @param SchemaModel $schemaModel
+     * @param string      $fileOwner
+     * @return string
+     */
+    private static function getOwnerWhere(SchemaModel $schemaModel, string $fileOwner): string {
+        // A field without an Owner changes the paths of every row
+        if ($fileOwner === "") {
+            return "";
+        }
+        foreach ($schemaModel->fields as $field) {
+            if ($field->name === $fileOwner) {
+                return "`{$field->dbName}` = ?";
+            }
+        }
+        return "";
     }
 
     /**

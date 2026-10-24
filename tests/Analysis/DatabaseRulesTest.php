@@ -60,6 +60,8 @@ class DatabaseRulesTest extends RuleTestCase {
                 [ "Property 'status' is missing the #[Field] attribute.", 32 ],
                 [ "Property 'notAModel' must relate to a #[Model].", 36 ],
                 [ "Property 'notAnArray' must have type array.", 40 ],
+                [ "Property 'lostFile' has the file owner 'shopID', which is not a #[Field].", 44 ],
+                [ "Property 'notAFile' has a file owner but keeps no files.", 48 ],
             ] ],
             "a well formed model" => [ ModelAttributeRule::class, [ "CrateModel" ], [] ],
 

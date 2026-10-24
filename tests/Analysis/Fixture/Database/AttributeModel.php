@@ -38,4 +38,12 @@ class AttributeModel {
     /** A SubRequest has to be an array */
     #[SubRequest(CrateModel::class)]
     public string $notAnArray;
+
+    /** The owner of the files has to be a Field of the Model */
+    #[Field(hasFile: true, fileOwner: "shopID")]
+    public string $lostFile;
+
+    /** Only a field that keeps files has an owner */
+    #[Field(fileOwner: "crateID")]
+    public string $notAFile;
 }

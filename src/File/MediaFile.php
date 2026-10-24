@@ -222,7 +222,7 @@ class MediaFile {
             return false;
         }
 
-        MediaSchema::updatePaths($relPath, "");
+        MediaSchema::updatePaths($relPath, "", self::$id);
         return true;
     }
 
@@ -293,7 +293,7 @@ class MediaFile {
             }
         }
 
-        MediaSchema::updatePaths($oldRelPath, $newRelPath);
+        MediaSchema::updatePaths($oldRelPath, $newRelPath, self::$id);
         return true;
     }
 }

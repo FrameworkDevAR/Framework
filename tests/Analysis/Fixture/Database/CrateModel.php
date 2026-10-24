@@ -12,4 +12,10 @@ class CrateModel {
 
     #[Field]
     public string $name;
+
+    #[Field]
+    public int $shopID;
+
+    #[Field(hasFile: true, fileOwner: "shopID")]
+    public string $image;
 }
