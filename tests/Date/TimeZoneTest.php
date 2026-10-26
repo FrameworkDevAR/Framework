@@ -26,10 +26,12 @@ class TimeZoneTest extends TestCase {
 
     public static function setTimeZoneProvider(): array {
         return [
-            // input in minutes -> normalized to hours (-180 -> -3)
-            "minutes" => [ -180.0, 0.0 ],
-            // input in hours (note: current implementation divides also when <60)
-            "hours"   => [ -3.0, -2.95 ],
+            // The Time Zone can come in minutes or in hours, and the server is at -3
+            "minutes"           => [ -180.0, 0.0 ],
+            "hours"             => [ -3.0, 0.0 ],
+            "one hour in mins"  => [ 60.0, -4.0 ],
+            "half hour in hrs"  => [ 5.5, -8.5 ],
+            "utc"               => [ 0.0, -3.0 ],
         ];
     }
 
@@ -53,6 +55,7 @@ class TimeZoneTest extends TestCase {
         return [
             "empty stack" => [ [], -180.0, 0.0, 0.0 ],
             "one item"    => [ [ -3.0 ], -120.0, -1.0, -1.0 ],
+            "one hour"    => [ [ -3.0 ], 60.0, -4.0, -4.0 ],
         ];
     }
 

@@ -21,9 +21,7 @@ class TimeZone {
      * @return float
      */
     public static function setTimeZone(float $timeZone): float {
-        if ($timeZone > 60 || $timeZone < 60) {
-            $timeZone /= 60;
-        }
+        $timeZone = self::toHours($timeZone);
         self::$stackZones = [ $timeZone ];
         self::$timeDiff   = self::$serverZone - $timeZone;
         return self::$timeDiff;
@@ -35,9 +33,7 @@ class TimeZone {
      * @return float
      */
     public static function pushTimeZone(float $timeZone): float {
-        if ($timeZone > 60 || $timeZone < 60) {
-            $timeZone /= 60;
-        }
+        $timeZone = self::toHours($timeZone);
         self::$stackZones[] = $timeZone;
         self::$timeDiff     = self::$serverZone - $timeZone;
         return self::$timeDiff;
@@ -105,6 +101,20 @@ class TimeZone {
     }
 
 
+
+    /**
+     * Returns the given Time Zone in hours, as it can come in hours or in minutes
+     * @param float $timeZone
+     * @return float
+     */
+    private static function toHours(float $timeZone): float {
+        // The Time Zones go from -12 to +14 hours, so a bigger value can only be in minutes,
+        // and one in minutes is never smaller than an hour unless it is the UTC
+        if (abs($timeZone) > 14) {
+            return $timeZone / 60;
+        }
+        return $timeZone;
+    }
 
     /**
      * Returns the Time Zone as a string
