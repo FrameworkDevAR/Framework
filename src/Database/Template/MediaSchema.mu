@@ -17,7 +17,7 @@ class MediaSchema {
      * Updates the Paths in the Database, only in the rows of the given ID of the Media
      * @param string $oldPath
      * @param string $newPath
-     * @param int    $id      Optional.
+     * @param int $id Optional.
      * @return void
      */
     public static function updatePaths(string $oldPath, string $newPath, int $id = 0): void {
@@ -52,7 +52,7 @@ class MediaSchema {
      * Replaces the Path in the Database
      * @param string $old
      * @param string $new
-     * @param int    $id
+     * @param int $id
      * @return void
      */
     private static function replacePath(string $old, string $new, int $id): void {
@@ -108,7 +108,7 @@ class MediaSchema {
     /**
      * Removes the Path from the Database
      * @param string $old
-     * @param int    $id
+     * @param int $id
      * @return void
      */
     private static function removePath(string $old, int $id): void {
@@ -165,7 +165,7 @@ class MediaSchema {
      * Returns the texts of a Path inside a text and the ones that replace them
      * @param string $old
      * @param string $new
-     * @param bool   $withDir Optional.
+     * @param bool $withDir Optional.
      * @return list<array{string,string}>
      */
     private static function getTexts(string $old, string $new, bool $withDir = false): array {
