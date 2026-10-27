@@ -217,7 +217,8 @@ class ErrorLog extends LogErrorSchema {
             $errorText  = "Notice";
             $errorLevel = LOG_NOTICE;
             break;
-        case E_STRICT:
+        // The E_STRICT constant is deprecated since PHP 8.4, while the servers can still report it
+        case 2048:
             $errorText  = "Strict";
             $errorLevel = LOG_NOTICE;
             break;

@@ -90,7 +90,7 @@ class ErrorLogLiveTest extends LiveTestCase {
             "a notice"        => [ E_USER_NOTICE, "Notice" ],
             "a deprecation"   => [ E_USER_DEPRECATED, "Deprecated" ],
             "a parse error"   => [ E_PARSE, "Fatal Error" ],
-            "a strict one"    => [ E_STRICT, "Strict" ],
+            "a strict one"    => [ 2048, "Strict" ],
             "one of no kind"  => [ 0, "" ],
         ];
     }
