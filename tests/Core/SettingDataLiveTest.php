@@ -213,14 +213,14 @@ class SettingDataLiveTest extends LiveTestCase {
 
 
 
-    public function testWhatIsNoLongerRegisteredIsDeleted(): void {
+    public function testWhatIsNoLongerRegisteredIsKept(): void {
         $this->register();
         $this->migrate();
 
         $this->setPrivateStaticProperty(SettingConfig::class, "settings", []);
 
-        $this->assertStringContainsString("Deleted 1 settings", $this->migrate());
-        $this->assertSame(0, SettingData::getEntityTotal());
+        $this->assertStringContainsString("Kept 1 settings", $this->migrate());
+        $this->assertSame(1, SettingData::getEntityTotal());
     }
 
     public function testTheTypeIsModified(): void {

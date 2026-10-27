@@ -191,7 +191,7 @@ class SettingData extends SettingsSchema implements DiscoveryMigration {
         $adds      = [];
         $renames   = [];
         $modifies  = [];
-        $deletes   = [];
+        $keeps     = [];
 
         // Add/Update Settings
         foreach (SettingConfig::getSettings() as $setting) {
@@ -245,7 +245,8 @@ class SettingData extends SettingsSchema implements DiscoveryMigration {
             }
         }
 
-        // Remove Settings
+        // A Setting that is not registered is kept, as the database can be shared by checkouts of
+        // different branches, which only know their own Settings. It is removed with a migration
         foreach ($list as $elem) {
             $found = false;
             foreach (SettingConfig::getSettings() as $setting) {
@@ -257,10 +258,7 @@ class SettingData extends SettingsSchema implements DiscoveryMigration {
                 }
             }
             if (!$found) {
-                $deletes[] = (object)[
-                    "section"  => $elem->section,
-                    "variable" => $elem->variable,
-                ];
+                $keeps[] = "{$elem->section}_{$elem->variable}";
             }
         }
 
@@ -302,19 +300,9 @@ class SettingData extends SettingsSchema implements DiscoveryMigration {
             $didUpdate = true;
         }
 
-        if (count($deletes) > 0) {
-            print("- Deleted " . count($deletes) . " settings\n");
-            $variables = [];
-            foreach ($deletes as $delete) {
-                $query = new SettingsQuery();
-                $query->section->equal($delete->section);
-                $query->variable->equal($delete->variable);
-
-                self::removeEntity($query);
-                $variables[] = "{$delete->section}_{$delete->variable}";
-            }
-            print("    " . Strings::join($variables, ", ") . "\n");
-            $didUpdate = true;
+        if (count($keeps) > 0) {
+            print("- Kept " . count($keeps) . " settings that are not registered\n");
+            print("    " . Strings::join($keeps, ", ") . "\n");
         }
 
         if (!$didUpdate) {

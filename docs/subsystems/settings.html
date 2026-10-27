@@ -94,7 +94,10 @@ Setting::saveEmail([
 <p>Settings live in a database table — one row per setting holding its section, variable, value and type. The
 value is encoded with the setting&#39;s <a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Core/VariableType.php" target="_blank" rel="noopener noreferrer"><code>VariableType</code></a> on write and decoded on read. A
 <a href="../database/migrations.html#discovery">migration</a> keeps the table in sync with your config: new settings are added,
-changed ones updated and removed ones deleted, so the database always matches what you registered.</p>
+changed ones updated and the ones that are no longer registered are kept, as a database shared by
+checkouts of different branches would lose the settings that only another branch registers. A setting is
+removed from the database with a <a href="../database/migrations.html">data migration</a>, which runs once in
+each environment.</p>
 
 <h2 id="usage">Reading &amp; writing</h2>
 <p>The generated <code>Setting</code> class gives you a typed, autocompleted getter per setting:</p>
