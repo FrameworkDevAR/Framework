@@ -60,8 +60,11 @@ class BuilderTest extends TestCase {
             touch($filePath);
             $this->assertTrue(Builder::isBuilding());
 
-            // A file left behind by a build that failed stops counting after a while
+            // A file left behind by a build that failed stops counting after a while.
+            // On PHP 8.2 touch() does not clear the stat cache, so filemtime() would still
+            // answer with the first time
             touch($filePath, time() - 600);
+            clearstatcache(true, $filePath);
             $this->assertFalse(Builder::isBuilding());
         } finally {
             @unlink($filePath);
