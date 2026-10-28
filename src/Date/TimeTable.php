@@ -490,10 +490,11 @@ class TimeTable {
             return "";
         }
 
-        $list   = $this->getList($timeZone, $isoCode, allDays: true);
+        $list   = $this->getList(timeZone: $timeZone, isoCode: $isoCode, allDays: true);
         $result = [];
         foreach ($list as $elem) {
-            $result[] = NLS::format("{0} {1} {2}", [
+            // The zone comes with the space before it, or empty when there is none
+            $result[] = NLS::format("{0} {1}{2}", [
                 $elem->daysText,
                 $elem->timeText,
                 $elem->zone,

@@ -5,6 +5,15 @@
     "DATE_TIME_MONTHS"                  : [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ],
     "DATE_TIME_SCHEDULE"                : "{0} from {1} to {2}{3}",
 
+    "GENERAL_AND"                       : "and",
+    "GENERAL_OR"                        : "or",
+
+    "TIME_TABLE_ALL_DAYS"               : "Every day",
+    "TIME_TABLE_ALL_HOLIDAYS"           : "Every day and holidays",
+    "TIME_TABLE_HOURS"                  : "{0} to {1}",
+    "TIME_TABLE_NO_HOURS"               : "Closed",
+    "TIME_TABLE_SOME_DAYS"              : "{0} to {1}",
+
     "NUMBER_DECIMAL_SEPARATOR"          : ".",
     "NUMBER_THOUSANDS_SEPARATOR"        : ","
 }
