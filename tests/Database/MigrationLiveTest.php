@@ -4,6 +4,7 @@ namespace Tests\Database;
 use Framework\Database\SchemaFactory;
 use Framework\Database\SchemaModel;
 use Framework\Database\Migration\SchemaMigration;
+use Framework\Database\Migration\MigrationOutput;
 use Framework\Core\SettingData;
 
 use Tests\LiveTestCase;
@@ -43,6 +44,7 @@ class MigrationLiveTest extends LiveTestCase {
      * @param list<array{table:string,from:string,to:string}> $columnRenames
      * @param list<array{table:string,from:string,to:string}> $indexRenames  Optional.
      * @param bool                                            $canDelete     Optional.
+     * @param bool                                            $progress      Optional.
      * @return string
      */
     private function migrateWith(
@@ -50,7 +52,9 @@ class MigrationLiveTest extends LiveTestCase {
         array $columnRenames,
         array $indexRenames = [],
         bool $canDelete = false,
+        bool $progress = false,
     ): string {
+        MigrationOutput::setProgress($progress);
         ob_start();
         try {
             SchemaMigration::migrateData(
@@ -61,6 +65,7 @@ class MigrationLiveTest extends LiveTestCase {
             );
         } finally {
             $result = ob_get_clean();
+            MigrationOutput::setProgress(false);
         }
         return $result === false ? "" : $result;
     }
@@ -357,6 +362,20 @@ class MigrationLiveTest extends LiveTestCase {
 
         $this->assertTrue($this->db()->tableExists($table));
         $this->assertStringContainsString("Created table $table", $result);
+    }
+
+    #[Depends("testTheTablesAreCreated")]
+    public function testTheProgressIsOnlyTheSteps(): void {
+        // A deploy follows the progress, so a created table is the one line printed:
+        // no SQL, no table left as it was, and no rename that was not needed
+        $table = $this->model("EmailWhiteList")->tableName;
+        $this->query("DROP TABLE `$table`");
+
+        $result = $this->migrateWith([], [], progress: true);
+
+        $this->assertSame("Created table $table\n", $result);
+        $this->assertTrue($this->db()->tableExists($table));
+        $this->migrateUntilSettled();
     }
 
     #[Depends("testTheTablesAreCreated")]

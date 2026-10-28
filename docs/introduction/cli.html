@@ -75,14 +75,17 @@ It respects <code>.gitignore</code> and runs until you stop it.</p>
 
 <h3 id="migrate">migrate</h3>
 <p>Applies every pending <a href="../database/migrations.html#running">migration</a>: syncs the schema to your models, runs the
-table and column renames and executes the data migrations. Pass an env file to force a specific environment.</p>
+table and column renames and executes the data migrations. Pass an env file to force a specific environment.
+With <code>--progress</code> it prints only where it is, as a deploy does: each table it creates, changes, renames or
+deletes and each data migration, in a line of its own before working on it.</p>
 <pre><code class="language-bash">./framework migrate
-./framework migrate .env.production   # force an environment</code></pre>
+./framework migrate .env.production   # force an environment
+./framework migrate --progress        # only the progress, without the SQL</code></pre>
 
 <h3 id="postDeploy">postDeploy</h3>
 <p>Runs the <a href="../database/migrations.html#post-deploy">post deploy</a> step of the migrations that already ran, once
 the new code is live, so what the old code wrote in between is migrated too. Pass an env file the same way as
-<code>migrate</code>.</p>
+<code>migrate</code>, and <code>--progress</code> too.</p>
 <pre><code class="language-bash">./framework postDeploy
 ./framework postDeploy .env.production   # force an environment</code></pre>
 
