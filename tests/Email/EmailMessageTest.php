@@ -109,6 +109,6 @@ class EmailMessageTest extends TestCase {
         $partials = EmailMessage::getPartials();
 
         $result = Mustache::render("{{< Card}}{{\$content}}Inside{{/content}}{{/Card}}", [], $partials);
-        $this->assertStringContainsString("<td style=\"padding:18px 20px\">Inside</td>", $result);
+        $this->assertStringContainsString("<td style=\"padding:16px\">Inside</td>", $result);
     }
 }
