@@ -11,6 +11,7 @@ use Framework\Discovery\Type\DiscoveryMigration;
 use Framework\Discovery\Attr\ConsoleCommand;
 use Framework\Database\Database;
 use Framework\Database\Migration\SchemaMigration;
+use Framework\Database\Migration\MigrationOutput;
 use Framework\Database\Migration\BaseMigration;
 use Framework\Database\Migration\DataMigration;
 use Framework\Database\Migration\DeployMigration;
@@ -228,25 +229,32 @@ class Migration {
      * Migrates the Data
      * @param string $envFile   Optional.
      * @param bool   $canDelete Optional.
+     * @param bool   $progress  Optional.
      * @return void
      */
     #[ConsoleCommand("migrate")]
     public static function migrate(
         string $envFile = "",
         bool $canDelete = false,
+        bool $progress = false,
     ): void {
+        // A deploy only shows where the Migration is, as a long one looks stuck otherwise,
+        // so the progress prints each table and migration, in a line of its own, before
+        // working on it
+        MigrationOutput::setProgress($progress);
+
         $timer = new Timer();
-        print("Migrating data...\n");
+        MigrationOutput::detail("Migrating data...\n");
 
         DiscoveryConfig::load();
         if ($envFile !== "") {
-            print("Using ENV file: $envFile\n");
+            MigrationOutput::detail("Using ENV file: $envFile\n");
             Configs::setFileName($envFile);
         }
 
 
         // Migrate the Schema
-        print("\nDATABASE MIGRATIONS\n");
+        MigrationOutput::detail("\nDATABASE MIGRATIONS\n");
         SchemaMigration::migrateData(
             self::$tableRenames,
             self::$columnRenames,
@@ -261,11 +269,11 @@ class Migration {
             forFramework: true,
         );
         if (count($frameClasses) > 0) {
-            print("\nFRAMEWORK MIGRATIONS\n");
+            MigrationOutput::detail("\nFRAMEWORK MIGRATIONS\n");
             foreach ($frameClasses as $class) {
                 $instance = $class->newInstance();
                 if ($instance instanceof DiscoveryMigration) {
-                    $instance::migrateData();
+                    MigrationOutput::hideDetails(fn() => $instance::migrateData());
                 }
             }
         }
@@ -277,24 +285,24 @@ class Migration {
             forFramework: false,
         );
         if (count($appMigrations) > 0) {
-            print("\nAPP MIGRATIONS\n");
+            MigrationOutput::detail("\nAPP MIGRATIONS\n");
             foreach ($appMigrations as $class) {
                 $instance = $class->newInstance();
                 if ($instance instanceof DiscoveryMigration) {
-                    $instance::migrateData();
+                    MigrationOutput::hideDetails(fn() => $instance::migrateData());
                 }
             }
         }
 
 
         // Execute the required Data Migrations
-        print("\nDATA MIGRATIONS\n");
+        MigrationOutput::detail("\nDATA MIGRATIONS\n");
         self::applyDataMigrations();
 
 
         // Calculate and show the time taken
         $time = $timer->getElapsedText();
-        print("\nMigrations completed in $time\n");
+        MigrationOutput::detail("\nMigrations completed in $time\n");
     }
 
     /**
@@ -305,7 +313,7 @@ class Migration {
     public static function applyDataMigrations(): bool {
         $migrations = self::getMigrations(DataMigration::class);
         if (count($migrations) === 0) {
-            print("- No data migrations found\n");
+            MigrationOutput::detail("- No data migrations found\n");
             return false;
         }
 
@@ -324,27 +332,27 @@ class Migration {
         // Run the Migrations that are pending
         $amount = count($pending);
         if ($amount > 0) {
-            print("Running $amount migrations\n");
+            MigrationOutput::step("Running $amount migrations");
 
             $db = Database::getInstance();
             foreach ($pending as $name => $className) {
                 $title = $className::getTitle();
 
-                print("- $name: $title\n");
+                MigrationOutput::step("$name: $title");
                 $className::migrate($db);
                 MigrationData::add($name, $title);
             }
         } else {
-            print("- No data migrations required\n");
+            MigrationOutput::detail("- No data migrations required\n");
         }
 
         // The Dev Migrations are deleted once they ran everywhere, so the ones
         // still there are shown to keep them from piling up
         $devAmount = count(self::getDevNames());
         if ($devAmount > 0 && self::canRunDev()) {
-            print("- There are $devAmount dev migrations\n");
+            MigrationOutput::detail("- There are $devAmount dev migrations\n");
         } elseif ($devAmount > 0) {
-            print("- Skipped $devAmount dev migrations\n");
+            MigrationOutput::detail("- Skipped $devAmount dev migrations\n");
         }
         return $amount > 0;
     }
@@ -353,26 +361,29 @@ class Migration {
 
     /**
      * Runs the Post Deploys of the Migrations, once the code is deployed
-     * @param string $envFile Optional.
+     * @param string $envFile  Optional.
+     * @param bool   $progress Optional.
      * @return void
      */
     #[ConsoleCommand("postDeploy")]
     #[NotTested("It needs a Database")]
-    public static function postDeploy(string $envFile = ""): void {
+    public static function postDeploy(string $envFile = "", bool $progress = false): void {
+        MigrationOutput::setProgress($progress);
+
         $timer = new Timer();
-        print("Running the post deploys...\n");
+        MigrationOutput::detail("Running the post deploys...\n");
 
         DiscoveryConfig::load();
         if ($envFile !== "") {
-            print("Using ENV file: $envFile\n");
+            MigrationOutput::detail("Using ENV file: $envFile\n");
             Configs::setFileName($envFile);
         }
 
-        print("\n");
+        MigrationOutput::detail("\n");
         self::applyPostMigrations();
 
         $time = $timer->getElapsedText();
-        print("\nPost deploys completed in $time\n");
+        MigrationOutput::detail("\nPost deploys completed in $time\n");
     }
 
     /**
@@ -383,18 +394,18 @@ class Migration {
     public static function applyPostMigrations(): bool {
         $pending = self::getPendingDeploys();
         if (count($pending) === 0) {
-            print("- No post deploys required\n");
+            MigrationOutput::detail("- No post deploys required\n");
             return false;
         }
 
         $amount = count($pending);
-        print("Running $amount post deploys\n");
+        MigrationOutput::step("Running $amount post deploys");
 
         $db = Database::getInstance();
         foreach ($pending as $name => $className) {
             $title = $className::getTitle();
 
-            print("- $name: $title\n");
+            MigrationOutput::step("$name: $title");
             $className::postDeploy($db);
             MigrationData::setDeployed($name, $title);
         }
@@ -500,7 +511,7 @@ class Migration {
             $index += 1;
         }
 
-        print("- Stored $index migrations that were already applied\n");
+        MigrationOutput::detail("- Stored $index migrations that were already applied\n");
     }
 
 

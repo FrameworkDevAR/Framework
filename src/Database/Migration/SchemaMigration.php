@@ -2,6 +2,7 @@
 namespace Framework\Database\Migration;
 
 use Framework\Database\Database;
+use Framework\Database\Migration\MigrationOutput;
 use Framework\Database\SchemaFactory;
 use Framework\Database\SchemaModel;
 use Framework\Core\SettingData;
@@ -75,17 +76,17 @@ class SchemaMigration {
 
             if ($db->tableExists($fromName) && !$db->tableExists($toName)) {
                 $db->renameTable($fromName, $toName);
-                print("- Renamed table $fromName -> $toName\n");
+                MigrationOutput::step("Renamed table $fromName -> $toName");
                 $didRename = true;
             }
         }
 
         if ($didRename) {
-            print("\n");
+            MigrationOutput::detail("\n");
             return $lastRename;
         }
 
-        print("- No table renames required\n");
+        MigrationOutput::detail("- No table renames required\n");
         return $lastRename;
     }
 
@@ -127,16 +128,16 @@ class SchemaMigration {
             }
 
             $db->renameColumn($table, $fromName, $toName, $type);
-            print("- Renamed column $fromName -> $toName in $table\n");
+            MigrationOutput::step("Renamed column $fromName -> $toName in $table");
             $didRename = true;
         }
 
         if ($didRename) {
-            print("\n");
+            MigrationOutput::detail("\n");
             return $lastRename;
         }
 
-        print("- No column renames required\n\n");
+        MigrationOutput::detail("- No column renames required\n\n");
         return $lastRename;
     }
 
@@ -171,15 +172,15 @@ class SchemaMigration {
                 $tableIndexes[$fromName]["columns"],
                 $tableIndexes[$fromName]["isUnique"],
             );
-            print("- Renamed index $fromName -> $toName in $table\n");
+            MigrationOutput::step("Renamed index $fromName -> $toName in $table");
             $didRename = true;
         }
 
         if ($didRename) {
-            print("\n");
+            MigrationOutput::detail("\n");
             return;
         }
-        print("- No index renames required\n\n");
+        MigrationOutput::detail("- No index renames required\n\n");
     }
 
     /**
@@ -246,8 +247,12 @@ class SchemaMigration {
         }
 
         $sql = $db->createTable($schemaModel->tableName, $fields, $primary, $keys, $indexes);
-        print("\n- Created table {$schemaModel->tableName} ... \n");
-        print("$sql\n\n");
+        MigrationOutput::step(
+            "Created table {$schemaModel->tableName}",
+            withBreak: true,
+            withDots:  true,
+        );
+        MigrationOutput::detail("$sql\n\n");
     }
 
     /**
@@ -269,9 +274,9 @@ class SchemaMigration {
             if (!Arrays::contains($modelNames, $tableName)) {
                 if ($canDelete) {
                     $db->deleteTable($tableName);
-                    print("{$preBreak}- Deleted table $tableName\n");
+                    MigrationOutput::step("Deleted table $tableName", withBreak: $preBreak !== "");
                 } else {
-                    print("{$preBreak}- Delete table $tableName (manually)\n");
+                    MigrationOutput::detail("{$preBreak}- Delete table $tableName (manually)\n");
                 }
                 $preBreak = "";
             }
@@ -461,15 +466,19 @@ class SchemaMigration {
 
         // Nothing to change
         if (!$update) {
-            print("- No changes for {$schemaModel->tableName}\n");
+            MigrationOutput::detail("- No changes for {$schemaModel->tableName}\n");
             return;
         }
 
         // Update the Table
-        print("\n- Updated table {$schemaModel->tableName} ... \n");
+        MigrationOutput::step(
+            "Updated table {$schemaModel->tableName}",
+            withBreak: true,
+            withDots:  true,
+        );
         if ($dropPrimary && $canDrop) {
             $sql = $db->dropPrimary($schemaModel->tableName);
-            print("$sql\n");
+            MigrationOutput::detail("$sql\n");
         }
 
         foreach ($renames as $rename) {
@@ -479,7 +488,7 @@ class SchemaMigration {
                 $rename["new"],
                 $rename["type"],
             );
-            print("$sql\n");
+            MigrationOutput::detail("$sql\n");
         }
 
         foreach ($adds as $add) {
@@ -489,7 +498,7 @@ class SchemaMigration {
                 $add["type"],
                 $add["after"],
             );
-            print("$sql\n");
+            MigrationOutput::detail("$sql\n");
         }
 
         foreach ($modifies as $modify) {
@@ -506,22 +515,22 @@ class SchemaMigration {
                 $modify["type"],
                 $modify["after"],
             );
-            print("$sql\n");
+            MigrationOutput::detail("$sql\n");
         }
 
         foreach ($drops as $drop) {
             $sql = $db->deleteColumn($schemaModel->tableName, $drop, $canDelete);
-            print("$sql" . (!$canDelete ? " (manually)" : "") . "\n");
+            MigrationOutput::detail("$sql" . (!$canDelete ? " (manually)" : "") . "\n");
         }
 
         foreach ($keys as $key) {
             $sql = $db->createIndex($schemaModel->tableName, $key);
-            print("$sql\n");
+            MigrationOutput::detail("$sql\n");
         }
 
         foreach ($dropIndexes as $name) {
             $sql = $db->dropIndex($schemaModel->tableName, $name);
-            print("$sql\n");
+            MigrationOutput::detail("$sql\n");
         }
         foreach ($addIndexes as $index) {
             $sql = $db->createIndex(
@@ -530,14 +539,14 @@ class SchemaMigration {
                 $index->dbColumns,
                 $index->isUnique,
             );
-            print("$sql\n");
+            MigrationOutput::detail("$sql\n");
         }
 
         if ($addPrimary) {
             $sql = $db->updatePrimary($schemaModel->tableName, $primary);
-            print("$sql\n");
+            MigrationOutput::detail("$sql\n");
         }
-        print("\n");
+        MigrationOutput::detail("\n");
     }
 
 
