@@ -5,12 +5,15 @@ use Framework\IO\Errors;
 use Framework\Date\Date;
 use Framework\Date\DateUtils;
 use Framework\Date\TimeTable;
+use Framework\Intl\NLS;
 use Framework\Utils\Dictionary;
+use Tests\TestHelpers;
 
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 class TimeTableTest extends TestCase {
+    use TestHelpers;
 
     #[DataProvider("createProvider")]
     public function testCreate(mixed $input, int $expectedCount): void {
@@ -277,31 +280,49 @@ class TimeTableTest extends TestCase {
 
 
     #[DataProvider("getTextProvider")]
-    public function testGetText(array $input, string $timeZone, string $isoCode, bool $expectEmpty, bool $expectZone): void {
-        $tt = TimeTable::create($input);
-        $text = $tt->getText($timeZone, $isoCode);
-
-        if ($expectEmpty) {
-            $this->assertSame("", $text);
-        } else {
-            $this->assertIsString($text);
-            $this->assertNotEmpty($text);
-        }
-
-        if ($expectZone) {
-            $this->assertStringContainsString("(", $text);
-        } else {
-            $this->assertStringNotContainsString("(", $text);
-        }
+    public function testGetText(array $input, string $timeZone, string $expected): void {
+        $text = TimeTable::create($input)->getText($timeZone, "en");
+        $this->assertSame($expected, $text);
     }
 
     public static function getTextProvider(): array {
+        $monday = [ "days" => [ 1 ], "from" => "10:00", "to" => "12:00" ];
+        $week   = [ "days" => [ 1, 2, 3, 4, 5 ], "from" => "09:00", "to" => "18:00" ];
+        $every  = [ "days" => [ 0, 1, 2, 3, 4, 5, 6 ], "from" => "08:00", "to" => "00:00" ];
+
+        // The days without hours are listed as closed after the ones with them
         return [
-            "empty"         => [ [], "", "", true, false ],
-            "one no zone"   => [ [[ "days" => [ 1 ], "from" => "10:00", "to" => "12:00" ]], "", "", false, false ],
-            // note: getText maps its args into getList as (closedText, timeZone)
-            "one with zone" => [ [[ "days" => [ 1 ], "from" => "10:00", "to" => "12:00" ]], "", "1.5", false, true ],
+            "empty"        => [ [], "", "" ],
+            "one day"      => [ [ $monday ], "", "Monday 10:00 to 12:00 and Sunday and Tuesday to Saturday Closed" ],
+            "with a zone"  => [ [ $monday ], "-3", "Monday 10:00 to 12:00 (GMT -3:00) and Sunday and Tuesday to Saturday Closed (GMT -3:00)" ],
+            "a range"      => [ [ $week ], "", "Monday to Friday 09:00 to 18:00 and Sunday and Saturday Closed" ],
+            "every day"    => [ [ $every ], "", "Every day 08:00 to 24:00" ],
+            "a zone again" => [ [ $every ], "1.5", "Every day 08:00 to 24:00 (GMT +1:30)" ],
         ];
+    }
+
+
+    public function testGetTextInALanguage(): void {
+        // A language with strings of its own, so one that is dropped would fall back to English
+        $original = $this->getPrivateStaticProperty(NLS::class, "data");
+        $this->setPrivateStaticProperty(NLS::class, "data", [
+            "xx" => new Dictionary([
+                "DATE_TIME_DAYS"       => [ "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado" ],
+                "GENERAL_AND"          => "y",
+                "TIME_TABLE_HOURS"     => "{0} a {1} h",
+                "TIME_TABLE_NO_HOURS"  => "Cerrado",
+                "TIME_TABLE_SOME_DAYS" => "{0} a {1}",
+            ]),
+        ] + (is_array($original) ? $original : []));
+
+        try {
+            $text = TimeTable::create([
+                [ "days" => [ 1 ], "from" => "10:00", "to" => "12:00" ],
+            ])->getText("", "xx");
+        } finally {
+            $this->setPrivateStaticProperty(NLS::class, "data", $original);
+        }
+        $this->assertSame("Lunes 10:00 a 12:00 h y Domingo y Martes a Sábado Cerrado", $text);
     }
 
 
