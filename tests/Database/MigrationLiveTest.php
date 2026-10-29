@@ -238,11 +238,16 @@ class MigrationLiveTest extends LiveTestCase {
         $column = self::StrayColumn;
         $this->query("ALTER TABLE `$table` ADD COLUMN `$column` varchar(64) NOT NULL DEFAULT ''");
 
-        // Without the flag it says what it would do and leaves the column
+        // Without the flag it says what it would do and leaves the column, and the table is
+        // not reported as updated, as nothing was changed in it
         $result = $this->migrate();
+        $this->assertStringContainsString("Delete the columns of $table (manually)", $result);
         $this->assertStringContainsString("$column", $result);
+        $this->assertStringNotContainsString("Updated table $table", $result);
         $this->assertTrue($this->db()->columnExists($table, $column));
 
+        $result = $this->migrate(canDelete: true);
+        $this->assertStringContainsString("Updated table $table", $result);
         $this->migrateUntilSettled();
         $this->assertFalse($this->db()->columnExists($table, $column));
     }

@@ -418,9 +418,13 @@ class SchemaMigration {
                 }
             }
             if (!$found) {
-                $update  = true;
                 $drops[] = $tableKey;
             }
+        }
+
+        // A column is only deleted when it can be, so the ones left for later do not change it
+        if (count($drops) > 0 && $canDelete) {
+            $update = true;
         }
 
         // Update the Table Primary Keys and Index Keys
@@ -462,6 +466,19 @@ class SchemaMigration {
             }
             $addIndexes[] = $index;
             $update       = true;
+        }
+
+        // Nothing to change, but the columns that are left to delete by hand
+        if (!$update && count($drops) > 0) {
+            MigrationOutput::step(
+                "Delete the columns of {$schemaModel->tableName} (manually)",
+                withBreak: true,
+            );
+            foreach ($drops as $drop) {
+                $sql = $db->deleteColumn($schemaModel->tableName, $drop, execute: false);
+                MigrationOutput::detail("$sql\n");
+            }
+            return;
         }
 
         // Nothing to change
