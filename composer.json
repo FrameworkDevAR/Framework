@@ -1,7 +1,7 @@
 {
     "name": "frameworkdevar/framework",
     "description": "A PHP Framework, built for building fast",
-    "version": "0.21.1",
+    "version": "0.21.2",
     "authors": [
         {
             "name": "Tomás Malbrán",
