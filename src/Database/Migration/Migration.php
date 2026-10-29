@@ -255,6 +255,7 @@ class Migration {
 
         // Migrate the Schema
         MigrationOutput::detail("\nDATABASE MIGRATIONS\n");
+        MigrationOutput::group("Table migrations");
         SchemaMigration::migrateData(
             self::$tableRenames,
             self::$columnRenames,
@@ -297,6 +298,7 @@ class Migration {
 
         // Execute the required Data Migrations
         MigrationOutput::detail("\nDATA MIGRATIONS\n");
+        MigrationOutput::group("Data migrations");
         self::applyDataMigrations();
 
 
@@ -332,7 +334,7 @@ class Migration {
         // Run the Migrations that are pending
         $amount = count($pending);
         if ($amount > 0) {
-            MigrationOutput::step("Running $amount migrations");
+            MigrationOutput::detail("- Running $amount migrations\n");
 
             $db = Database::getInstance();
             foreach ($pending as $name => $className) {

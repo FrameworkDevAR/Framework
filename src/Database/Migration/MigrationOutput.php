@@ -6,7 +6,9 @@ namespace Framework\Database\Migration;
  */
 class MigrationOutput {
 
-    private static bool $progress = false;
+    private static bool   $progress   = false;
+    private static string $group      = "";
+    private static bool   $groupShown = false;
 
 
     /**
@@ -15,7 +17,21 @@ class MigrationOutput {
      * @return void
      */
     public static function setProgress(bool $progress): void {
-        self::$progress = $progress;
+        self::$progress   = $progress;
+        self::$group      = "";
+        self::$groupShown = false;
+    }
+
+    /**
+     * Starts a group of steps, which the progress shows with its steps under it
+     * @param string $title
+     * @return void
+     */
+    public static function group(string $title): void {
+        // The title is only printed with the first step, so a group with nothing to do is
+        // left out of the progress
+        self::$group      = $title;
+        self::$groupShown = false;
     }
 
     /**
@@ -51,8 +67,16 @@ class MigrationOutput {
         bool $withBreak = false,
         bool $withDots = false,
     ): void {
-        if (self::$progress) {
+        if (self::$progress && self::$group === "") {
             print("$step\n");
+            return;
+        }
+        if (self::$progress) {
+            if (!self::$groupShown) {
+                print(self::$group . "\n");
+                self::$groupShown = true;
+            }
+            print("   $step\n");
             return;
         }
 

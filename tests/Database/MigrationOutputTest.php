@@ -103,6 +103,39 @@ class MigrationOutputTest extends TestCase {
 
 
 
+    #[DataProvider("providerGroup")]
+    public function testAGroupIsShownWithItsSteps(bool $progress, int $steps, string $expected): void {
+        MigrationOutput::setProgress($progress);
+        $output = $this->capture(function () use ($steps) {
+            MigrationOutput::group("Table migrations");
+            for ($i = 1; $i <= $steps; $i++) {
+                MigrationOutput::step("Updated table t$i", withBreak: true);
+            }
+        });
+        $this->assertSame($expected, $output);
+    }
+
+    /**
+     * @return array<string,array{bool,int,string}>
+     */
+    public static function providerGroup(): array {
+        return [
+            "progress, two steps"   => [ true,  2, "Table migrations\n   Updated table t1\n   Updated table t2\n" ],
+            "progress, no steps"    => [ true,  0, "" ],
+            "everything, untouched" => [ false, 1, "\n- Updated table t1\n" ],
+        ];
+    }
+
+    public function testTheProgressStartsWithoutAGroup(): void {
+        MigrationOutput::setProgress(true);
+        MigrationOutput::group("Data migrations");
+        MigrationOutput::setProgress(true);
+        $output = $this->capture(fn() => MigrationOutput::step("Running 1 post deploys"));
+        $this->assertSame("Running 1 post deploys\n", $output);
+    }
+
+
+
     #[DataProvider("providerDetail")]
     public function testADetailOfACallback(bool $progress, string $expected): void {
         MigrationOutput::setProgress($progress);
