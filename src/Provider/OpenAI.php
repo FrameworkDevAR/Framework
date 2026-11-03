@@ -454,6 +454,7 @@ class OpenAI {
      * @param Dictionary|null                         $schema           Optional.
      * @param list<File>                              $images           Optional.
      * @param string                                  $vectorStoreID    Optional.
+     * @param list<string>                            $vectorStoreIDs   Optional.
      * @param bool                                    $allowWebSearch   Optional.
      * @param string                                  $allowedDomain    Optional.
      * @param bool                                    $store            Optional.
@@ -468,6 +469,7 @@ class OpenAI {
         ?Dictionary $schema = null,
         array $images = [],
         string $vectorStoreID = "",
+        array $vectorStoreIDs = [],
         bool $allowWebSearch = false,
         string $allowedDomain = "",
         bool $store = true,
@@ -525,15 +527,20 @@ class OpenAI {
         }
 
         // Parse the required tools
-        $tools = [];
+        $tools    = [];
+        $storeIDs = $vectorStoreIDs;
         if ($vectorStoreID !== "") {
-            // Without forcing it, the model searches the files only when it needs them
+            array_unshift($storeIDs, $vectorStoreID);
+        }
+        if (count($storeIDs) > 0) {
+            // Without forcing it, the model searches the files only when it needs them. OpenAI
+            // searches at most 2 Vector Stores in a single Response
             if ($forceFileSearch) {
                 $params["tool_choice"] = "required";
             }
             $tools[] = [
                 "type"             => "file_search",
-                "vector_store_ids" => [ $vectorStoreID ],
+                "vector_store_ids" => $storeIDs,
             ];
         }
         if ($allowWebSearch) {
