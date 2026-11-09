@@ -50,6 +50,7 @@ class ActionLog extends LogActionSchema {
         ], $request->search);
 
         $query->credentialID->equalIf($request->credentialID);
+        $query->credentialID->in($request->credentialIDs);
         $query->createdTime->inPeriod($request);
         return $query;
     }

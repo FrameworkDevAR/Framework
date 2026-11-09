@@ -53,6 +53,10 @@ class LogActionModel {
 
 
 
+    /** @var list<int> */
+    #[Requested]
+    public array $credentialIDs = [];
+
     #[Requested]
     public string $search = "";
 
