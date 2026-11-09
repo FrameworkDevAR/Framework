@@ -15,6 +15,8 @@ use Framework\System\Access;
 
 use Tests\LiveTestCase;
 
+use PHPUnit\Framework\Attributes\DataProvider;
+
 /**
  * The Actions Log, what was done and in which sign in it was done
  *
@@ -234,6 +236,50 @@ class ActionLogLiveTest extends LiveTestCase {
         $request = new LogActionRequest(credentialID: $credentialID);
         $this->assertSame(1, ActionLog::getAmount($request));
         $this->assertSame(2, ActionLog::getAmount(new LogActionRequest()));
+    }
+
+    /**
+     * @param list<string> $whoIDs
+     * @param string       $who
+     * @param int          $expected
+     */
+    #[DataProvider("providerFilteredBySeveral")]
+    public function testTheActionsAreFilteredBySeveral(
+        array $whoIDs,
+        string $who,
+        int $expected,
+    ): void {
+        // An app lists what the users of one of its accounts did, so the log takes a list
+        // of them, and the one of the filter on top of it narrows it down
+        $ids = [
+            "ana"  => $this->create("log-ana@framework.test"),
+            "bea"  => $this->create("log-bea@framework.test"),
+            "cris" => $this->create("log-cris@framework.test"),
+        ];
+        foreach ($ids as $credentialID) {
+            SessionLog::start($credentialID);
+            ActionLog::add(Sec::Example, Act::Example, 1, $credentialID);
+        }
+
+        $request = new LogActionRequest(
+            credentialID:  $who !== "" ? $ids[$who] : 0,
+            credentialIDs: array_map(fn (string $key) => $ids[$key], $whoIDs),
+        );
+        $this->assertSame($expected, ActionLog::getAmount($request));
+        $this->assertCount($expected, ActionLog::getAll($request));
+    }
+
+    /**
+     * @return array<string,array{list<string>,string,int}>
+     */
+    public static function providerFilteredBySeveral(): array {
+        return [
+            "no list"            => [ [], "", 3 ],
+            "a list of one"      => [ [ "ana" ], "", 1 ],
+            "a list of two"      => [ [ "ana", "bea" ], "", 2 ],
+            "one of the list"    => [ [ "ana", "bea" ], "bea", 1 ],
+            "one out of it"      => [ [ "ana", "bea" ], "cris", 0 ],
+        ];
     }
 
     public function testTheActionsAreSearched(): void {
