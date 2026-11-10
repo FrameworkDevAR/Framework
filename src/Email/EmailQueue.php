@@ -11,6 +11,7 @@ use Framework\Email\Schema\EmailQueueQuery;
 use Framework\Email\Schema\EmailContentEntity;
 use Framework\System\Config;
 use Framework\System\EmailCode;
+use Framework\System\Event;
 use Framework\Date\Date;
 use Framework\Utils\Arrays;
 
@@ -54,9 +55,28 @@ class EmailQueue extends EmailQueueSchema {
         $query->createdTime->greaterThan($time);
         $query->sendTime->greaterThan($time);
         $query->endOr();
+        $query->inCurrentEnv();
         $query->createdTime->orderByDesc();
         $query->limit(Config::getEmailLimit());
         return self::getEntityList($query);
+    }
+
+    /**
+     * Returns the IDs of the not sent Queued Emails since the given time, oldest first
+     * @param Date $since
+     * @return list<int>
+     */
+    public static function getUnsentIDs(Date $since): array {
+        $query = new EmailQueueQuery();
+        $query->emailResult->equal(EmailResult::NotProcessed);
+        $query->sendTime->greaterOrEqual($since);
+        $query->sendTime->orderByAsc();
+
+        $result = [];
+        foreach (self::getEntityList($query) as $email) {
+            $result[] = $email->emailQueueID;
+        }
+        return $result;
     }
 
 
@@ -124,6 +144,7 @@ class EmailQueue extends EmailQueueSchema {
         );
 
         if (!$sendNow) {
+            Event::emailQueued($emailQueueID);
             return true;
         }
 
@@ -143,6 +164,26 @@ class EmailQueue extends EmailQueueSchema {
         foreach ($emails as $email) {
             self::send($email, sendAlways: false);
         }
+    }
+
+    /**
+     * Sends the Queued Email with the given ID, if it was not sent yet
+     * @param int $emailQueueID
+     * @return bool
+     */
+    public static function sendOne(int $emailQueueID): bool {
+        $email = self::getByID($emailQueueID);
+        if ($email->isEmpty() || $email->emailResult !== EmailResult::NotProcessed) {
+            return false;
+        }
+
+        // An Email queued in another Environment, as its database was copied, is never sent
+        if (!$email->isCurrentEnv()) {
+            return false;
+        }
+
+        self::send($email, sendAlways: false);
+        return true;
     }
 
     /**
@@ -184,6 +225,10 @@ class EmailQueue extends EmailQueueSchema {
             sendTime:    Date::now(),
             sentTime:    Date::empty(),
         );
+
+        foreach (Arrays::toInts($emailQueueID) as $id) {
+            Event::emailQueued($id);
+        }
     }
 
     /**

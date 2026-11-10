@@ -34,6 +34,7 @@ class SchemaModel {
     // Special flags
     public bool $hasUsers         = false;
     public bool $hasTimestamps    = false;
+    public bool $hasEnv           = false;
     public bool $hasStatus        = false;
     public bool $canCreate        = false;
     public bool $canEdit          = false;
@@ -112,6 +113,7 @@ class SchemaModel {
      * @param bool             $fromFramework   Optional.
      * @param bool             $hasUsers        Optional.
      * @param bool             $hasTimestamps   Optional.
+     * @param bool             $hasEnv          Optional.
      * @param bool             $hasStatus       Optional.
      * @param bool             $canCreate       Optional.
      * @param bool             $canEdit         Optional.
@@ -138,6 +140,7 @@ class SchemaModel {
         bool $fromFramework = false,
         bool $hasUsers = false,
         bool $hasTimestamps = false,
+        bool $hasEnv = false,
         bool $hasStatus = false,
         bool $canCreate = false,
         bool $canEdit = false,
@@ -167,6 +170,7 @@ class SchemaModel {
 
         $this->hasUsers        = $hasUsers;
         $this->hasTimestamps   = $hasTimestamps;
+        $this->hasEnv          = $hasEnv;
         $this->hasStatus       = $hasStatus;
         $this->canCreate       = $canCreate;
         $this->canEdit         = $canEdit;
@@ -271,6 +275,14 @@ class SchemaModel {
             $this->extraFields[] = Field::create(
                 type: FieldType::Number,
                 name: "modifiedUser",
+            );
+        }
+
+        if ($this->hasEnv) {
+            $this->extraFields[] = Field::create(
+                type:   FieldType::String,
+                name:   "env",
+                length: 20,
             );
         }
 

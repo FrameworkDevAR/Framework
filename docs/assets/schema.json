@@ -414,6 +414,11 @@
             {
                 "name": "modifiedTime",
                 "type": "date"
+            },
+            {
+                "name": "env",
+                "type": "string",
+                "length": 20
             }
         ],
         "foreigns": []
@@ -886,6 +891,11 @@
             {
                 "name": "modifiedTime",
                 "type": "date"
+            },
+            {
+                "name": "env",
+                "type": "string",
+                "length": 20
             }
         ],
         "foreigns": [

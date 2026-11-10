@@ -1,6 +1,7 @@
 <?php
 namespace Framework\Database\Query;
 
+use Framework\Core\Configs;
 use Framework\Database\SchemaModel;
 use Framework\Database\Query\QueryBuilder;
 use Framework\Date\Date;
@@ -98,6 +99,12 @@ class ModificationBuilder {
     public function addCreation(int $credentialID = 0): ModificationBuilder {
         if ($this->schemaModel->canDelete && !$this->builder->hasField("isDeleted")) {
             $this->builder->set("isDeleted", 0);
+        }
+
+        // Only the creation writes the Environment, as an edit of a row copied from another
+        // one would take it as its own
+        if ($this->schemaModel->hasEnv && !$this->builder->hasField("env")) {
+            $this->builder->set("env", Configs::getEnvironment());
         }
 
         if ($this->schemaModel->canCreate) {

@@ -20,6 +20,7 @@ use Framework\Utils\JSON;
 #[Model(
     description:   "The pushes waiting to be sent and the sent ones, with the devices used.",
     hasTimestamps: true,
+    hasEnv:        true,
     canCreate:     true,
     canEdit:       true,
 )]

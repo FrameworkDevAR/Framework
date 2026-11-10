@@ -265,6 +265,54 @@ class ConfigsTest extends TestCase {
 
 
 
+    #[DataProvider("providerCurrentEnv")]
+    public function testARowRunsInItsOwnEnvironment(string $current, string $row, bool $expected): void {
+        $environment = Configs::getEnvironment();
+        $this->setPrivateStaticProperty(Configs::class, "environment", $current);
+
+        $result = Configs::isCurrentEnv($row);
+        $this->setPrivateStaticProperty(Configs::class, "environment", $environment);
+        $this->assertSame($expected, $result);
+    }
+
+    #[DataProvider("providerEveryEnv")]
+    public function testOnlyProductionRunsEveryEnvironment(string $current, bool $expected): void {
+        $environment = Configs::getEnvironment();
+        $this->setPrivateStaticProperty(Configs::class, "environment", $current);
+
+        $result = Configs::runsEveryEnv();
+        $this->setPrivateStaticProperty(Configs::class, "environment", $environment);
+        $this->assertSame($expected, $result);
+    }
+
+    /**
+     * @return array<string,array{string,bool}>
+     */
+    public static function providerEveryEnv(): array {
+        return [
+            "production" => [ "production", true ],
+            "local"      => [ "local", false ],
+            "dev"        => [ "dev", false ],
+        ];
+    }
+
+    /**
+     * @return array<string,array{string,string,bool}>
+     */
+    public static function providerCurrentEnv(): array {
+        return [
+            "production runs its own"      => [ "production", "production", true ],
+            "production runs another"      => [ "production", "local", true ],
+            "production runs one without"  => [ "production", "", true ],
+            "local runs its own"           => [ "local", "local", true ],
+            "local leaves production"      => [ "local", "production", false ],
+            "local leaves one without"     => [ "local", "", false ],
+            "dev leaves local"             => [ "dev", "local", false ],
+        ];
+    }
+
+
+
     public function testTheAppWritesOverTheFramework(): void {
         $framePath = $this->writeFiles([ ".env.example" => "ONE = 1\nTWO = 2" ], "frame");
         $appPath   = $this->writeFiles([ ".env" => "TWO = 22" ]);

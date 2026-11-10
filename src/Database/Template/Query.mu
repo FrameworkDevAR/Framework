@@ -127,4 +127,17 @@ class {{queryClass}} extends SchemaQuery {
         return $this;
     }
 {{/idDbName}}
+{{#hasEnv}}
+
+    /**
+     * Keeps only the rows whose work can run in the current Environment
+     * @return {{queryClass}}
+     */
+    public function inCurrentEnv(): {{queryClass}} {
+        if (!Configs::runsEveryEnv()) {
+            $this->env->equal(Configs::getEnvironment());
+        }
+        return $this;
+    }
+{{/hasEnv}}
 }

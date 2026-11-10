@@ -84,6 +84,7 @@ operations the model allows:</p>
         <tr><td><code>description</code></td><td>What the table is for, in a sentence. It is written to the <a href="schema-json.html">schema JSON</a> for anything reading the database from outside.</td></tr>
         <tr><td><code>hasTimestamps</code></td><td>Adds the created and modified time columns.</td></tr>
         <tr><td><code>hasUsers</code></td><td>Adds the columns tracking which user created and modified the row.</td></tr>
+        <tr><td><code>hasEnv</code></td><td>Adds the <code>env</code> column, which the create writes with the current environment and an edit never changes. The entity gets <code>isCurrentEnv()</code>, which is always true in production, and elsewhere only when the row was created there, so the work queued in a database copied from production is never sent from another environment. The query gets <code>inCurrentEnv()</code>, which keeps the same rows, for a send that reads them in bulk.</td></tr>
         <tr><td><code>canCreate</code> / <code>canEdit</code></td><td>Generates the create and edit operations.</td></tr>
         <tr><td><code>canDelete</code></td><td>Enables soft deletes — the row is flagged rather than removed.</td></tr>
         <tr><td><code>skipList</code></td><td>Leaves the model out of the generated listings.</td></tr>

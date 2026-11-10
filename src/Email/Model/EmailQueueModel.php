@@ -4,6 +4,7 @@ namespace Framework\Email\Model;
 use Framework\Email\EmailResult;
 
 use Framework\Database\Model\Model;
+use Framework\Database\Model\Index;
 use Framework\Database\Model\Field;
 use Framework\Database\Model\Requested;
 use Framework\Database\Model\Expression;
@@ -18,9 +19,11 @@ use Framework\Utils\JSON;
 #[Model(
     description:   "The emails waiting to be sent and the sent ones, with each attempt result.",
     hasTimestamps: true,
+    hasEnv:        true,
     canCreate:     true,
     canEdit:       true,
 )]
+#[Index([ "emailResult", "sendTime" ])]
 class EmailQueueModel {
 
     #[Field(isID: true), Requested(isMultiID: true)]

@@ -10,6 +10,7 @@ use Framework\Notification\Schema\NotificationQueueEntity;
 use Framework\Notification\Schema\NotificationQueueColumn;
 use Framework\Notification\Schema\NotificationQueueQuery;
 use Framework\System\Config;
+use Framework\System\Event;
 use Framework\Date\Date;
 
 /**
@@ -70,9 +71,28 @@ class NotificationQueue extends NotificationQueueSchema {
         $query = new NotificationQueueQuery();
         $query->notificationResult->equal(NotificationResult::NotProcessed);
         $query->createdTime->greaterThan($time);
+        $query->inCurrentEnv();
         $query->createdTime->orderByDesc();
         $query->limit(Config::getNotificationLimit());
         return self::getEntityList($query);
+    }
+
+    /**
+     * Returns the IDs of the Unsent Notifications since the given time, oldest first
+     * @param Date $since
+     * @return list<int>
+     */
+    public static function getUnsentIDs(Date $since): array {
+        $query = new NotificationQueueQuery();
+        $query->notificationResult->equal(NotificationResult::NotProcessed);
+        $query->createdTime->greaterOrEqual($since);
+        $query->createdTime->orderByAsc();
+
+        $result = [];
+        foreach (self::getEntityList($query) as $elem) {
+            $result[] = $elem->notificationQueueID;
+        }
+        return $result;
     }
 
     /**
@@ -161,7 +181,7 @@ class NotificationQueue extends NotificationQueueSchema {
         string $dataType,
         int $dataID,
     ): int {
-        return self::createEntity(
+        $notificationQueueID = self::createEntity(
             credentialID:       $credentialID,
             currentUser:        $currentUser,
             title:              $title,
@@ -171,6 +191,9 @@ class NotificationQueue extends NotificationQueueSchema {
             dataID:             $dataID,
             notificationResult: NotificationResult::NotProcessed,
         );
+
+        Event::notificationQueued($notificationQueueID);
+        return $notificationQueueID;
     }
 
     /**
@@ -228,30 +251,57 @@ class NotificationQueue extends NotificationQueueSchema {
      * @return void
      */
     public static function sendAll(): void {
-        $list = self::getAllUnsent();
-
-        foreach ($list as $elem) {
-            $playerIDs = Device::getAllForCredential($elem->credentialID);
-            $badge     = self::getUnreadAmount($elem->credentialID, $elem->currentUser);
-
-            $output = Notification::sendToSome(
-                $elem->title,
-                $elem->message,
-                $elem->url,
-                $elem->dataType,
-                $elem->dataID,
-                $playerIDs,
-                $badge,
-            );
-
-            self::editEntity(
-                $elem->notificationQueueID,
-                notificationResult: $output->result,
-                externalID:         $output->externalID,
-                providerError:      $output->error,
-                playerIDs:          $playerIDs,
-                sentTime:           Date::now(),
-            );
+        foreach (self::getAllUnsent() as $elem) {
+            self::send($elem);
         }
+    }
+
+    /**
+     * Sends the Queued Notification with the given ID, if it was not sent yet
+     * @param int $notificationQueueID
+     * @return bool
+     */
+    public static function sendOne(int $notificationQueueID): bool {
+        $elem = self::getByID($notificationQueueID);
+        if ($elem->isEmpty() || $elem->notificationResult !== NotificationResult::NotProcessed) {
+            return false;
+        }
+
+        // A Notification queued in another Environment, as its database was copied, is never sent
+        if (!$elem->isCurrentEnv()) {
+            return false;
+        }
+
+        self::send($elem);
+        return true;
+    }
+
+    /**
+     * Sends the given Notification
+     * @param NotificationQueueEntity $elem
+     * @return void
+     */
+    private static function send(NotificationQueueEntity $elem): void {
+        $playerIDs = Device::getAllForCredential($elem->credentialID);
+        $badge     = self::getUnreadAmount($elem->credentialID, $elem->currentUser);
+
+        $output = Notification::sendToSome(
+            $elem->title,
+            $elem->message,
+            $elem->url,
+            $elem->dataType,
+            $elem->dataID,
+            $playerIDs,
+            $badge,
+        );
+
+        self::editEntity(
+            $elem->notificationQueueID,
+            notificationResult: $output->result,
+            externalID:         $output->externalID,
+            providerError:      $output->error,
+            playerIDs:          $playerIDs,
+            sentTime:           Date::now(),
+        );
     }
 }
