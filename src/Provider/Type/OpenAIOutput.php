@@ -31,6 +31,9 @@ class OpenAIOutput {
     public int    $outputTokens  = 0;
     public bool   $didSearchCall = false;
 
+    /** @var list<array{callID:string,name:string,arguments:array<int|string,mixed>}> */
+    public array  $functionCalls = [];
+
 
 
     /**
