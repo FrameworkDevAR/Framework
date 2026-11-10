@@ -41,6 +41,7 @@ class Email {
      * @param bool   $sendAlways      Optional.
      * @param bool   $sendTest        Optional.
      * @param bool   $withoutTemplate Optional.
+     * @param string $replyTo         Optional.
      * @return EmailResult
      */
     public static function send(
@@ -50,6 +51,7 @@ class Email {
         bool $sendAlways = false,
         bool $sendTest = false,
         bool $withoutTemplate = false,
+        string $replyTo = "",
     ): EmailResult {
         // Return some possible errors
         if (!$sendTest && !Config::isEmailActive()) {
@@ -92,7 +94,7 @@ class Email {
         // Configure the variables
         $fromName  = Config::getName();
         $fromEmail = Config::getEmailEmail();
-        $replyTo   = Config::getEmailReplyTo();
+        $replyTo   = $replyTo !== "" ? $replyTo : Config::getEmailReplyTo();
 
 
         // Hand it to whatever the Provider sends through

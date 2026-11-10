@@ -361,6 +361,10 @@
                 "type": "text"
             },
             {
+                "name": "replyTo",
+                "type": "string"
+            },
+            {
                 "name": "position",
                 "type": "number"
             }
@@ -390,6 +394,10 @@
             {
                 "name": "message",
                 "type": "text"
+            },
+            {
+                "name": "replyTo",
+                "type": "string"
             },
             {
                 "name": "emailResult",

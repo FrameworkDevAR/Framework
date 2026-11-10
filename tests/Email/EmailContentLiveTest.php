@@ -150,6 +150,23 @@ class EmailContentLiveTest extends LiveTestCase {
         ];
     }
 
+    public function testTheReplyToIsEditedWithoutAVersion(): void {
+        TestEmail::$version = 2;
+        $this->migrateMessages();
+        $content = EmailContent::get(EmailCode::Test, "en");
+
+        EmailContent::edit($content->id, $content->subject, $content->message, "reply@framework.test");
+        $content = EmailContent::get(EmailCode::Test, "en");
+        $this->assertSame("reply@framework.test", $content->replyTo);
+        $this->assertSame(2, $content->version);
+
+        // Not given, it is kept
+        EmailContent::edit($content->id, "Edited", $content->message);
+        $content = EmailContent::get(EmailCode::Test, "en");
+        $this->assertSame("reply@framework.test", $content->replyTo);
+        $this->assertSame(3, $content->version);
+    }
+
     public function testAContentThatIsNotThereIsNotEdited(): void {
         $this->assertFalse(EmailContent::edit(0, "Edited", "Edited"));
     }
