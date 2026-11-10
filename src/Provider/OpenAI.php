@@ -9,12 +9,20 @@ use Framework\Date\Timer;
 use Framework\File\File;
 use Framework\File\Storage;
 use Framework\Utils\Dictionary;
+use Framework\Utils\JSON;
 use Framework\Utils\Strings;
 
 use CURLStringFile;
 
 /**
  * The OpenAI Provider
+ * @phpstan-type OpenAIFunction array{
+ *     name: string,
+ *     description: string,
+ *     parameters: array<string,mixed>,
+ *     output?: string,
+ *     isFinal?: bool,
+ * }
  */
 class OpenAI {
 
@@ -413,7 +421,7 @@ class OpenAI {
 
         $text = $choice->getDict("message")->getString("content");
         if ($removeReferences) {
-            $text = Strings::replacePattern($text, '/【.*】/', "");
+            $text = self::removeReferences($text);
         }
 
         $result->text         = $text;
@@ -451,7 +459,9 @@ class OpenAI {
      * @param string                                  $model
      * @param string                                  $prompt
      * @param list<array{role:string,content:string}> $context          Optional.
+     * @param string                                  $instructions     Optional.
      * @param Dictionary|null                         $schema           Optional.
+     * @param list<OpenAIFunction>                    $functions        Optional.
      * @param list<File>                              $images           Optional.
      * @param string                                  $vectorStoreID    Optional.
      * @param list<string>                            $vectorStoreIDs   Optional.
@@ -466,7 +476,9 @@ class OpenAI {
         string $model,
         string $prompt,
         array $context = [],
+        string $instructions = "",
         ?Dictionary $schema = null,
+        array $functions = [],
         array $images = [],
         string $vectorStoreID = "",
         array $vectorStoreIDs = [],
@@ -498,16 +510,23 @@ class OpenAI {
             }
         }
 
+        // Without a prompt the last message of the context is the user turn
+        $input = $context;
+        if ($prompt !== "" || count($context) === 0) {
+            $input[] = [
+                "role"    => "user",
+                "content" => $content,
+            ];
+        }
+
         $params = [
             "model" => $model,
             "store" => $store,
-            "input" => array_merge($context, [
-                [
-                    "role"    => "user",
-                    "content" => $content,
-                ],
-            ]),
+            "input" => $input,
         ];
+        if ($instructions !== "") {
+            $params["instructions"] = $instructions;
+        }
 
         // Set the Schema
         if ($schema !== null && $schema->isNotEmpty()) {
@@ -526,18 +545,98 @@ class OpenAI {
             ];
         }
 
-        // Parse the required tools
-        $tools    = [];
+        // Set the Tools
         $storeIDs = $vectorStoreIDs;
         if ($vectorStoreID !== "") {
             array_unshift($storeIDs, $vectorStoreID);
         }
-        if (count($storeIDs) > 0) {
-            // Without forcing it, the model searches the files only when it needs them. OpenAI
-            // searches at most 2 Vector Stores in a single Response
-            if ($forceFileSearch) {
-                $params["tool_choice"] = "required";
+        $tools = self::getResponseTools($functions, $storeIDs, $allowWebSearch, $allowedDomain);
+        if (count($tools) > 0) {
+            $params["tools"] = $tools;
+        }
+
+        // Without forcing it, the model searches the files only when it needs them. OpenAI
+        // searches at most 2 Vector Stores in a single Response. Requiring a tool is enough
+        // when there are no functions, as with them any function would satisfy it
+        if (count($storeIDs) > 0 && $forceFileSearch) {
+            $params["tool_choice"] = "required";
+            if (count($functions) > 0) {
+                $params["tool_choice"] = [ "type" => "file_search" ];
             }
+        }
+
+
+        // Perform the Request
+        return self::performResponse($params, $timer, $storeIDs, $removeReferences);
+    }
+
+    /**
+     * Continues a Response with the outputs of the functions it called and returns the Result
+     * @param string                                   $model
+     * @param string                                   $responseID
+     * @param list<array{callID:string,output:string}> $functionOutputs
+     * @param list<OpenAIFunction>                     $functions        Optional.
+     * @param list<string>                             $vectorStoreIDs   Optional.
+     * @param bool                                     $allowWebSearch   Optional.
+     * @param string                                   $allowedDomain    Optional.
+     * @param bool                                     $store            Optional.
+     * @param bool                                     $removeReferences Optional.
+     * @return OpenAIOutput
+     */
+    public static function continueResponse(
+        string $model,
+        string $responseID,
+        array $functionOutputs,
+        array $functions = [],
+        array $vectorStoreIDs = [],
+        bool $allowWebSearch = false,
+        string $allowedDomain = "",
+        bool $store = true,
+        bool $removeReferences = true,
+    ): OpenAIOutput {
+        $timer = new Timer();
+        $input = [];
+        foreach ($functionOutputs as $functionOutput) {
+            $input[] = [
+                "type"    => "function_call_output",
+                "call_id" => $functionOutput["callID"],
+                "output"  => $functionOutput["output"],
+            ];
+        }
+
+        // The previous Response keeps the instructions and the context, and the tools are
+        // the only part that is given again
+        $params = [
+            "model"                => $model,
+            "store"                => $store,
+            "previous_response_id" => $responseID,
+            "input"                => $input,
+        ];
+        $storeIDs = $vectorStoreIDs;
+        $tools    = self::getResponseTools($functions, $storeIDs, $allowWebSearch, $allowedDomain);
+        if (count($tools) > 0) {
+            $params["tools"] = $tools;
+        }
+
+        return self::performResponse($params, $timer, $storeIDs, $removeReferences);
+    }
+
+    /**
+     * Returns the tools of a Response
+     * @param list<OpenAIFunction> $functions
+     * @param list<string>         $storeIDs
+     * @param bool                 $allowWebSearch
+     * @param string               $allowedDomain
+     * @return list<array<string,mixed>>
+     */
+    private static function getResponseTools(
+        array $functions,
+        array $storeIDs,
+        bool $allowWebSearch,
+        string $allowedDomain,
+    ): array {
+        $tools = [];
+        if (count($storeIDs) > 0) {
             $tools[] = [
                 "type"             => "file_search",
                 "vector_store_ids" => $storeIDs,
@@ -556,12 +655,31 @@ class OpenAI {
             }
             $tools[] = $searchTool;
         }
-        if (count($tools) > 0) {
-            $params["tools"] = $tools;
+        foreach ($functions as $function) {
+            $tools[] = [
+                "type"        => "function",
+                "name"        => $function["name"],
+                "description" => $function["description"],
+                "parameters"  => $function["parameters"],
+            ];
         }
+        return $tools;
+    }
 
-
-        // Perform the Request
+    /**
+     * Performs a Response request and returns the Result
+     * @param array<string,mixed> $params
+     * @param Timer               $timer
+     * @param list<string>        $storeIDs
+     * @param bool                $removeReferences
+     * @return OpenAIOutput
+     */
+    private static function performResponse(
+        array $params,
+        Timer $timer,
+        array $storeIDs,
+        bool $removeReferences,
+    ): OpenAIOutput {
         $route    = "/responses";
         $response = self::post($route, $params);
         $result   = new OpenAIOutput($response, url: self::BaseUrl, route: $route);
@@ -572,20 +690,28 @@ class OpenAI {
         }
 
         // Generate the Output
-        $text = "";
+        $text  = "";
+        $calls = [];
         foreach ($response->getList("output") as $output) {
-            if ($output->getString("type") === "message") {
+            $type = $output->getString("type");
+            if ($type === "message" && $text === "") {
                 $text = $output->getFirst("content")->getString("text");
-                break;
+            } elseif ($type === "function_call") {
+                $calls[] = [
+                    "callID"    => $output->getString("call_id"),
+                    "name"      => $output->getString("name"),
+                    "arguments" => JSON::decodeAsArray($output->getString("arguments")),
+                ];
             }
         }
         if ($removeReferences) {
-            $text = Strings::replacePattern($text, '/【.*?】/', "");
+            $text = self::removeReferences($text);
         }
 
-        if ($text !== "") {
-            $result->vectorStoreID = $vectorStoreID;
+        if ($text !== "" || count($calls) > 0) {
+            $result->vectorStoreID = Strings::join($storeIDs, ",");
             $result->text          = $text;
+            $result->functionCalls = $calls;
             $result->inputTokens   = $response->getDict("usage")->getInt("input_tokens");
             $result->outputTokens  = $response->getDict("usage")->getInt("output_tokens");
             $result->runTime       = $timer->getElapsedSecondsInt();
@@ -599,6 +725,18 @@ class OpenAI {
             }
         }
         return $result;
+    }
+
+    /**
+     * Removes the references to the files from the given text
+     * @param string $text
+     * @return string
+     */
+    private static function removeReferences(string $text): string {
+        // The file search cites the files between brackets, or between the private use
+        // characters U+E200 and U+E201 in the newer models
+        $text = Strings::replacePattern($text, '/【.*?】/', "");
+        return Strings::replacePattern($text, '/\x{E200}.*?\x{E201}/u', "");
     }
 
     /**
