@@ -178,6 +178,14 @@ class EmailLiveTest extends LiveTestCase {
         $this->assertSame("reply@framework.test", $email["replyTo"]);
     }
 
+    public function testTheReplyToOfTheSendTakesThePlaceOfTheConfig(): void {
+        $this->sendForReal();
+        $this->setConfig("EMAIL_REPLY_TO", "reply@framework.test");
+
+        Email::send(self::SendTo, "The subject", "The message", replyTo: "billing@framework.test");
+        $this->assertSame("billing@framework.test", TestEmailSender::getLast()["replyTo"]);
+    }
+
     public function testTheMessageIsWrappedInTheTemplate(): void {
         $this->sendForReal();
 

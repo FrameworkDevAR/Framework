@@ -116,12 +116,10 @@ abstract class EmailMessage {
 
         // An Email with a version can be edited, so the texts of its Content are the ones
         // sent, as it might hold a later version than the class
-        if (static::$version > 0) {
-            $content = EmailContent::get(static::getCode(), $language);
-            if ($content->exists()) {
-                $subject = $content->subject;
-                $body    = $content->message;
-            }
+        $content = EmailContent::get(static::getCode(), $language);
+        if (static::$version > 0 && $content->exists()) {
+            $subject = $content->subject;
+            $body    = $content->message;
         }
 
         return EmailQueue::addEmail(
@@ -131,6 +129,7 @@ abstract class EmailMessage {
             message:   self::renderBody($subject, $body, $data),
             sendNow:   static::$sendNow,
             dataID:    $dataID,
+            replyTo:   $content->replyTo,
         );
     }
 

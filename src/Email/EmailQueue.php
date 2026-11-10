@@ -117,6 +117,7 @@ class EmailQueue extends EmailQueueSchema {
      * @param string              $message
      * @param bool                $sendNow   Optional.
      * @param int                 $dataID    Optional.
+     * @param string              $replyTo   Optional.
      * @return bool
      */
     public static function addEmail(
@@ -126,6 +127,7 @@ class EmailQueue extends EmailQueueSchema {
         string $message,
         bool $sendNow = false,
         int $dataID = 0,
+        string $replyTo = "",
     ): bool {
         $sendTos = Arrays::toStrings($sendTo);
         if (count($sendTos) === 0) {
@@ -137,6 +139,7 @@ class EmailQueue extends EmailQueueSchema {
             sendTo:      $sendTos,
             subject:     $subject,
             message:     $message,
+            replyTo:     $replyTo,
             emailResult: EmailResult::NotProcessed,
             sendTime:    Date::now(),
             sentTime:    Date::empty(),
@@ -205,6 +208,7 @@ class EmailQueue extends EmailQueueSchema {
                 $email->subject,
                 $email->message,
                 $sendAlways,
+                replyTo: $email->replyTo,
             );
         }
         self::markAsSent($email->id, $emailResult);

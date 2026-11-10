@@ -40,6 +40,9 @@ class EmailContentModel {
     #[Field(isText: true), Requested]
     public string $message = "";
 
+    #[Field, Requested]
+    public string $replyTo = "";
+
     #[Field(isPosition: true)]
     public int $position = 0;
 }

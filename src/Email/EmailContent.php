@@ -4,6 +4,7 @@ namespace Framework\Email;
 use Framework\Discovery\Type\DiscoveryMigration;
 use Framework\Email\EmailMessage;
 use Framework\Email\Schema\EmailContentSchema;
+use Framework\Email\Schema\EmailContentColumn;
 use Framework\Email\Schema\EmailContentEntity;
 use Framework\Email\Schema\EmailContentQuery;
 use Framework\Provider\Mustache;
@@ -41,15 +42,27 @@ class EmailContent extends EmailContentSchema implements DiscoveryMigration {
 
     /**
      * Edits the texts of the given Email Content and gives it a new version, when it has one
-     * @param int    $emailContentID
-     * @param string $subject
-     * @param string $message
+     * @param int         $emailContentID
+     * @param string      $subject
+     * @param string      $message
+     * @param string|null $replyTo        Optional.
      * @return bool
      */
-    public static function edit(int $emailContentID, string $subject, string $message): bool {
+    public static function edit(
+        int $emailContentID,
+        string $subject,
+        string $message,
+        ?string $replyTo = null,
+    ): bool {
         $content = self::getByID($emailContentID);
         if ($content->isEmpty() || $content->version === 0) {
             return false;
+        }
+
+        // The Reply To is not a text of the Email, so it changes without a new version, and
+        // it is kept when it is not given
+        if ($replyTo !== null && $content->replyTo !== $replyTo) {
+            self::editEntityValue($emailContentID, EmailContentColumn::ReplyTo, $replyTo);
         }
 
         // The version is only raised by an edit that changes something

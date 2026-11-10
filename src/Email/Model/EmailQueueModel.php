@@ -42,6 +42,9 @@ class EmailQueueModel {
     public string $message = "";
 
     #[Field]
+    public string $replyTo = "";
+
+    #[Field]
     public EmailResult $emailResult = EmailResult::None;
 
     #[Field, Requested]
