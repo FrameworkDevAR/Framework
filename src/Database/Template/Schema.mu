@@ -64,6 +64,7 @@ class {{name}}Schema extends Schema {
                 name:          "{{name}}",
                 hasUsers:      {{hasUsersValue}},
                 hasTimestamps: {{hasTimestampsValue}},
+                hasEnv:        {{hasEnvValue}},
                 hasStatus:     {{hasStatusValue}},
                 canCreate:     {{canCreateValue}},
                 canEdit:       {{canEditValue}},

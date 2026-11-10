@@ -1,6 +1,7 @@
 <?php
 namespace Tests\Email;
 
+use Framework\Date\Date;
 use Framework\Email\Email;
 use Framework\Email\EmailContent;
 use Framework\Email\EmailQueue;
@@ -234,6 +235,16 @@ class EmailQueueLiveTest extends LiveTestCase {
         $this->assertCount(0, EmailQueue::getAllUnsent());
     }
 
+    public function testTheUnsentAreTheOnesOfThisEnvironment(): void {
+        EmailQueue::add($this->content(), self::SendTo);
+        EmailQueue::add($this->content(), "other@framework.test");
+        $this->query("UPDATE `email_queue` SET `env` = 'production' WHERE `sendTo` LIKE '%other%'");
+
+        $unsent = EmailQueue::getAllUnsent();
+        $this->assertCount(1, $unsent);
+        $this->assertSame("local", $unsent[0]->env);
+    }
+
     public function testSendingAnEmptyQueueIsFine(): void {
         EmailQueue::sendAll();
 
@@ -347,5 +358,62 @@ class EmailQueueLiveTest extends LiveTestCase {
 
         $this->assertSame(1, EmailQueue::getTotal(new EmailQueueRequest(dataID: 42)));
         $this->assertSame(2, EmailQueue::getTotal(new EmailQueueRequest()));
+    }
+
+
+
+    public function testTheUnsentIDsAreTheOnesSinceTheTimeOldestFirst(): void {
+        EmailQueue::add($this->content(), self::SendTo);
+        EmailQueue::add($this->content(), "older@framework.test");
+        EmailQueue::add($this->content(), "sent@framework.test", sendNow: true);
+        [ $newID, $olderID, $sentID ] = EmailQueue::getEmailQueueIDs();
+        $this->query(
+            "UPDATE `email_queue` SET `sendTime` = UNIX_TIMESTAMP() - 7200 " .
+            "WHERE `EMAIL_QUEUE_ID` = $olderID",
+        );
+
+        $this->assertSame([ $newID ], EmailQueue::getUnsentIDs(Date::now()->subtract(hours: 1)));
+        $this->assertSame(
+            [ $olderID, $newID ],
+            EmailQueue::getUnsentIDs(Date::now()->subtract(hours: 3)),
+        );
+        $this->assertNotContains($sentID, EmailQueue::getUnsentIDs(Date::now()->subtract(hours: 3)));
+    }
+
+    /**
+     * Which Email is sent alone, whether it is sent and the result it is left with
+     * @param string      $which
+     * @param bool        $isSent
+     * @param EmailResult $expected
+     * @return void
+     */
+    #[DataProvider("providerSendOne")]
+    public function testOneEmailIsSentAlone(string $which, bool $isSent, EmailResult $expected): void {
+        EmailQueue::add($this->content(), self::SendTo, sendNow: $which === "sent");
+        $emailQueueID = EmailQueue::getEmailQueueIDs()[0];
+        if ($which === "sent") {
+            EmailQueue::markAsSent($emailQueueID, EmailResult::Sent);
+        }
+        if ($which === "production" || $which === "no env") {
+            $env = $which === "production" ? "production" : "";
+            $this->query("UPDATE `email_queue` SET `env` = '$env'");
+        }
+        $sendID = $which === "missing" ? $emailQueueID + 1 : $emailQueueID;
+
+        $this->assertSame($isSent, EmailQueue::sendOne($sendID));
+        $this->assertSame($expected, EmailQueue::getByID($emailQueueID)->emailResult);
+    }
+
+    /**
+     * @return array<string,array{string,bool,EmailResult}>
+     */
+    public static function providerSendOne(): array {
+        return [
+            "one not sent is sent"        => [ "unsent", true, EmailResult::InactiveSend ],
+            "one already sent is left"    => [ "sent", false, EmailResult::Sent ],
+            "one that is not there fails" => [ "missing", false, EmailResult::NotProcessed ],
+            "one of production is left"   => [ "production", false, EmailResult::NotProcessed ],
+            "one without an env is left"  => [ "no env", false, EmailResult::NotProcessed ],
+        ];
     }
 }

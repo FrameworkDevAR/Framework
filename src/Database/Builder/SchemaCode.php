@@ -107,6 +107,7 @@ class SchemaCode {
             "minPositionValue"   => $schemaModel->minPosition,
             "hasTimestamps"      => $schemaModel->hasTimestamps,
             "hasTimestampsValue" => $schemaModel->hasTimestamps ? "true" : "false",
+            "hasEnvValue"        => $schemaModel->hasEnv ? "true" : "false",
             "hasStatus"          => $schemaModel->hasStatus,
             "hasStatusValue"     => $schemaModel->hasStatus ? "true" : "false",
             "hasStatusRequest"   => $schemaModel->isRequested("status"),

@@ -371,6 +371,7 @@ class SchemaFactory {
                 fromFramework:   $fromFramework,
                 hasUsers:        $model->hasUsers,
                 hasTimestamps:   $model->hasTimestamps,
+                hasEnv:          $model->hasEnv,
                 hasStatus:       $hasStatus,
                 canCreate:       $model->canCreate,
                 canEdit:         $model->canEdit,

@@ -14,6 +14,7 @@ class Model {
 
     public bool $hasUsers;
     public bool $hasTimestamps;
+    public bool $hasEnv;
     public bool $canCreate;
     public bool $canEdit;
     public bool $canDelete;
@@ -27,6 +28,7 @@ class Model {
      * @param string $description   Optional.
      * @param bool   $hasUsers      Optional.
      * @param bool   $hasTimestamps Optional.
+     * @param bool   $hasEnv        Optional.
      * @param bool   $canCreate     Optional.
      * @param bool   $canEdit       Optional.
      * @param bool   $canDelete     Optional.
@@ -37,6 +39,7 @@ class Model {
         string $description = "",
         bool $hasUsers = false,
         bool $hasTimestamps = false,
+        bool $hasEnv = false,
         bool $canCreate = false,
         bool $canEdit = false,
         bool $canDelete = false,
@@ -46,6 +49,7 @@ class Model {
         $this->description   = $description;
         $this->hasUsers      = $hasUsers;
         $this->hasTimestamps = $hasTimestamps;
+        $this->hasEnv        = $hasEnv;
         $this->canCreate     = $canCreate;
         $this->canEdit       = $canEdit;
         $this->canDelete     = $canDelete;

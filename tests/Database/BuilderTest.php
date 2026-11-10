@@ -12,6 +12,7 @@ use Framework\Database\Query\Query;
 use Framework\Utils\Dictionary;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 use ReflectionProperty;
 
@@ -132,6 +133,58 @@ class BuilderTest extends TestCase {
         $fields = $builder->getFields()->toArray();
         $this->assertArrayHasKey("createdTime", $fields);
         $this->assertArrayNotHasKey("createdUser", $fields);
+    }
+
+    /**
+     * A model whose rows keep the Environment that created them
+     * @return SchemaModel
+     */
+    private function envModel(): SchemaModel {
+        return new SchemaModel(
+            name:       "Job",
+            hasEnv:     true,
+            canCreate:  true,
+            canEdit:    true,
+            mainFields: [
+                Field::create(name: "jobID", type: FieldType::Number, dbName: "JOB_ID", isID: true),
+                Field::create(name: "name", type: FieldType::String),
+            ],
+        );
+    }
+
+    public function testAnEnvModelHasTheColumn(): void {
+        $this->assertContains("env", $this->envModel()->getFieldNames());
+        $this->assertNotContains("env", $this->auditedModel()->getFieldNames());
+    }
+
+    #[DataProvider("providerEnvCreation")]
+    public function testCreationWritesTheEnvironment(string $given, string $expected): void {
+        $builder = ModificationBuilder::insert($this->envModel());
+        $builder->setField("name", "Send");
+        if ($given !== "") {
+            $builder->setField("env", $given);
+        }
+        $builder->addCreation();
+
+        $this->assertSame($expected, $builder->getFields()->toArray()["env"]);
+    }
+
+    /**
+     * @return array<string,array{string,string}>
+     */
+    public static function providerEnvCreation(): array {
+        return [
+            "the current one"  => [ "", "local" ],
+            "the one given"    => [ "dev", "dev" ],
+        ];
+    }
+
+    public function testModificationLeavesTheEnvironment(): void {
+        $builder = ModificationBuilder::insert($this->envModel());
+        $builder->setField("name", "Send");
+        $builder->addModification(9);
+
+        $this->assertArrayNotHasKey("env", $builder->getFields()->toArray());
     }
 
     public function testModificationStampsTheTimeAndTheUser(): void {

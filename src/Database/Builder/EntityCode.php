@@ -1,6 +1,7 @@
 <?php
 namespace Framework\Database\Builder;
 
+use Framework\Core\Configs;
 use Framework\Database\SchemaModel;
 use Framework\Builder\Builder;
 use Framework\Database\Model\FieldType;
@@ -51,6 +52,7 @@ class EntityCode {
             "entityClass"     => $schemaModel->entityClass,
             "statusClass"     => $schemaModel->statusClass,
             "hasStatus"       => $schemaModel->hasStatus,
+            "hasEnv"          => $schemaModel->hasEnv,
 
             "hasID"           => $schemaModel->hasID,
             "hasIntID"        => $schemaModel->hasID && $schemaModel->idType === FieldType::Number,
@@ -403,6 +405,9 @@ class EntityCode {
      */
     private static function getImports(SchemaModel $schemaModel): array {
         $result = [];
+        if ($schemaModel->hasEnv) {
+            $result[Configs::class] = 1;
+        }
 
         foreach ($schemaModel->fields as $field) {
             if ($field->isStatus) {

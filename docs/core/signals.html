@@ -160,6 +160,32 @@ reactions over time. A single validation or a lookup does not — it is simpler,
 <div class="note">Signals keep modules decoupled: the code that emits <code>userCreated</code> does not need to know
 who listens. See how <a href="../subsystems/emails.html#sending">Emails</a> and
 <a href="../subsystems/notifications.html#sending">Notifications</a> react to events this way.</div>
+
+<h2 id="events">Framework events</h2>
+<p>Signals are fired by the app. When the <strong>Framework</strong> has something to tell the app, it fires an
+<strong>event</strong> instead. The events are declared up front in
+<a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Discovery/Type/FrameworkEvent.php" target="_blank" rel="noopener noreferrer"><code>FrameworkEvent</code></a>,
+each with its fixed parameters, and the build always generates an <code>Event</code> class in <code>src/System</code>
+with one method per event, whether anything handles it or not. Each event has its own attribute, named like it,
+and a method that takes it only adds a call inside that method:</p>
+<pre><code class="language-php">use Framework\Discovery\Attr\EmailQueued;
+
+class EmailJobs {
+
+    #[EmailQueued]
+    public static function emailQueued(int $emailQueueID): void {
+        // …
+    }
+}</code></pre>
+<p>So the Framework can call <code>Event::emailQueued($emailQueueID)</code> without knowing who listens, and an app
+that handles nothing gets an empty method. A handler takes the parameters of its event, in their order.</p>
+<table class="api-table">
+    <thead><tr><th>Event</th><th>Fired when</th></tr></thead>
+    <tbody>
+        <tr><td><a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Discovery/Attr/EmailQueued.php" target="_blank" rel="noopener noreferrer"><code>#[EmailQueued]</code></a> <code>int $emailQueueID</code></td><td>An <a href="../subsystems/emails.html#queue">email</a> is queued to be sent later, or queued again.</td></tr>
+        <tr><td><a class="src-link" href="https://github.com/FrameworkDevAR/Framework/blob/main/src/Discovery/Attr/NotificationQueued.php" target="_blank" rel="noopener noreferrer"><code>#[NotificationQueued]</code></a> <code>int $notificationQueueID</code></td><td>A <a href="../subsystems/notifications.html#sending">notification</a> is queued.</td></tr>
+    </tbody>
+</table>
                 <div class="page-nav"><a href="../core/routing.html"><span class="dir">← Previous</span><span class="ttl">Routing</span></a><a class="next" href="../database/database.html"><span class="dir">Next →</span><span class="ttl">Database</span></a></div>
                 </article>
                 <nav class="toc" aria-label="On this page">

@@ -234,6 +234,25 @@ class Configs implements DiscoveryBuilder {
     }
 
     /**
+     * Returns true if the work of a row written in the given Environment can run in this one
+     * @param string $environment
+     * @return bool
+     */
+    public static function isCurrentEnv(string $environment): bool {
+        return self::runsEveryEnv() || self::getEnvironment() === $environment;
+    }
+
+    /**
+     * Returns true if the current Environment runs the work of the rows of every Environment
+     * @return bool
+     */
+    public static function runsEveryEnv(): bool {
+        // Production runs every row, including the ones from before they had an Environment,
+        // and the rest only their own, as their database can be a copy of production
+        return self::getEnvironment() === "production";
+    }
+
+    /**
      * Returns a Config Property or null
      * @param string $property
      * @return mixed

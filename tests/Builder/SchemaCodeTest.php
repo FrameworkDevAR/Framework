@@ -224,6 +224,32 @@ class SchemaCodeTest extends TestCase {
         $this->assertStringContainsString("Status", $code);
     }
 
+    #[DataProvider("providerEnvCheck")]
+    public function testTheEnvCheckIsOnlyOnTheEnvModels(string $modelName, bool $expected): void {
+        $code = EntityCode::getCode(self::models()[$modelName]);
+
+        $this->assertSame($expected, str_contains($code, "function isCurrentEnv()"));
+        $this->assertSame($expected, str_contains($code, "use Framework\\Core\\Configs;"));
+    }
+
+    #[DataProvider("providerEnvCheck")]
+    public function testTheEnvFilterIsOnlyOnTheEnvModels(string $modelName, bool $expected): void {
+        $code = QueryCode::getCode(self::models()[$modelName]);
+
+        $this->assertSame($expected, str_contains($code, "function inCurrentEnv()"));
+        $this->assertSame($expected, str_contains($code, "use Framework\\Core\\Configs;"));
+    }
+
+    /**
+     * @return array<string,array{string,bool}>
+     */
+    public static function providerEnvCheck(): array {
+        return [
+            "the Email Queue has it"   => [ "EmailQueue", true ],
+            "the Credential does not" => [ "Credential", false ],
+        ];
+    }
+
     public function testTheRequestedFieldsAreWhatTheRequestCarries(): void {
         // Credential asks for a request; Migrations does not, so its generated
         // class has the shape but none of the fields

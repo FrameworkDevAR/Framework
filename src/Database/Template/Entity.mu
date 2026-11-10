@@ -95,4 +95,14 @@ class {{entityClass}} extends Entity {
         {{/hasEnumID}}
     {{/hasID}}
     }
+{{#hasEnv}}
+
+    /**
+     * Returns true if the work of the Entity can run in the current Environment
+     * @return bool
+     */
+    public function isCurrentEnv(): bool {
+        return Configs::isCurrentEnv($this->env);
+    }
+{{/hasEnv}}
 }

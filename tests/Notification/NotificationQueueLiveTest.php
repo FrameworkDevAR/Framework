@@ -456,4 +456,82 @@ class NotificationQueueLiveTest extends LiveTestCase {
         $this->assertSame(1, NotificationQueue::getTotal($request));
         $this->assertSame(2, NotificationQueue::getTotal(new NotificationQueueRequest()));
     }
+
+
+
+    public function testTheUnsentAreTheOnesOfThisEnvironment(): void {
+        $localID = $this->add();
+        $otherID = $this->add(title: "Copied");
+        $this->query(
+            "UPDATE `notification_queue` SET `env` = 'production' " .
+            "WHERE `NOTIFICATION_QUEUE_ID` = $otherID",
+        );
+
+        $unsent = NotificationQueue::getAllUnsent();
+        $this->assertCount(1, $unsent);
+        $this->assertSame($localID, $unsent[0]->notificationQueueID);
+    }
+
+    public function testTheUnsentIDsAreTheOnesSinceTheTimeOldestFirst(): void {
+        $newID   = $this->add();
+        $olderID = $this->add(title: "Older");
+        $sentID  = $this->add(title: "Sent");
+        NotificationQueue::sendOne($sentID);
+        $this->query(
+            "UPDATE `notification_queue` SET `createdTime` = UNIX_TIMESTAMP() - 7200 " .
+            "WHERE `NOTIFICATION_QUEUE_ID` = $olderID",
+        );
+
+        $this->assertSame(
+            [ $newID ],
+            NotificationQueue::getUnsentIDs(Date::now()->subtract(hours: 1)),
+        );
+        $this->assertSame(
+            [ $olderID, $newID ],
+            NotificationQueue::getUnsentIDs(Date::now()->subtract(hours: 3)),
+        );
+    }
+
+    /**
+     * Which Notification is sent alone, whether it is sent and the result it is left with
+     * @param string             $which
+     * @param bool               $isSent
+     * @param NotificationResult $expected
+     * @return void
+     */
+    #[DataProvider("providerSendOne")]
+    public function testOneNotificationIsSentAlone(
+        string $which,
+        bool $isSent,
+        NotificationResult $expected,
+    ): void {
+        $notificationQueueID = $this->add();
+        if ($which === "sent") {
+            NotificationQueue::sendAll();
+        }
+        if ($which === "production" || $which === "no env") {
+            $env = $which === "production" ? "production" : "";
+            $this->query("UPDATE `notification_queue` SET `env` = '$env'");
+        }
+        $sendID = $which === "missing" ? $notificationQueueID + 1 : $notificationQueueID;
+
+        $this->assertSame($isSent, NotificationQueue::sendOne($sendID));
+        $this->assertSame(
+            $expected,
+            NotificationQueue::getByID($notificationQueueID)->notificationResult,
+        );
+    }
+
+    /**
+     * @return array<string,array{string,bool,NotificationResult}>
+     */
+    public static function providerSendOne(): array {
+        return [
+            "one not sent is sent"        => [ "unsent", true, NotificationResult::InactiveSend ],
+            "one already sent is left"    => [ "sent", false, NotificationResult::InactiveSend ],
+            "one that is not there fails" => [ "missing", false, NotificationResult::NotProcessed ],
+            "one of production is left"   => [ "production", false, NotificationResult::NotProcessed ],
+            "one without an env is left"  => [ "no env", false, NotificationResult::NotProcessed ],
+        ];
+    }
 }

@@ -1,6 +1,7 @@
 <?php
 namespace Framework\Database\Builder;
 
+use Framework\Core\Configs;
 use Framework\Database\SchemaModel;
 use Framework\Database\Model\FieldType;
 use Framework\Builder\Builder;
@@ -32,6 +33,7 @@ class QueryCode {
             "idDbName"    => $schemaModel->idDbName,
             "columnClass" => $schemaModel->columnClass,
             "queryClass"  => $schemaModel->queryClass,
+            "hasEnv"      => $schemaModel->hasEnv,
             "properties"  => $properties,
             "imports"     => self::getImports($schemaModel),
             "queries"     => self::getQueries($properties),
@@ -101,6 +103,9 @@ class QueryCode {
      */
     private static function getImports(SchemaModel $schemaModel): array {
         $result = [];
+        if ($schemaModel->hasEnv) {
+            $result[Configs::class] = 1;
+        }
         foreach ($schemaModel->fields as $field) {
             if ($field->isStatus) {
                 $queryName = "{$schemaModel->statusClass}Where";
