@@ -27,7 +27,7 @@ Add the repository to the repositories:
 Add the require using the corresponding version:
 ```json
 "require": {
-    "frameworkdevar/framework": "dev-main#v0.21.4"
+    "frameworkdevar/framework": "dev-main#v0.21.5"
 }
 ```
 
