@@ -706,7 +706,9 @@ class {{name}}Schema extends Schema {
      * @param {{{fieldDocCreate}}} Optional.{{/fields}}{{#hasStatus}}
      * @param {{statusClass}}|null $status Optional.{{/hasStatus}}{{#hasTimestamps}}
      * @param Date|null $createdTime Optional.{{/hasTimestamps}}{{#hasUsers}}
-     * @param int $createdUser Optional.{{/hasUsers}}{{#hasPositions}}
+     * @param int $createdUser Optional.{{/hasUsers}}{{#hasEditTimestamps}}
+     * @param Date|null $modifiedTime Optional.{{/hasEditTimestamps}}{{#hasEditUsers}}
+     * @param int $modifiedUser Optional.{{/hasEditUsers}}{{#hasPositions}}
      * @param bool $skipOrder Optional.{{/hasPositions}}
      * @return int
      */
@@ -715,7 +717,9 @@ class {{name}}Schema extends Schema {
         {{fieldArgCreate}},{{/fields}}{{#hasStatus}}
         ?{{statusClass}} $status = null,{{/hasStatus}}{{#hasTimestamps}}
         ?Date $createdTime = null,{{/hasTimestamps}}{{#hasUsers}}
-        int $createdUser = 0,{{/hasUsers}}{{#hasPositions}}
+        int $createdUser = 0,{{/hasUsers}}{{#hasEditTimestamps}}
+        ?Date $modifiedTime = null,{{/hasEditTimestamps}}{{#hasEditUsers}}
+        int $modifiedUser = 0,{{/hasEditUsers}}{{#hasPositions}}
         bool $skipOrder = false,{{/hasPositions}}
     ): int {
         $fields = [];
@@ -743,24 +747,39 @@ class {{name}}Schema extends Schema {
             $createdUser = Auth::getID();
         }
         {{/hasUsers}}
+        {{#hasEditTimestamps}}
+        if ($modifiedTime !== null) {
+            $fields["modifiedTime"] = $modifiedTime;
+        } elseif ($createdTime !== null) {
+            $fields["modifiedTime"] = $createdTime;
+        }
+        {{/hasEditTimestamps}}
+        {{#hasEditUsers}}
+        if ($modifiedUser === 0) {
+            $modifiedUser = $createdUser;
+        }
+        {{/hasEditUsers}}
 
         {{#hasPositions}}
         if ($skipOrder) {
             return self::createSchemaEntity(
                 fields: $fields,{{#hasUsers}}
-                credentialID: $createdUser,{{/hasUsers}}
+                createdUser: $createdUser,{{/hasUsers}}{{#hasEditUsers}}
+                modifiedUser: $modifiedUser,{{/hasEditUsers}}
             );
         }
         return self::createSchemaEntityWithOrder(
             fields: $fields,{{#hasEditParents}}
             orderQuery: self::createParentQuery({{parentsList}}),{{/hasEditParents}}{{#hasUsers}}
-            credentialID: $createdUser,{{/hasUsers}}
+            createdUser: $createdUser,{{/hasUsers}}{{#hasEditUsers}}
+            modifiedUser: $modifiedUser,{{/hasEditUsers}}
         );
         {{/hasPositions}}
         {{^hasPositions}}
         return self::createSchemaEntity(
             fields: $fields,{{#hasUsers}}
-            credentialID: $createdUser,{{/hasUsers}}
+            createdUser: $createdUser,{{/hasUsers}}{{#hasEditUsers}}
+            modifiedUser: $modifiedUser,{{/hasEditUsers}}
         );
         {{/hasPositions}}
     }

@@ -113,6 +113,8 @@ class SchemaCode {
             "hasStatusRequest"   => $schemaModel->isRequested("status"),
             "hasUsers"           => $schemaModel->hasUsers,
             "hasUsersValue"      => $schemaModel->hasUsers ? "true" : "false",
+            "hasEditTimestamps"  => $schemaModel->canEdit && $schemaModel->hasTimestamps,
+            "hasEditUsers"       => $schemaModel->canEdit && $schemaModel->hasUsers,
             "hasEncrypt"         => $schemaModel->hasEncrypt(),
             "canCreate"          => $schemaModel->canCreate,
             "canCreateValue"     => $schemaModel->canCreate ? "true" : "false",

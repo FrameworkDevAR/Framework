@@ -16,6 +16,7 @@ use Framework\Database\Model\SubRequest;
 #[Model(
     description:   "A thing kept for the tests.",
     hasTimestamps: true,
+    hasUsers:      true,
     canCreate:     true,
     canEdit:       true,
     canDelete:     true,

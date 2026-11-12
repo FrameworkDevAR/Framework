@@ -7,6 +7,8 @@ use Tests\Database\Fixture\Schema\TestThingQuery;
 use Tests\Database\Fixture\Schema\TestThingRequest;
 use Tests\Database\Fixture\Schema\TestThingSchema;
 
+use Framework\Date\Date;
+
 /**
  * The Things, the way an App writes the class over a generated Schema
  *
@@ -32,6 +34,33 @@ class TestThings extends TestThingSchema {
             "secret"    => self::encrypt($secret),
             "isDefault" => $isDefault,
         ]);
+    }
+
+    /**
+     * Adds a Thing that keeps when and by whom another one was created and modified
+     * @param string    $name
+     * @param Date      $createdTime
+     * @param int       $createdUser
+     * @param Date|null $modifiedTime Optional.
+     * @param int       $modifiedUser Optional.
+     * @return int
+     */
+    public static function copy(
+        string $name,
+        Date $createdTime,
+        int $createdUser,
+        ?Date $modifiedTime = null,
+        int $modifiedUser = 0,
+    ): int {
+        return self::createEntity(
+            name:         $name,
+            secret:       "",
+            isDefault:    0,
+            createdTime:  $createdTime,
+            createdUser:  $createdUser,
+            modifiedTime: $modifiedTime,
+            modifiedUser: $modifiedUser,
+        );
     }
 
     /**
@@ -116,7 +145,7 @@ class TestThings extends TestThingSchema {
      * @return bool
      */
     public static function drop(int $testThingID, bool $skipOrder = false): bool {
-        return self::deleteEntity($testThingID, $skipOrder);
+        return self::deleteEntity($testThingID, skipOrder: $skipOrder);
     }
 
     /**

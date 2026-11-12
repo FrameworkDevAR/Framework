@@ -2,6 +2,7 @@
 namespace Tests\Database;
 
 use Framework\Application;
+use Framework\Date\Date;
 use Framework\Discovery\Type\ComposerData;
 use Framework\Builder\Builder;
 use Framework\Database\Database;
@@ -327,6 +328,33 @@ class ModelSchemaLiveTest extends LiveTestCase {
         $this->assertFalse(TestThings::setDefault($second, 1, 1));
         $this->assertSame(1, TestThings::getByID($first)->isDefault);
         $this->assertSame(0, TestThings::getByID($second)->isDefault);
+    }
+
+
+
+    public function testTheCopyKeepsTheModification(): void {
+        $testThingID = TestThings::copy(
+            "The copy",
+            createdTime:  Date::create("2026-01-02 10:00:00"),
+            createdUser:  3,
+            modifiedTime: Date::create("2026-02-03 11:00:00"),
+            modifiedUser: 5,
+        );
+        $elem = TestThings::getByID($testThingID);
+
+        $this->assertSame(Date::create("2026-01-02 10:00:00")->toTime(), $elem->createdTime->toTime());
+        $this->assertSame(3, $elem->createdUser);
+        $this->assertSame(Date::create("2026-02-03 11:00:00")->toTime(), $elem->modifiedTime->toTime());
+        $this->assertSame(5, $elem->modifiedUser);
+    }
+
+    public function testTheCopyIsModifiedWhenCreated(): void {
+        // With no modification given, the creation is also the last change
+        $testThingID = TestThings::copy("The copy", Date::create("2026-01-02 10:00:00"), 3);
+        $elem        = TestThings::getByID($testThingID);
+
+        $this->assertSame($elem->createdTime->toTime(), $elem->modifiedTime->toTime());
+        $this->assertSame(3, $elem->modifiedUser);
     }
 
 

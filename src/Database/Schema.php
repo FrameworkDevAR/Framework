@@ -352,17 +352,19 @@ class Schema {
     /**
      * Creates a new Entity with data
      * @param array<string,QueryValue> $fields
-     * @param int                      $credentialID Optional.
+     * @param int                      $createdUser  Optional.
+     * @param int                      $modifiedUser Optional.
      * @return int
      */
     protected static function createSchemaEntity(
         array $fields,
-        int $credentialID = 0,
+        int $createdUser = 0,
+        int $modifiedUser = 0,
     ): int {
         return ModificationBuilder::insert(static::getModel())
             ->addFields($fields)
-            ->addCreation($credentialID)
-            ->addModification()
+            ->addCreation($createdUser)
+            ->addModification($modifiedUser)
             ->execute();
     }
 
@@ -435,19 +437,21 @@ class Schema {
     /**
      * Creates an Entity and ensures the Order
      * @param array<string,QueryValue> $fields
-     * @param int                      $credentialID Optional.
+     * @param int                      $createdUser  Optional.
+     * @param int                      $modifiedUser Optional.
      * @param QueryLike|null           $orderQuery   Optional.
      * @return int
      */
     protected static function createSchemaEntityWithOrder(
         array $fields,
-        int $credentialID = 0,
+        int $createdUser = 0,
+        int $modifiedUser = 0,
         ?QueryLike $orderQuery = null,
     ): int {
         $modification = ModificationBuilder::insert(static::getModel())
             ->addFields($fields)
-            ->addCreation($credentialID)
-            ->addModification();
+            ->addCreation($createdUser)
+            ->addModification($modifiedUser);
 
         $newPosition = self::ensureSchemaOrder(null, $modification->getFields(), $orderQuery);
         $modification->setField(static::$positionName, $newPosition);
