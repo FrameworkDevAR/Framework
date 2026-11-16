@@ -7,6 +7,7 @@ use Framework\Auth\Auth;
 use Framework\Discovery\DiscoveryConfig;
 use Framework\Intl\NLS;
 use Framework\Log\ErrorLog;
+use Framework\MCP\MCPServer;
 use Framework\Provider\SocketServer;
 use Framework\System\Access;
 use Framework\System\Config;
@@ -36,6 +37,13 @@ class Framework {
     public static function execute(): bool {
         ErrorLog::init();
         DiscoveryConfig::loadForRequest();
+
+        // The MCP has a path of its own, apart from the routes, and it logs in by itself
+        if (MCPServer::isRequest()) {
+            $response = MCPServer::execute();
+            self::send($response);
+            return true;
+        }
 
         // Parse the Request
         $request      = self::getRequest();
@@ -95,17 +103,26 @@ class Framework {
         // Perform the Request
         try {
             $response = self::request($route, $request);
-            $text     = $response->getText();
-            if ($text !== null) {
-                self::outputText($text, $response->getStatusCode());
-            } else {
-                self::output($response->toArray(), $response->getStatusCode());
-            }
+            self::send($response);
             return true;
         } catch (Exception $e) {
             http_response_code(400);
             print($e->getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Outputs the given Response, as a text or as JSON
+     * @param Response $response
+     * @return void
+     */
+    private static function send(Response $response): void {
+        $text = $response->getText();
+        if ($text !== null) {
+            self::outputText($text, $response->getStatusCode());
+        } else {
+            self::output($response->toArray(), $response->getStatusCode());
         }
     }
 

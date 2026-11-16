@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Server — Framework</title>
+    <meta name="description" content="Expose methods of the app as the tools of an MCP server.">
+    <meta name="theme-color" content="#2f6fd0">
+    <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+    <link rel="mask-icon" href="../assets/favicon.svg" color="#2f6fd0">
+    <link rel="apple-touch-icon" href="../assets/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Serif:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="topbar">
+        <span class="brand-mark">Framework</span><a class="version" target="_blank" rel="noopener noreferrer"></a>
+        <button class="menu-toggle" aria-label="Toggle navigation">☰</button>
+    </div>
+
+    <div class="layout">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-head">
+                <div class="brand-row">
+                    <a class="brand" href="../index.html"><img class="brand-logo" src="../assets/favicon.svg" alt="" width="34" height="34">Framework</a><a class="version" id="docsVersion" target="_blank" rel="noopener noreferrer"></a>
+                </div>
+                <button class="search-open" id="searchOpen" type="button" data-search>
+                    <span>Search the docs…</span>
+                    <kbd>⌘K</kbd>
+                </button>
+            </div>
+            <nav id="docsNav"></nav>
+        </aside>
+
+        <div class="content">
+            <div class="doc">
+                <article class="doc-main prose">
+
+<div class="eyebrow">Features</div>
+<h1>MCP Server</h1>
+<p class="lead">Mark a method with <code>#[MCPTool]</code> and the build lists it as a tool of a
+<a href="https://modelcontextprotocol.io/specification/2025-06-18" target="_blank" rel="noopener noreferrer">Model Context Protocol</a>
+server, so an assistant like Claude can call it with the parameters it describes.</p>
+
+<h2 id="tools">Declaring a tool</h2>
+<p>A tool is a static method that returns a <code>Response</code>, marked with the attribute that gives it the
+<code>Access</code> it needs. The description the assistant reads to decide when to use it is the text of its doc
+comment before the tags, which can take several lines, and the <code>description</code> of the attribute replaces
+it, and the build skips a tool that has neither. Its name comes from
+the class, without the <code>MCP</code> at its end, and the method, both in snake case, so
+<code>TaskMCP::getProjects</code> is <code>task_get_projects</code>, and the <code>name</code> of the attribute
+gives another one. A name can only have letters, numbers, <code>_</code> and <code>-</code>, up to 64 characters,
+and the build skips a tool whose name is not valid or is already taken. Its arguments are taken in one of two
+ways.</p>
+
+<h3 id="request">With the Request of a Model</h3>
+<p>A tool that takes one of the Schema requests, like a <a href="../core/routing.html">route</a>, has the inputs of
+that Request as its arguments. The build writes them in the <code>getInputSchema()</code> of each Request, with the
+name each one is sent with, like <code>taskID</code> for the ID, and its type: an enum is a string with its cases
+and a date is a string in the date format. None of them is required, so the description says which ones the tool
+uses:</p>
+<figure class="code"><figcaption class="code-tab">src/Task/TaskMCP.php</figcaption><pre><code class="language-php">use Framework\IO\Response;
+use Framework\MCP\Attr\MCPTool;
+use Framework\System\Access;
+
+class TaskMCP {
+
+    /**
+     * Searches the Tasks of a Project, by taskProjectID
+     * @param TaskRequest $request
+     * @return Response
+     */
+    #[MCPTool(Access::API)]
+    public static function search(TaskRequest $request): Response {
+        return Response::data([ &quot;list&quot; =&gt; Task::getFiltered($request) ]);
+    }
+}</code></pre></figure>
+<p>A tool whose method starts with <code>list</code> or <code>search</code> also has the inputs that every Request
+takes to sort and paginate: <code>page</code>, starting at 0, <code>amount</code>, <code>orderBy</code> and
+<code>orderAsc</code>. After the Request the method can take params of its own, like the ones below, which are added
+to its schema and read from the same arguments. One with the name of an input of the Request takes its place, so a
+param without a default makes that input required:</p>
+<pre><code class="language-php">/**
+ * Searches the Tasks of a Project
+ * @param TaskRequest $request
+ * @param int         $authorID Optional. The admin that asks for it.
+ * @return Response
+ */
+#[MCPTool(Access::API)]
+public static function search(TaskRequest $request, int $authorID = 0): Response {</code></pre>
+
+<h3 id="params">With params of its own</h3>
+<p>When a Request has more inputs than the tool needs, or the tool needs some that no Model has, the method takes
+each argument as a param. Its type gives the one of the schema, a param without a default is required, and the
+text after its name in the <code>@param</code> is its description. One that is not sent keeps its default, so a
+<code>null</code> tells it apart. Such a tool can build the Request and call the other one:</p>
+<pre><code class="language-php">use Framework\IO\Response;
+use Framework\MCP\Attr\MCPTool;
+use Framework\System\Access;
+
+class TaskMCP {
+
+    /**
+     * Moves a Task to a position of a Column
+     * @param int $taskID        The ID of the Task.
+     * @param int $taskSectionID The Column to move it to.
+     * @param int $position      Optional. The position in the Column, starting at 0.
+     * @return Response
+     */
+    #[MCPTool(Access::API)]
+    public static function move(int $taskID, int $taskSectionID, int $position = 0): Response {
+        return Task::move(new TaskRequest(id: $taskID, taskSectionID: $taskSectionID, position: $position));
+    }
+}</code></pre>
+<table class="api-table">
+    <thead><tr><th>Param</th><th>Schema</th></tr></thead>
+    <tbody>
+        <tr><td><code>int</code>, <code>float</code>, <code>bool</code>, <code>string</code></td><td><code>integer</code>, <code>number</code>, <code>boolean</code> and <code>string</code>.</td></tr>
+        <tr><td><code>array</code></td><td>A list of strings, or of integers when its <code>@param</code> says <code>list&lt;int&gt;</code>.</td></tr>
+        <tr><td>An <code>Enum</code></td><td>A <code>string</code> with the names of its cases, read with <code>fromValue()</code>.</td></tr>
+        <tr><td><code>Date</code></td><td>A <code>string</code> in the date format.</td></tr>
+    </tbody>
+</table>
+<p>A tool that takes the plain <code>Request</code> has no arguments in its schema, and reads whatever is sent. A call
+that does not send a required input is answered with an error that names the missing ones, before the tool runs.</p>
+
+<h3 id="annotations">The title and the hints</h3>
+<p>Each tool is listed with a <code>title</code> for the person, made from the class and the method like the name,
+so <code>TaskMCP::getProjects</code> is <code>Task: Get projects</code>, and with the hints that tell the client
+what to ask before calling it. They are taken from the start of the method, and the attribute changes each one:</p>
+<ul>
+    <li><strong>readOnly:</strong> a method that starts with <code>get</code>, <code>list</code> or <code>search</code> only reads, so the client can call it without asking.</li>
+    <li><strong>destructive:</strong> one that starts with <code>delete</code> or <code>remove</code> deletes, so the client asks before calling it. One that only reads is never destructive.</li>
+    <li><strong>openWorld:</strong> false unless the attribute says it, for the tools that reach outside of the app, like one that sends an email.</li>
+    <li><strong>idempotent:</strong> only sent when the attribute says it, for a tool that changes nothing more when called again.</li>
+</ul>
+<pre><code class="language-php">#[MCPTool(Access::API, destructive: true)]
+public static function upload(string $fileName, string $content): Response {</code></pre>
+
+<h2 id="endpoint">The endpoint</h2>
+<p>An app with at least one tool answers the protocol at the <code>/mcp</code> path, which the
+<code>.htaccess</code> sends to the same <code>index.php</code>. <code>Framework::execute()</code> gives
+it to <code>MCPServer::execute()</code> before reading anything of the request, so it is apart from the
+<a href="../core/routing.html">routes</a>: none of them is reached through it, and it is not reached
+through them.</p>
+<pre><code class="language-apache">RewriteRule ^mcp$ backend/index.php [QSA,L]</code></pre>
+<p>Before any message the server checks:</p>
+<ul>
+    <li><strong>The origin:</strong> a request with an <code>Origin</code> of another host is answered with a <code>403</code>, so a page open in a browser can not call it.</li>
+    <li><strong>The login:</strong> only the <code>Authorization: Bearer</code> header is read, and only the token of an Access that has one of its own, or one that the <a href="#oauth">OAuth</a> gave, logs in. A session, the token of the API or none at all are answered with a <code>401</code> and a <code>WWW-Authenticate</code> that points to where the OAuth starts.</li>
+    <li><strong>The version:</strong> an <code>MCP-Protocol-Version</code> header that the server does not know is answered with a <code>400</code>.</li>
+</ul>
+<p>The token of an Access is the one of the owner of the app, so it lists and calls every tool. A credential
+only lists and calls the ones its Access is granted. With Claude
+Code the server is added as an HTTP one:</p>
+<pre><code class="language-bash">claude mcp add --transport http acme https://acme.com/mcp --header &quot;Authorization: Bearer $TOKEN&quot;</code></pre>
+
+<h2 id="oauth">Connecting with OAuth</h2>
+<p>An assistant like claude.ai can not keep a token of its own, so it connects as a credential with the OAuth
+that the protocol asks for. The app turns it on by giving the page where a credential allows an app, with
+<code>{requestID}</code> in its url, and the Access it needs, in a config:</p>
+<figure class="code"><figcaption class="code-tab">config/MCP.config.php</figcaption><pre><code class="language-php">use Framework\MCP\MCPAuth;
+use Framework\System\Access;
+
+MCPAuth::setAuthorizeUrl(&quot;https://acme.com/oauth/{requestID}&quot;);
+MCPAuth::setAccess(Access::Admin);</code></pre></figure>
+<p>The paths of the OAuth come in through the same branch as the MCP, so the <code>.htaccess</code> sends them too:</p>
+<pre><code class="language-apache">RewriteRule ^mcp(/.*)?$ backend/index.php [QSA,L]
+RewriteRule ^\.well-known/oauth- backend/index.php [QSA,L]</code></pre>
+<table class="api-table">
+    <thead><tr><th>Path</th><th>Answer</th></tr></thead>
+    <tbody>
+        <tr><td><code>/.well-known/oauth-protected-resource</code></td><td>The MCP as a resource, and the server that gives its tokens.</td></tr>
+        <tr><td><code>/.well-known/oauth-authorization-server</code></td><td>The paths below, the code flow with PKCE and the refresh tokens.</td></tr>
+        <tr><td><code>/mcp/register</code></td><td>Registers an app with its urls, which have to be <code>https</code> or of the computer it runs in.</td></tr>
+        <tr><td><code>/mcp/authorize</code></td><td>Stores the request of a known app, with the PKCE, and sends the browser to the page of the app for 10 minutes.</td></tr>
+        <tr><td><code>/mcp/token</code></td><td>Gives an access token of an hour and a refresh token of 30 days for a code, or new ones for a refresh token. Each code and each refresh token is used once.</td></tr>
+    </tbody>
+</table>
+<p>The page logs the credential in like any other of the app, shows the name and the host of <code>MCPAuth::getRequestApp()</code>, as the name is the one the app gave itself, and
+sends the answer to <code>MCPAuth::answer()</code> through a route of its own. It returns the url to send the
+browser back to the app, with the code, or with an error when it was denied or the credential does not have the
+Access. The codes and the tokens are only stored hashed, in the <code>mcp_grant</code> and <code>mcp_token</code>
+tables, and a credential that loses the Access stops logging in with them.</p>
+
+<h2 id="messages">The messages</h2>
+<p>The server answers each message on its own and keeps nothing between them, so it opens no stream and a
+<code>GET</code> is answered with a <code>405</code>.</p>
+<table class="api-table">
+    <thead><tr><th>Message</th><th>Answer</th></tr></thead>
+    <tbody>
+        <tr><td><code>initialize</code></td><td>The version of the protocol the client asked for when it is known, or the latest, with the name and the version of the app.</td></tr>
+        <tr><td><code>tools/list</code></td><td>The tools the current Access can call, with their schemas.</td></tr>
+        <tr><td><code>tools/call</code></td><td>The result of the tool, as a text.</td></tr>
+        <tr><td><code>ping</code></td><td>An empty result.</td></tr>
+        <tr><td>A notification</td><td>A <code>202</code> with no body, as it has no <code>id</code>.</td></tr>
+    </tbody>
+</table>
+<p>The <code>Response</code> of the tool becomes its result: the <code>data</code> as JSON, and the
+<code>success</code> before it, and the <code>data</code> goes in the <code>structuredContent</code> too when it is an object. An <code>error</code>, or the <code>errors</code> of the fields, are translated and
+sent as a result with <code>isError</code>, so the assistant reads what went wrong and can try again. An unknown
+tool, or one the Access can not call, is an error of the protocol instead.</p>
+
+<h2 id="client">Calling a server</h2>
+<p><code>MCPClient::callTool()</code> calls a tool of another server, like the one of the same app in another
+environment, which is how a console command can work on production from a local copy. It sends the token as the
+server expects it, and returns an <code>MCPResult</code> with the data of the tool, or with the error of the
+protocol or of the tool:</p>
+<pre><code class="language-php">use Framework\MCP\MCPClient;
+
+$result = MCPClient::callTool(&quot;https://acme.com/mcp&quot;, $token, &quot;task_get&quot;, [ &quot;taskID&quot; =&gt; 5 ]);
+if ($result-&gt;isError) {
+    print(&quot;Error: {$result-&gt;error}\n&quot;);
+    return;
+}
+print($result-&gt;data-&gt;getDict(&quot;elem&quot;)-&gt;getString(&quot;name&quot;));</code></pre>
+
+<p>A console command calls the same app in another environment with <code>MCPClient::callEnvironment()</code>,
+which takes the url from the <code>MCP_&lt;ENV&gt;_URL</code> of the <code>.env</code>, or the <code>URL</code> for
+<code>local</code>, and the token from the <code>MCP_TOKEN</code>. It prints the error and returns null when the
+call fails, and both can be given to reach another copy:</p>
+<pre><code class="language-php">$data = MCPClient::callEnvironment(&quot;prod&quot;, &quot;task_get&quot;, [ &quot;taskID&quot; =&gt; 5 ]);
+if ($data === null) {
+    return;
+}</code></pre>
+
+                <div class="page-nav"><a href="curl.html"><span class="dir">← Previous</span><span class="ttl">Curl</span></a><a class="next" href="schema-json.html"><span class="dir">Next →</span><span class="ttl">JSON Schemas</span></a></div>
+                </article>
+                <nav class="toc" aria-label="On this page">
+                    <p class="toc-title">On this page</p>
+                    <ul></ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"
+            data-autoloader-path="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/"></script>
+    <script src="../assets/version.js"></script>
+    <script src="../assets/nav.js"></script>
+    <script src="../assets/docs.js"></script>
+</body>
+</html>

@@ -14,6 +14,9 @@ use Framework\Date\Timer;
 use Framework\Utils\Arrays;
 use Framework\Utils\Strings;
 
+use ReflectionMethod;
+use ReflectionNamedType;
+
 /**
  * The Builder
  */
@@ -157,6 +160,36 @@ class Builder {
 
         self::printResult($name, $data);
         return 1;
+    }
+
+    /**
+     * Returns the code that passes the Request to the given Method, or null if it can not take it
+     * @param ReflectionMethod $method
+     * @return string|null
+     */
+    public static function getRequestParam(ReflectionMethod $method): ?string {
+        // A Route and a Tool take the Request, one of its Schema or nothing
+        $params = $method->getParameters();
+        if (count($params) > 1) {
+            return null;
+        }
+        if (count($params) === 0) {
+            return "";
+        }
+
+        $paramType = $params[0]->getType();
+        if (!$paramType instanceof ReflectionNamedType) {
+            return null;
+        }
+
+        $typeName = $paramType->getName();
+        if (Strings::endsWith($typeName, "\\Request")) {
+            return "\$request";
+        }
+        if (Strings::endsWith($typeName, "Request")) {
+            return "\\$typeName::fromRequest(\$request)";
+        }
+        return "";
     }
 
     /**

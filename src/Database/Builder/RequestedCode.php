@@ -21,6 +21,10 @@ use Framework\Utils\Strings;
  *   idName:      string,
  *   idEnumName:  string,
  * }
+ * @phpstan-type Input array{
+ *   key:    string,
+ *   schema: string,
+ * }
  * @phpstan-type Field array{
  *   name:    string,
  *   type:    string,
@@ -45,6 +49,7 @@ class RequestedCode {
         $dictionaries = self::getDictionaries($schemaModel);
         $entityFields = self::getEntityFields($schemaModel);
         $imports      = self::getImports($schemaModel);
+        $inputs       = self::getInputs($schemaModel, $idField);
 
         $contents = Builder::render("Request", [
             "namespace"       => $schemaModel->namespace,
@@ -60,6 +65,9 @@ class RequestedCode {
             "dictionaries"    => $dictionaries,
             "hasEntityFields" => count($entityFields) > 0,
             "entityFields"    => $entityFields,
+
+            "hasInputs"       => count($inputs) > 0,
+            "inputs"          => $inputs,
 
             "hasImports"      => count($imports) > 0,
             "imports"         => $imports,
@@ -210,6 +218,137 @@ class RequestedCode {
             ];
         }
         return $result;
+    }
+
+    /**
+     * Returns the inputs of the Request with the code of the JSON Schema of each one
+     * @param SchemaModel $schemaModel
+     * @param IDProperty  $idField
+     * @return list<Input>
+     */
+    private static function getInputs(SchemaModel $schemaModel, array $idField): array {
+        $result = [];
+        if ($idField["hasID"]) {
+            $schema = match (true) {
+                $idField["hasIntID"]  => self::getSchemaCode("integer"),
+                $idField["hasEnumID"] => self::getEnumCode($idField["idEnumName"]),
+                default               => self::getSchemaCode("string"),
+            };
+            $result[] = [ "key" => $idField["idName"], "schema" => $schema ];
+        }
+        if (self::hasMultiID($schemaModel)) {
+            $items    = $idField["hasIntID"] ? "integer" : "string";
+            $key      = "{$idField["idName"]}s";
+            $result[] = [ "key" => $key, "schema" => self::getListCode($items) ];
+        }
+
+        foreach ($schemaModel->requestedFields as $requested) {
+            $name   = $requested->name;
+            $schema = "";
+
+            switch ($requested->type) {
+            case RequestedType::Enum:
+                $schema = self::getSchemaCode("string");
+                if ($requested->enumClass !== "") {
+                    $enumName = $requested->type->getCodeType($requested->enumClass);
+                    $schema   = self::getEnumCode($enumName);
+                }
+                break;
+            case RequestedType::Status:
+                $schema = self::getEnumCode($schemaModel->statusClass);
+                break;
+            case RequestedType::Date:
+                $name   = $requested->dateInput !== "" ? $requested->dateInput : $name;
+                $schema = '[ "type" => "string", "format" => "date" ]';
+                if ($requested->hourInput !== "") {
+                    $hour     = self::getSchemaCode("string");
+                    $result[] = [ "key" => $requested->hourInput, "schema" => $hour ];
+                }
+                break;
+            case RequestedType::Boolean:
+                $schema = self::getSchemaCode("boolean");
+                break;
+            case RequestedType::Number:
+                $schema = self::getSchemaCode("integer");
+                break;
+            case RequestedType::Float:
+                $schema = self::getSchemaCode("number");
+                break;
+            case RequestedType::Dictionary:
+                $schema = '[ "type" => [ "array", "object" ] ]';
+                break;
+            case RequestedType::Array:
+                $schema = self::getArraySchemaCode($requested->subType, $requested->subClass);
+                break;
+            case RequestedType::File:
+                break;
+            default:
+                $schema = self::getSchemaCode("string");
+            }
+
+            // A file can not be sent as a value, and the ID is already an input
+            $isTaken = Arrays::contains(array_column($result, "key"), $name);
+            if ($schema !== "" && !$isTaken) {
+                $result[] = [ "key" => $name, "schema" => $schema ];
+            }
+        }
+
+        // Align the Keys
+        $length = 0;
+        foreach ($result as $input) {
+            $length = max($length, Strings::length($input["key"]) + 2);
+        }
+        foreach ($result as $index => $input) {
+            $result[$index]["key"] = Strings::padRight("\"{$input["key"]}\"", $length);
+        }
+        return $result;
+    }
+
+    /**
+     * Returns the code of the JSON Schema of the given Type
+     * @param string $type
+     * @return string
+     */
+    private static function getSchemaCode(string $type): string {
+        return "[ \"type\" => \"$type\" ]";
+    }
+
+    /**
+     * Returns the code of the JSON Schema of the given Enum, with its values
+     * @param string $enumName
+     * @return string
+     */
+    private static function getEnumCode(string $enumName): string {
+        return "[ \"type\" => \"string\", \"enum\" => {$enumName}::getNames() ]";
+    }
+
+    /**
+     * Returns the code of the JSON Schema of a list of the given Type
+     * @param string $type
+     * @return string
+     */
+    private static function getListCode(string $type): string {
+        return "[ \"type\" => \"array\", \"items\" => [ \"type\" => \"$type\" ] ]";
+    }
+
+    /**
+     * Returns the code of the JSON Schema of an Array with the given SubType or SubClass
+     * @param string $subType
+     * @param string $subClass
+     * @return string
+     */
+    private static function getArraySchemaCode(string $subType, string $subClass): string {
+        if ($subClass !== "") {
+            $enum = self::getEnumCode(Strings::substringAfter($subClass, "\\"));
+            return "[ \"type\" => \"array\", \"items\" => $enum ]";
+        }
+        return match ($subType) {
+            "list<int>"    => self::getListCode("integer"),
+            "list<float>"  => self::getListCode("number"),
+            "list<bool>"   => self::getListCode("boolean"),
+            "list<string>" => self::getListCode("string"),
+            default        => self::getSchemaCode("object"),
+        };
     }
 
     /**

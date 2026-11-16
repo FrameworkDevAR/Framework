@@ -5,6 +5,11 @@ use Framework\File\File;
 use Framework\IO\Request;
 use Framework\Utils\Dictionary;
 
+use Framework\Auth\Schema\CredentialDeviceRequest;
+use Framework\Notification\Schema\NotificationQueueRequest;
+use Framework\System\NotificationProvider;
+use Framework\Database\Type\SchemaRequest;
+
 use Tests\Database\Fixture\CrateRequest;
 
 use PHPUnit\Framework\TestCase;
@@ -331,5 +336,35 @@ class SchemaRequestTest extends TestCase {
 
         $this->assertSame("extraValue", $result["extraKey"]);
         $this->assertSame("Crate", $result["name"]);
+    }
+
+    #[DataProvider("providerGetInputSchema")]
+    public function testEachInputGivesItsSchemaByTheNameItIsSentWith(string $className, array $expected): void {
+        /** @var class-string<SchemaRequest> $className */
+        $this->assertSame($expected, $className::getInputSchema());
+    }
+
+    /**
+     * @return array<string,array{string,array<string,mixed>}>
+     */
+    public static function providerGetInputSchema(): array {
+        return [
+            "no inputs"            => [ SchemaRequest::class, [] ],
+            "the ID and an enum"   => [ CredentialDeviceRequest::class, [
+                "credentialID" => [ "type" => "integer" ],
+                "playerID"     => [ "type" => "string" ],
+                "provider"     => [ "type" => "string", "enum" => NotificationProvider::getNames() ],
+            ] ],
+            "the IDs and the dates" => [ NotificationQueueRequest::class, [
+                "notificationQueueID"  => [ "type" => "integer" ],
+                "notificationQueueIDs" => [ "type" => "array", "items" => [ "type" => "integer" ] ],
+                "search"               => [ "type" => "string" ],
+                "fromHour"             => [ "type" => "string" ],
+                "fromDate"             => [ "type" => "string", "format" => "date" ],
+                "toHour"               => [ "type" => "string" ],
+                "toDate"               => [ "type" => "string", "format" => "date" ],
+                "results"              => [ "type" => "array", "items" => [ "type" => "string" ] ],
+            ] ],
+        ];
     }
 }

@@ -126,6 +126,24 @@ class {{requestClass}} extends SchemaRequest {
 
 {{/hasEntityFields}}
     /**
+     * Returns the JSON Schema of each input of the Request, by its name
+     * @return array<string,array<string,mixed>>
+     */
+    #[\Override]
+    public static function getInputSchema(): array {
+    {{#hasInputs}}
+        return [
+        {{#inputs}}
+            {{{key}}} => {{{schema}}},
+        {{/inputs}}
+        ];
+    {{/hasInputs}}
+    {{^hasInputs}}
+        return [];
+    {{/hasInputs}}
+    }
+
+    /**
      * Creates a new {{requestClass}} instance from a Request
      * @param SchemaRequest|Request $request
      * @return self

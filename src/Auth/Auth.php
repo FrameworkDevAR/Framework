@@ -16,6 +16,7 @@ use Framework\Log\ActionLog;
 use Framework\System\Access;
 use Framework\System\Config;
 use Framework\Date\TimeZone;
+use Framework\Utils\Arrays;
 use Framework\Utils\Strings;
 
 /**
@@ -186,7 +187,29 @@ class Auth {
             return false;
         }
 
-        // An Access of its own, reached with the token the environment gives it
+        if (self::validateToken($token)) {
+            return true;
+        }
+
+        $apiToken = self::getApiToken();
+        if ($apiToken !== "" && hash_equals($apiToken, $token)) {
+            self::$apiToken   = $token;
+            self::$accessName = Access::API;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Validates and Sets the auth as one of the Accesses that have a Token of their own
+     * @param string $token
+     * @return bool
+     */
+    public static function validateToken(string $token): bool {
+        if ($token === "") {
+            return false;
+        }
+
         foreach (Access::getTokenAccesses() as $accessName) {
             foreach (self::getTokensFor($accessName) as $accessToken) {
                 if (hash_equals($accessToken, $token)) {
@@ -195,13 +218,6 @@ class Auth {
                     return true;
                 }
             }
-        }
-
-        $apiToken = self::getApiToken();
-        if ($apiToken !== "" && hash_equals($apiToken, $token)) {
-            self::$apiToken   = $token;
-            self::$accessName = Access::API;
-            return true;
         }
         return false;
     }
@@ -603,6 +619,14 @@ class Auth {
     }
 
     /**
+     * Returns true if the login is one of the Accesses that have a Token of their own
+     * @return bool
+     */
+    public static function hasToken(): bool {
+        return Arrays::contains(Access::getTokenAccesses(), self::$accessName);
+    }
+
+    /**
      * Returns true if there is an API
      * @return bool
      */
@@ -648,6 +672,11 @@ class Auth {
      */
     public static function grant(Access $accessName): bool {
         if (Access::isValidAPI(self::$accessName)) {
+            // An Access with a Token of its own is only for that Token, or the Token of the API,
+            // which the Apps carry, would reach it too
+            if (Access::getTokenKey($accessName) !== "") {
+                return self::$accessName === $accessName;
+            }
             return (
                 Access::isValidAPI($accessName) ||
                 Access::isValidGeneral($accessName)

@@ -44,6 +44,14 @@ class SchemaRequest {
     }
 
     /**
+     * Returns the JSON Schema of each input of the Request, by its name
+     * @return array<string,array<string,mixed>>
+     */
+    public static function getInputSchema(): array {
+        return [];
+    }
+
+    /**
      * Returns a list of Properties
      * @return list<string>
      */

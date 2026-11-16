@@ -50,6 +50,21 @@ class ServerTest extends TestCase {
     }
 
 
+    #[DataProvider("providerGetPath")]
+    public function testGetPath(string $uri, string $expected): void {
+        $_SERVER["REQUEST_URI"] = $uri;
+        $this->assertEquals($expected, Server::getPath());
+    }
+
+    public static function providerGetPath(): array {
+        return [
+            "a path"            => [ "/mcp", "/mcp" ],
+            "a path with query" => [ "/api/task?id=5", "/api/task" ],
+            "none"              => [ "", "" ],
+        ];
+    }
+
+
     #[DataProvider("providerIsPostRequest")]
     public function testIsPostRequest(string $method, bool $expected): void {
         $_SERVER["REQUEST_METHOD"] = $method;

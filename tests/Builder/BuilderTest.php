@@ -3,11 +3,36 @@ namespace Tests\Builder;
 
 use Framework\Builder\Builder;
 use Framework\Discovery\Package;
+use Framework\IO\Request;
 use Tests\TestHelpers;
 
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionMethod;
+
+class TestBuilderRequest {
+    public string $value = "";
+}
+
+class TestBuilderParams {
+    public static function none(): void {
+    }
+
+    public static function request(Request $request): void {
+    }
+
+    public static function schema(TestBuilderRequest $request): void {
+    }
+
+    public static function other(int $value): void {
+    }
+
+    public static function tooMany(Request $request, int $extra): void {
+    }
+
+    public static function untyped($param): void {
+    }
+}
 
 class BuilderTest extends TestCase {
     use TestHelpers;
@@ -34,6 +59,24 @@ class BuilderTest extends TestCase {
             $output = (string)ob_get_clean();
         }
         return $output;
+    }
+
+
+    #[DataProvider("providerGetRequestParam")]
+    public function testTheRequestIsPassedAsTheMethodTakesIt(string $method, ?string $expected): void {
+        $reflection = new ReflectionMethod(TestBuilderParams::class, $method);
+        $this->assertSame($expected, Builder::getRequestParam($reflection));
+    }
+
+    public static function providerGetRequestParam(): array {
+        return [
+            "no params"        => [ "none", "" ],
+            "the Request"      => [ "request", "\$request" ],
+            "a Schema Request" => [ "schema", "\\Tests\\Builder\\TestBuilderRequest::fromRequest(\$request)" ],
+            "another type"     => [ "other", "" ],
+            "too many params"  => [ "tooMany", null ],
+            "an untyped param" => [ "untyped", null ],
+        ];
     }
 
 

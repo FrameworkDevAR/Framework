@@ -10,8 +10,6 @@ use Framework\Discovery\Attr\Route;
 use Framework\Builder\Builder;
 use Framework\Utils\Strings;
 
-use ReflectionNamedType;
-
 /**
  * The Router Code
  * @phpstan-type RouteData array{
@@ -80,31 +78,10 @@ class RouterCode implements DiscoveryBuilder {
                 $route      = $attributes[0]->newInstance();
                 $methodName = $method->getName();
 
-                // Check the Parameters
-                $params       = $method->getParameters();
-                $requestParam = "";
-
-                // Get the first Param type if exists
-                if (count($params) > 1) {
+                $requestParam = Builder::getRequestParam($method);
+                if ($requestParam === null) {
                     continue;
                 }
-                if (count($params) === 1) {
-                    $paramType = $params[0]->getType();
-                    if ($paramType === null) {
-                        continue;
-                    }
-                    if (!$paramType instanceof ReflectionNamedType) {
-                        continue;
-                    }
-
-                    $typeName = $paramType->getName();
-                    if (Strings::endsWith($typeName, "\\Request")) {
-                        $requestParam = "\$request";
-                    } elseif (Strings::endsWith($typeName, "Request")) {
-                        $requestParam = "\\$typeName::fromRequest(\$request)";
-                    }
-                }
-
 
                 // Add the Route
                 $routes[] = [

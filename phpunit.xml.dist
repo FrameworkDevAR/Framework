@@ -52,6 +52,9 @@
         <testsuite name="Log Tests">
             <directory>tests/Log</directory>
         </testsuite>
+        <testsuite name="MCP Tests">
+            <directory>tests/MCP</directory>
+        </testsuite>
         <testsuite name="Tools Tests">
             <directory>tests/Tools</directory>
         </testsuite>

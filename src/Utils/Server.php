@@ -135,6 +135,14 @@ class Server {
     }
 
     /**
+     * Returns the Path that was requested, without the query
+     * @return string
+     */
+    public static function getPath(): string {
+        return Strings::substringBefore(self::getString("REQUEST_URI"), "?");
+    }
+
+    /**
      * Returns the user IP
      * @return string
      */

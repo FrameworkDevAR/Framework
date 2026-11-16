@@ -57,6 +57,7 @@ window.DOCS_NAV = [
             { url: "features/icons.html",                  name: "Icons" },
             { url: "features/providers.html",              name: "Providers" },
             { url: "features/curl.html",                   name: "Curl" },
+            { url: "features/mcp.html",                    name: "MCP Server" },
             { url: "features/schema-json.html",            name: "JSON Schemas" },
             { url: "features/phpstan.html",                name: "PHPStan Rules" },
         ],

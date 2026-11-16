@@ -74,6 +74,27 @@ class AuthTest extends TestCase {
     }
 
 
+    #[DataProvider("providerValidateToken")]
+    public function testOnlyTheTokenOfAnAccessIsValidated(string $configured, string $given): void {
+        // The API token is not the one of an Access, so it never logs in where only those do
+        $this->setConfig("AUTH_API_TOKEN", $configured);
+
+        $this->assertFalse(Auth::validateToken($given));
+        $this->assertFalse(Auth::hasAPI());
+        $this->assertFalse(Auth::hasToken());
+    }
+
+    /**
+     * @return array<string,array{string,string}>
+     */
+    public static function providerValidateToken(): array {
+        return [
+            "the api token" => [ "a-token", "a-token" ],
+            "none at all"   => [ "", "" ],
+        ];
+    }
+
+
     // An Access with no token of its own is never reached by one
     #[DataProvider("providerTokenFor")]
     public function testTheTokenOfAnAccessIsRead(Access $accessName): void {

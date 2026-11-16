@@ -758,6 +758,130 @@
         ],
         "foreigns": []
     },
+    "mcp_app": {
+        "description": "The apps that registered to connect to the MCP, with their urls.",
+        "fields": [
+            {
+                "name": "clientID",
+                "type": "string",
+                "isPrimary": true
+            },
+            {
+                "name": "name",
+                "type": "string"
+            },
+            {
+                "name": "redirectUris",
+                "type": "text"
+            },
+            {
+                "name": "createdTime",
+                "type": "date"
+            }
+        ],
+        "foreigns": []
+    },
+    "mcp_grant": {
+        "description": "The requests to connect an app to the MCP, with the code once it is allowed.",
+        "fields": [
+            {
+                "name": "requestID",
+                "type": "string",
+                "isPrimary": true
+            },
+            {
+                "name": "code",
+                "type": "string",
+                "isKey": true
+            },
+            {
+                "name": "clientID",
+                "type": "string"
+            },
+            {
+                "name": "CREDENTIAL_ID",
+                "type": "number"
+            },
+            {
+                "name": "redirectUri",
+                "type": "text"
+            },
+            {
+                "name": "state",
+                "type": "text"
+            },
+            {
+                "name": "codeChallenge",
+                "type": "string"
+            },
+            {
+                "name": "scope",
+                "type": "string"
+            },
+            {
+                "name": "expirationTime",
+                "type": "date"
+            },
+            {
+                "name": "createdTime",
+                "type": "date"
+            },
+            {
+                "name": "modifiedTime",
+                "type": "date"
+            }
+        ],
+        "foreigns": [
+            {
+                "fromField": "CREDENTIAL_ID",
+                "toTable": "credential",
+                "toField": "CREDENTIAL_ID"
+            }
+        ]
+    },
+    "mcp_token": {
+        "description": "The tokens an app logs in to the MCP with, as a credential, stored hashed.",
+        "fields": [
+            {
+                "name": "accessToken",
+                "type": "string",
+                "isPrimary": true
+            },
+            {
+                "name": "refreshToken",
+                "type": "string",
+                "isKey": true
+            },
+            {
+                "name": "clientID",
+                "type": "string"
+            },
+            {
+                "name": "CREDENTIAL_ID",
+                "type": "number",
+                "isKey": true
+            },
+            {
+                "name": "expirationTime",
+                "type": "date"
+            },
+            {
+                "name": "refreshTime",
+                "type": "date"
+            },
+            {
+                "name": "createdTime",
+                "type": "date"
+            }
+        ],
+        "foreigns": [
+            {
+                "fromField": "CREDENTIAL_ID",
+                "toTable": "credential",
+                "toField": "CREDENTIAL_ID"
+            }
+        ]
+    },
     "migrations": {
         "description": "The data migrations that already ran, so each one is applied once.",
         "fields": [
