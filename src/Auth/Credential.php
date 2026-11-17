@@ -571,6 +571,16 @@ class Credential extends CredentialSchema {
     }
 
     /**
+     * Returns the Devices where the Credential was already asked for Notifications
+     * @param int $credentialID
+     * @return list<string>
+     */
+    public static function getAskedDevices(int $credentialID): array {
+        $credential = self::getByID($credentialID);
+        return JSON::decodeAsStrings($credential->askedDevices);
+    }
+
+    /**
      * Returns true if the Credential has to be asked for Notifications in the
      * given Device. Each Device is asked once, so a new phone is asked again
      * @param int    $credentialID
@@ -601,8 +611,7 @@ class Credential extends CredentialSchema {
             return self::editEntity($credentialID, askNotifications: false);
         }
 
-        $credential   = self::getByID($credentialID);
-        $askedDevices = JSON::decodeAsStrings($credential->askedDevices);
+        $askedDevices = self::getAskedDevices($credentialID);
         if (!Arrays::contains($askedDevices, $deviceID)) {
             $askedDevices[] = $deviceID;
         }
@@ -611,6 +620,19 @@ class Credential extends CredentialSchema {
             $credentialID,
             askNotifications: false,
             askedDevices:     JSON::encode($askedDevices),
+        );
+    }
+
+    /**
+     * Asks the Credential for Notifications again, in every Device
+     * @param int $credentialID
+     * @return bool
+     */
+    public static function resetAskNotifications(int $credentialID): bool {
+        return self::editEntity(
+            $credentialID,
+            askNotifications: true,
+            askedDevices:     "",
         );
     }
 
