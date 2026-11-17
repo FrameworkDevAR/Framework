@@ -100,6 +100,9 @@ class CredentialModel {
     #[Field]
     public bool $askNotifications = true;
 
+    #[Field(isText: true)]
+    public string $askedDevices = "";
+
     #[Field]
     public int $progressValue = 0;
 

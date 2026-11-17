@@ -27,4 +27,9 @@ class CredentialDeviceModel {
 
     #[Field, Requested]
     public NotificationProvider $provider = NotificationProvider::None;
+
+
+
+    #[Requested]
+    public string $deviceID = "";
 }

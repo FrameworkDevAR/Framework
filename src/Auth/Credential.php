@@ -17,6 +17,7 @@ use Framework\System\Access;
 use Framework\System\Path;
 use Framework\Date\Date;
 use Framework\Utils\Arrays;
+use Framework\Utils\JSON;
 use Framework\Utils\Strings;
 use Framework\Utils\Utils;
 
@@ -570,12 +571,47 @@ class Credential extends CredentialSchema {
     }
 
     /**
-     * Stops asking the Credential for Notifications
-     * @param int $credentialID
+     * Returns true if the Credential has to be asked for Notifications in the
+     * given Device. Each Device is asked once, so a new phone is asked again
+     * @param int    $credentialID
+     * @param string $deviceID     Optional.
      * @return bool
      */
-    public static function dontAskNotifications(int $credentialID): bool {
-        return self::editEntity($credentialID, askNotifications: false);
+    public static function shouldAskNotifications(int $credentialID, string $deviceID = ""): bool {
+        $credential = self::getByID($credentialID);
+        if ($credential->isEmpty()) {
+            return false;
+        }
+        if ($deviceID === "") {
+            return $credential->askNotifications;
+        }
+
+        $askedDevices = JSON::decodeAsStrings($credential->askedDevices);
+        return !Arrays::contains($askedDevices, $deviceID);
+    }
+
+    /**
+     * Stops asking the Credential for Notifications, in the given Device
+     * @param int    $credentialID
+     * @param string $deviceID     Optional.
+     * @return bool
+     */
+    public static function dontAskNotifications(int $credentialID, string $deviceID = ""): bool {
+        if ($deviceID === "") {
+            return self::editEntity($credentialID, askNotifications: false);
+        }
+
+        $credential   = self::getByID($credentialID);
+        $askedDevices = JSON::decodeAsStrings($credential->askedDevices);
+        if (!Arrays::contains($askedDevices, $deviceID)) {
+            $askedDevices[] = $deviceID;
+        }
+
+        return self::editEntity(
+            $credentialID,
+            askNotifications: false,
+            askedDevices:     JSON::encode($askedDevices),
+        );
     }
 
     /**
