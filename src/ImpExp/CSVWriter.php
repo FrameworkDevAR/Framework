@@ -93,7 +93,7 @@ class CSVWriter implements ExporterWriter {
         $this->headers = $headers;
         if ($this->file !== null && !$this->hasHeader) {
             $values = NLS::getAll(Arrays::getValues($headers), $this->lang);
-            fputcsv($this->file, $values);
+            fputcsv($this->file, $values, escape: "\\");
         }
         return $this;
     }
@@ -115,7 +115,7 @@ class CSVWriter implements ExporterWriter {
         }
 
         $this->line += 1;
-        fputcsv($this->file, $values);
+        fputcsv($this->file, $values, escape: "\\");
         if ($this->line % 100 === 0) {
             flush();
         }

@@ -17,7 +17,7 @@ class CSV {
      * @return list<string>
      */
     public static function parse(string $line, string $separator = ","): array {
-        $result = str_getcsv($line, $separator);
+        $result = str_getcsv($line, $separator, escape: "\\");
         return Arrays::toStrings($result);
     }
 

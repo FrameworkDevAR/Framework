@@ -139,7 +139,7 @@ class CSVReader implements ImporterReader {
             return null;
         }
 
-        $row = fgetcsv($this->file);
+        $row = fgetcsv($this->file, escape: "\\");
         if ($row === false) {
             return null;
         }
