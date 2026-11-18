@@ -354,6 +354,7 @@ class SchemaRequestTest extends TestCase {
                 "credentialID" => [ "type" => "integer" ],
                 "playerID"     => [ "type" => "string" ],
                 "provider"     => [ "type" => "string", "enum" => NotificationProvider::getNames() ],
+                "deviceID"     => [ "type" => "string" ],
             ] ],
             "the IDs and the dates" => [ NotificationQueueRequest::class, [
                 "notificationQueueID"  => [ "type" => "integer" ],

@@ -229,6 +229,33 @@ class CredentialLiveTest extends LiveTestCase {
         $this->assertFalse(Credential::getByID($credentialID)->askNotifications);
     }
 
+    public function testTheNotificationsAreAskedOnceInEachDevice(): void {
+        $credentialID = $this->create();
+
+        $this->assertTrue(Credential::shouldAskNotifications($credentialID, "phone"));
+        $this->assertTrue(Credential::dontAskNotifications($credentialID, "phone"));
+        Credential::dontAskNotifications($credentialID, "phone");
+
+        // A Device is only stored once, and a new one is still asked
+        $this->assertSame([ "phone" ], Credential::getAskedDevices($credentialID));
+        $this->assertFalse(Credential::shouldAskNotifications($credentialID, "phone"));
+        $this->assertTrue(Credential::shouldAskNotifications($credentialID, "laptop"));
+    }
+
+    public function testTheNotificationsOfNobodyAreNeverAskedFor(): void {
+        $this->assertFalse(Credential::shouldAskNotifications(0));
+    }
+
+    public function testTheNotificationsAreAskedAgainInEveryDevice(): void {
+        $credentialID = $this->create();
+        Credential::dontAskNotifications($credentialID, "phone");
+
+        $this->assertTrue(Credential::resetAskNotifications($credentialID));
+        $this->assertSame([], Credential::getAskedDevices($credentialID));
+        $this->assertTrue(Credential::shouldAskNotifications($credentialID));
+        $this->assertTrue(Credential::shouldAskNotifications($credentialID, "phone"));
+    }
+
     public function testTheLoginTimeIsMovedOn(): void {
         // The one before becomes the last one. Asked of a Credential made in
         // this same second it would write the values already there, and a
