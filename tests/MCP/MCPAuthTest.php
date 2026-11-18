@@ -14,7 +14,7 @@ class MCPAuthTest extends TestCase {
 
     #[\Override]
     protected function tearDown(): void {
-        MCPAuth::setAuthorizeUrl("");
+        MCPAuth::setAuthorizeRoute("");
     }
 
 
@@ -24,7 +24,7 @@ class MCPAuthTest extends TestCase {
         $this->assertFalse(MCPAuth::isPath($path));
 
         // The App enables it by giving the page where a Credential allows an App
-        MCPAuth::setAuthorizeUrl("https://acme.com/oauth/{requestID}");
+        MCPAuth::setAuthorizeRoute("oauth/{requestID}");
         $this->assertTrue(MCPAuth::isEnabled());
         $this->assertSame($expected, MCPAuth::isPath($path));
     }
@@ -48,7 +48,7 @@ class MCPAuthTest extends TestCase {
     public function testTheAuthenticatePointsToTheResource(): void {
         $this->assertSame("Bearer", MCPAuth::getAuthenticate());
 
-        MCPAuth::setAuthorizeUrl("https://acme.com/oauth/{requestID}");
+        MCPAuth::setAuthorizeRoute("oauth/{requestID}");
         $this->assertStringStartsWith("Bearer resource_metadata=\"", MCPAuth::getAuthenticate());
         $this->assertStringEndsWith(MCPAuth::ResourcePath . "\"", MCPAuth::getAuthenticate());
     }

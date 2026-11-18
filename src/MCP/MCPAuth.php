@@ -29,18 +29,18 @@ class MCPAuth {
     public const AuthorizePath = "/mcp/authorize";
     public const TokenPath     = "/mcp/token";
 
-    private static string $authorizeUrl = "";
-    private static Access $access       = Access::Admin;
+    private static string $authorizeRoute = "";
+    private static Access $access         = Access::Admin;
 
 
 
     /**
-     * Sets the Url of the page of the App where a Credential allows an App, with {requestID} in it
-     * @param string $authorizeUrl
+     * Sets the Route of the page where a Credential allows an App, with {requestID} in it
+     * @param string $authorizeRoute
      * @return void
      */
-    public static function setAuthorizeUrl(string $authorizeUrl): void {
-        self::$authorizeUrl = $authorizeUrl;
+    public static function setAuthorizeRoute(string $authorizeRoute): void {
+        self::$authorizeRoute = $authorizeRoute;
     }
 
     /**
@@ -58,7 +58,7 @@ class MCPAuth {
      * @return bool
      */
     public static function isEnabled(): bool {
-        return self::$authorizeUrl !== "";
+        return self::$authorizeRoute !== "";
     }
 
     /**
@@ -235,7 +235,10 @@ class MCPAuth {
             codeChallenge: $codeChallenge,
             scope:         $request->getString("scope"),
         );
-        $url = Strings::replace(self::$authorizeUrl, "{requestID}", $requestID);
+        // The Url is read here and not in the config of the App, as the Configs are read once
+        // and a config file would read them before a command names its env file
+        $route = Strings::replace(self::$authorizeRoute, "{requestID}", $requestID);
+        $url   = Config::getAppUrl($route);
         return self::location($url);
     }
 

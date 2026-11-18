@@ -160,12 +160,13 @@ Code the server is added as an HTTP one:</p>
 
 <h2 id="oauth">Connecting with OAuth</h2>
 <p>An assistant like claude.ai can not keep a token of its own, so it connects as a credential with the OAuth
-that the protocol asks for. The app turns it on by giving the page where a credential allows an app, with
-<code>{requestID}</code> in its url, and the Access it needs, in a config:</p>
+that the protocol asks for. The app turns it on by giving the route of the page where a credential allows an app, with
+<code>{requestID}</code> in it, and the Access it needs, in a config. The route goes after the
+<code>APP_URL</code>, or the <code>URL</code> when the app has none:</p>
 <figure class="code"><figcaption class="code-tab">config/MCP.config.php</figcaption><pre><code class="language-php">use Framework\MCP\MCPAuth;
 use Framework\System\Access;
 
-MCPAuth::setAuthorizeUrl(&quot;https://acme.com/oauth/{requestID}&quot;);
+MCPAuth::setAuthorizeRoute(&quot;oauth/{requestID}&quot;);
 MCPAuth::setAccess(Access::Admin);</code></pre></figure>
 <p>The paths of the OAuth come in through the same branch as the MCP, so the <code>.htaccess</code> sends them too:</p>
 <pre><code class="language-apache">RewriteRule ^mcp(/.*)?$ backend/index.php [QSA,L]
