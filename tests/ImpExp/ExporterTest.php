@@ -94,6 +94,21 @@ class ExporterTest extends TestCase {
         $this->assertSame("Name,Age\nAlice,30\nBob,0\n", $this->getOutput());
     }
 
+    public function testSaveWritesTheOutputPath(): void {
+        $path = tempnam(sys_get_temp_dir(), "csv");
+        $this->assertNotFalse($path);
+
+        try {
+            $exporter = new Exporter(1, "Export", "export", useCSV: true, outputPath: $path);
+            $exporter->addHeader("name", "Name")->writeHeader()->writeLine([ "name" => "Alice" ]);
+
+            $this->assertSame($exporter, $exporter->save());
+            $this->assertSame("Name\nAlice\n", file_get_contents($path));
+        } finally {
+            unlink($path);
+        }
+    }
+
     public function testDownload(): void {
         $exporter = $this->newDownloadExporter(total: 1);
 

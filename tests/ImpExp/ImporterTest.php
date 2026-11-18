@@ -70,6 +70,7 @@ class ImporterTest extends TestCase {
 
         $this->assertSame("Alice", $row->getString("name"));
         $this->assertSame([ "one", "two" ], $row->getList("tags"));
+        $this->assertSame([ "name" => 1, "tags" => 4 ], $importer->getColumns());
     }
 
     public function testSetColumnsWithDictionary(): void {
@@ -114,6 +115,23 @@ class ImporterTest extends TestCase {
         $importer->next();
         $importer->next();
         $this->assertFalse($importer->valid());
+    }
+
+    public function testSetRangeIteratesOnlyTheGivenRows(): void {
+        $importer = (new Importer($this->path))->setColumnNames("name")->setRange(1, 1);
+
+        $names = [];
+        foreach ($importer as $index => $row) {
+            $names[$index] = $row->getString("name");
+        }
+        $this->assertSame([ 3 => "Bob" ], $names);
+
+        $importer->setRange(2, 0);
+        $names = [];
+        foreach ($importer as $row) {
+            $names[] = $row->getString("name");
+        }
+        $this->assertSame([ "Cara" ], $names);
     }
 
     public function testInvalidImporter(): void {

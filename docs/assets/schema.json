@@ -462,6 +462,84 @@
         ],
         "foreigns": []
     },
+    "imp_exp": {
+        "description": "The exports and imports too big for a request, done in blocks.",
+        "fields": [
+            {
+                "name": "IMP_EXP_ID",
+                "type": "number",
+                "isPrimary": true
+            },
+            {
+                "name": "CREDENTIAL_ID",
+                "type": "number"
+            },
+            {
+                "name": "impExpType",
+                "type": "enum"
+            },
+            {
+                "name": "module",
+                "type": "string"
+            },
+            {
+                "name": "dataID",
+                "type": "number"
+            },
+            {
+                "name": "options",
+                "type": "json"
+            },
+            {
+                "name": "fileName",
+                "type": "string"
+            },
+            {
+                "name": "fileCode",
+                "type": "string"
+            },
+            {
+                "name": "totalRows",
+                "type": "number"
+            },
+            {
+                "name": "doneRows",
+                "type": "number"
+            },
+            {
+                "name": "importedRows",
+                "type": "number"
+            },
+            {
+                "name": "expirationTime",
+                "type": "date"
+            },
+            {
+                "name": "impExpStatus",
+                "type": "enum"
+            },
+            {
+                "name": "createdTime",
+                "type": "date"
+            },
+            {
+                "name": "modifiedTime",
+                "type": "date"
+            },
+            {
+                "name": "env",
+                "type": "string",
+                "length": 20
+            }
+        ],
+        "foreigns": [
+            {
+                "fromField": "CREDENTIAL_ID",
+                "toTable": "credential",
+                "toField": "CREDENTIAL_ID"
+            }
+        ]
+    },
     "log_action": {
         "description": "What each credential did, as a module and an action, tied to its session.",
         "fields": [

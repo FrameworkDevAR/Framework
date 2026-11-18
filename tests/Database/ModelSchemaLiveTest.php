@@ -10,6 +10,8 @@ use Framework\Database\SchemaBuilder;
 use Framework\Database\SchemaFactory;
 use Framework\Database\Migration\SchemaMigration;
 
+use PHPUnit\Framework\Attributes\DataProvider;
+
 use Tests\LiveTestCase;
 use Tests\TestHelpers;
 use Tests\Database\Fixture\TestParts;
@@ -467,6 +469,39 @@ class ModelSchemaLiveTest extends LiveTestCase {
         $this->assertCount(2, $list);
         $this->assertSame("The third", $list[0]->name);
         $this->assertSame("The second", $list[1]->name);
+    }
+
+    /**
+     * @param string       $orderBy
+     * @param bool         $orderAsc
+     * @param list<string> $expected
+     */
+    #[DataProvider("providerGetIDs")]
+    public function testEveryIDIsReadInTheOrder(string $orderBy, bool $orderAsc, array $expected): void {
+        $ids = [
+            "B" => TestThings::add("B"),
+            "C" => TestThings::add("C"),
+            "A" => TestThings::add("A"),
+        ];
+
+        // The page and the amount are ignored, as every ID is needed
+        $result = TestThings::getIDs($orderBy, $orderAsc, amount: 1);
+        $this->assertSame(array_map(fn($name) => $ids[$name], $expected), $result);
+    }
+
+    /**
+     * @return array<string,array{string,bool,list<string>}>
+     */
+    public static function providerGetIDs(): array {
+        return [
+            "by the name"          => [ "name",     true,  [ "A", "B", "C" ] ],
+            "by the name, reverse" => [ "name",     false, [ "C", "B", "A" ] ],
+            "by the position"      => [ "position", true,  [ "B", "C", "A" ] ],
+        ];
+    }
+
+    public function testNoIDsWithNoRows(): void {
+        $this->assertSame([], TestThings::getIDs("name", true));
     }
 
     public function testARemoveClosesTheGap(): void {

@@ -89,7 +89,29 @@ class SocketServer {
         if (function_exists("fastcgi_finish_request")) {
             fastcgi_finish_request();
         }
+        self::publish($topics);
+    }
 
+    /**
+     * Sends the added Topics to the Socket Server now, without closing the response
+     * @return void
+     */
+    #[NotTested("It needs a Socket Server")]
+    public static function flush(): void {
+        // A long Job uses it to tell its progress, as the end of its Request is too late
+        $topics = self::takeTopics();
+        if (count($topics) > 0) {
+            self::publish($topics);
+        }
+    }
+
+    /**
+     * Publishes the given Topics in the Socket Server
+     * @param list<string> $topics
+     * @return void
+     */
+    #[NotTested("It needs a Socket Server")]
+    private static function publish(array $topics): void {
         // A failure is not retried, as the polling of the Apps brings the change. The
         // timeout is not of a second, as curl then fails to resolve the host now and then
         $result = new Dictionary(Curl::execute(

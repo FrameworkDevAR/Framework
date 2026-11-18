@@ -102,6 +102,22 @@ class TestThings extends TestThingSchema {
     }
 
     /**
+     * Returns the IDs of every Thing, in the order that was asked for, ignoring the page
+     * @param string $orderBy
+     * @param bool   $orderAsc
+     * @param int    $amount   Optional.
+     * @return list<int>
+     */
+    public static function getIDs(string $orderBy, bool $orderAsc, int $amount = 0): array {
+        $request           = new TestThingRequest();
+        $request->page     = 1;
+        $request->amount   = $amount;
+        $request->orderBy  = $orderBy;
+        $request->orderAsc = $orderAsc;
+        return self::getSchemaIDs(null, $request);
+    }
+
+    /**
      * Moves a Thing to the given position
      * @param int $testThingID
      * @param int $position

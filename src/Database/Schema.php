@@ -155,6 +155,75 @@ class Schema {
     }
 
     /**
+     * Returns every ID that the Query selects, in the order of the given Sort
+     * @param QueryLike|null $query
+     * @param SchemaRequest  $sort
+     * @return list<int>
+     */
+    protected static function getSchemaIDs(?QueryLike $query, SchemaRequest $sort): array {
+        // The page of the Sort is skipped, as every ID is needed, and the IDs are never
+        // repeated, so they are not checked like the values of a column, which takes too
+        // long with the rows of an Export
+        $amount       = $sort->amount;
+        $sort->amount = 0;
+        $query        = self::generateQuerySort($query, $sort);
+        $sort->amount = $amount;
+
+        // A sort by a column of the table only needs the ID and the Joins of the
+        // conditions, one by a Relation sorts by the alias that its Join selects, and only
+        // one by an Expression needs every field, which is much slower with many rows
+        $model   = static::getModel();
+        $builder = SelectionBuilder::create($model, $query);
+        $builder->addSelects(static::$idDbName, addMainKey: true);
+        if (self::isTableColumn($sort->orderBy)) {
+            $builder->addJoins(withSelects: false, onlyUsed: true);
+        } elseif ($model->canSortBy($sort->orderBy) && !self::isExpression($sort->orderBy)) {
+            $builder->addJoins();
+        } else {
+            $builder->addFields()->addJoins();
+        }
+        $request = $builder->request()->getResult();
+
+        $result = [];
+        foreach ($request as $row) {
+            $result[] = $row->getInt(static::$idDbName);
+        }
+        return $result;
+    }
+
+    /**
+     * Returns true if the given column is an Expression or a Count of the Model
+     * @param string $column
+     * @return bool
+     */
+    private static function isExpression(string $column): bool {
+        $model = static::getModel();
+        foreach ([ ...$model->expressions, ...$model->counts ] as $expression) {
+            if ($column === $expression->name) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Returns true if the given column is empty or a field of the table of the Model
+     * @param string $column
+     * @return bool
+     */
+    private static function isTableColumn(string $column): bool {
+        if ($column === "") {
+            return true;
+        }
+        foreach (static::getModel()->fields as $field) {
+            if ($column === $field->name || $column === $field->dbName) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Returns a Total using the Joins
      * @param QueryLike|null $query       Optional.
      * @param bool           $withDeleted Optional.

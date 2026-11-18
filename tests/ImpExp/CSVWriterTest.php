@@ -54,6 +54,24 @@ class CSVWriterTest extends TestCase {
         );
     }
 
+    public function testOutputPathWritesTheHeaderOnce(): void {
+        $path = tempnam(sys_get_temp_dir(), "csv");
+        $this->assertNotFalse($path);
+
+        try {
+            $headers = [ "name" => "Name" ];
+            $first   = new CSVWriter("export", "root", outputPath: $path);
+            $first->writeHeader($headers)->writeLine([ "name" => "Alice" ])->downloadFile();
+
+            $second = new CSVWriter("export", "root", outputPath: $path);
+            $second->writeHeader($headers)->writeLine([ "name" => "Bob" ])->downloadFile();
+
+            $this->assertSame("Name\nAlice\nBob\n", file_get_contents($path));
+        } finally {
+            unlink($path);
+        }
+    }
+
     public function testDownloadFile(): void {
         $file = fopen("php://memory", "w+");
         $this->assertNotFalse($file);

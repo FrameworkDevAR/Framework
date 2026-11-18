@@ -1,6 +1,7 @@
 <?php
 namespace Framework\ImpExp;
 
+use Framework\File\Storage;
 use Framework\Intl\NLS;
 use Framework\ImpExp\ExporterWriter;
 use Framework\Utils\Arrays;
@@ -18,6 +19,7 @@ class CSVWriter implements ExporterWriter {
     /** @var resource|null */
     private mixed  $file = null;
     private int    $line = 0;
+    private bool   $hasHeader = false;
 
 
 
@@ -27,18 +29,30 @@ class CSVWriter implements ExporterWriter {
      * @param string        $lang        Optional.
      * @param resource|null $file        Optional.
      * @param bool          $sendHeaders Optional.
+     * @param string        $outputPath  Optional.
      */
     public function __construct(
         string $fileName,
         string $lang = "root",
         mixed $file = null,
         bool $sendHeaders = true,
+        string $outputPath = "",
     ) {
         $this->fileName = $fileName;
         $this->lang     = $lang;
 
         if (is_resource($file)) {
             $this->file = $file;
+        } elseif ($outputPath !== "") {
+            // A file that already has rows was started by an earlier call, which wrote the
+            // header, so the new rows are added after the last one
+            $this->hasHeader = Storage::getFileSize($outputPath) > 0;
+            $sendHeaders     = false;
+
+            $handle = fopen($outputPath, "a");
+            if ($handle !== false) {
+                $this->file = $handle;
+            }
         } else {
             $handle = fopen("php://output", "w");
             if ($handle !== false) {
@@ -76,8 +90,8 @@ class CSVWriter implements ExporterWriter {
      */
     #[\Override]
     public function writeHeader(array $headers): CSVWriter {
-        if ($this->file !== null) {
-            $this->headers = $headers;
+        $this->headers = $headers;
+        if ($this->file !== null && !$this->hasHeader) {
             $values = NLS::getAll(Arrays::getValues($headers), $this->lang);
             fputcsv($this->file, $values);
         }

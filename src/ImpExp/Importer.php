@@ -24,6 +24,10 @@ class Importer implements Iterator {
     /** @var array<string,int> */
     private array $columns = [];
 
+    private int $start    = 0;
+    private int $amount   = 0;
+    private int $position = 0;
+
 
 
     /**
@@ -82,6 +86,14 @@ class Importer implements Iterator {
     }
 
     /**
+     * Returns the Columns, with the index of the column of the file of each key
+     * @return array<string,int>
+     */
+    public function getColumns(): array {
+        return $this->columns;
+    }
+
+    /**
      * Sets the Column Names
      * @param string ...$columnsKeys
      * @return Importer
@@ -94,6 +106,19 @@ class Importer implements Iterator {
     }
 
 
+    /**
+     * Sets the Range of the rows to iterate, counted from the first row after the header
+     * @param int $start
+     * @param int $amount
+     * @return Importer
+     */
+    public function setRange(int $start, int $amount): Importer {
+        $this->start  = $start;
+        $this->amount = $amount;
+        return $this;
+    }
+
+
 
     /**
      * Starts the Iterator
@@ -102,6 +127,10 @@ class Importer implements Iterator {
     #[\Override]
     public function rewind(): void {
         $this->reader->rewind();
+        $this->position = 0;
+        while ($this->position < $this->start && $this->reader->valid()) {
+            $this->next();
+        }
     }
 
     /**
@@ -131,6 +160,7 @@ class Importer implements Iterator {
     #[\Override]
     public function next(): void {
         $this->reader->next();
+        $this->position += 1;
     }
 
     /**
@@ -139,6 +169,9 @@ class Importer implements Iterator {
      */
     #[\Override]
     public function valid(): bool {
+        if ($this->amount > 0 && $this->position >= $this->start + $this->amount) {
+            return false;
+        }
         return $this->reader->valid();
     }
 }
