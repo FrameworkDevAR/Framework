@@ -225,6 +225,55 @@ class MediaFileTest extends TestCase {
     }
 
 
+    /**
+     * A page of the List is cut after sorting it, and only the first one has the Back
+     * @param string       $path
+     * @param string       $sort
+     * @param int          $start
+     * @param int          $amount
+     * @param string       $selected
+     * @param list<string> $expectedNames
+     * @param bool         $expectedMore
+     * @return void
+     */
+    #[DataProvider("providerGetListPage")]
+    public function testGetListPage(
+        string $path,
+        string $sort,
+        int $start,
+        int $amount,
+        string $selected,
+        array $expectedNames,
+        bool $expectedMore,
+    ): void {
+        touch(Path::getSourcePath($this->mediaID, "library", "note.txt"), time() - 100);
+        touch(Path::getSourcePath($this->mediaID, "library", "photo.png"), time() - 50);
+
+        $result = MediaFile::getList(MediaType::Any, $path, "library", $sort, $start, $amount, $selected);
+        $names  = array_map(fn($item) => $item->name, $result["list"]);
+
+        $this->assertSame($expectedNames, $names);
+        $this->assertSame($expectedMore, $result["hasMore"]);
+    }
+
+    public static function providerGetListPage(): array {
+        return [
+            "first page"         => [ "", "", 0, 2, "", [ "album", "note.txt" ], true ],
+            "last page"          => [ "", "", 2, 2, "", [ "photo.png" ], false ],
+            "by time"            => [ "", "time", 0, 0, "", [ "album", "photo.png", "note.txt" ], false ],
+            "grows to selected"  => [ "", "", 0, 1, "photo.png", [ "album", "note.txt", "photo.png" ], false ],
+            "selected in page"   => [ "", "", 0, 2, "note.txt", [ "album", "note.txt" ], true ],
+            "back in first page" => [ "/album", "", 0, 1, "", [ "...", "cover.png" ], false ],
+            "no back after"      => [ "/album", "", 1, 1, "", [], false ],
+        ];
+    }
+
+    public function testGetListTotal(): void {
+        $result = MediaFile::getList(MediaType::Any, "", "library", amount: 1);
+        $this->assertSame(3, $result["total"]);
+    }
+
+
     #[DataProvider("providerCreateDir")]
     public function testCreateDir(string $path, bool $expected): void {
         $result = MediaFile::createDir($path);

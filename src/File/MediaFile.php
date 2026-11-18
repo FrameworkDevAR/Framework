@@ -10,6 +10,7 @@ use Framework\File\Type\FileItem;
 use Framework\System\Config;
 use Framework\System\Path;
 use Framework\System\MediaSchema;
+use Framework\Utils\Arrays;
 use Framework\Utils\Strings;
 
 /**
@@ -132,44 +133,89 @@ class MediaFile {
 
 
     /**
-     * Returns all the Media Elements
+     * Returns the Media Elements of a Directory, all of them or a page
      * @param string $mediaType Optional.
      * @param string $path      Optional.
      * @param string $basePath  Optional.
-     * @return array{list:list<FileItem>,path:string}
+     * @param string $sort      Optional.
+     * @param int    $start     Optional.
+     * @param int    $amount    Optional.
+     * @param string $selected  Optional.
+     * @return array{list:list<FileItem>,path:string,total:int,hasMore:bool}
      */
     public static function getList(
         string $mediaType = "",
         string $path = "",
         string $basePath = "",
+        string $sort = "",
+        int $start = 0,
+        int $amount = 0,
+        string $selected = "",
     ): array {
         $path   = $path !== "" && self::exists($basePath, $path) ? $path : "";
         $source = self::getPath($basePath, $path);
         $files  = Storage::getAllInDir($source);
         $source = Storage::addLastSlash($source);
-        $list   = new FileList();
+        $isTime = $sort === "time";
 
+        // The Items are sorted with their names before they are made, as making one reads
+        // the File, so only the ones of the page are made
+        $entries = [];
         foreach ($files as $file) {
             $fileName = Strings::replace($file, $source, "");
             if (MediaType::isValid($mediaType, $file, $fileName)) {
-                $list->add(
-                    name       : $fileName,
-                    path       : Storage::parsePath($path, $fileName),
-                    isDir      : FileType::isDir($file),
-                    sourcePath : self::getPath($basePath, $path, $fileName),
-                    sourceUrl  : self::getUrl($basePath, $path, $fileName),
-                    thumbPath  : self::getThumbPath($basePath, $path, $fileName),
-                    thumbUrl   : self::getThumbUrl($basePath, $path, $fileName),
-                );
+                $entries[] = [
+                    "name"  => $fileName,
+                    "isDir" => FileType::isDir($file),
+                    "time"  => $isTime ? Storage::getModifiedTime($file) : 0,
+                ];
             }
         }
-        if ($path !== "" && $path !== "/") {
+        $entries = Arrays::sortList($entries, function (array $a, array $b) use ($isTime) {
+            if ($a["isDir"] !== $b["isDir"]) {
+                return $a["isDir"] ? -1 : 1;
+            }
+            if ($isTime && $a["time"] !== $b["time"]) {
+                return $b["time"] <=> $a["time"];
+            }
+            return strnatcasecmp($a["name"], $b["name"]);
+        });
+
+        // The page grows in whole pages until it has the selected Item, so it can be shown
+        $total = count($entries);
+        $start = max(0, $start);
+        if ($amount > 0 && $selected !== "") {
+            $index = Arrays::findIndex($entries, "name", $selected);
+            if (is_int($index) && $index >= $start + $amount) {
+                $amount *= (int)ceil(($index - $start + 1) / $amount);
+            }
+        }
+        if ($amount > 0) {
+            $entries = Arrays::slice($entries, $start, $amount);
+        }
+
+        $list = new FileList();
+        if ($start === 0 && $path !== "" && $path !== "/") {
             $list->addBack($path);
+        }
+        foreach ($entries as $entry) {
+            $fileName = $entry["name"];
+            $list->add(
+                name       : $fileName,
+                path       : Storage::parsePath($path, $fileName),
+                isDir      : $entry["isDir"],
+                sourcePath : self::getPath($basePath, $path, $fileName),
+                sourceUrl  : self::getUrl($basePath, $path, $fileName),
+                thumbPath  : self::getThumbPath($basePath, $path, $fileName),
+                thumbUrl   : self::getThumbUrl($basePath, $path, $fileName),
+            );
         }
 
         return [
-            "list" => $list->getSorted(),
-            "path" => Storage::removeFirstSlash($path),
+            "list"    => $list->get(),
+            "path"    => Storage::removeFirstSlash($path),
+            "total"   => $total,
+            "hasMore" => $amount > 0 && $start + count($entries) < $total,
         ];
     }
 
