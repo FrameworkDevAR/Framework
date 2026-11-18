@@ -104,6 +104,10 @@
                 "type": "boolean"
             },
             {
+                "name": "askedDevices",
+                "type": "text"
+            },
+            {
                 "name": "progressValue",
                 "type": "number"
             },
