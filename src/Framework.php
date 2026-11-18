@@ -105,7 +105,7 @@ class Framework {
 
         // Perform the Request
         try {
-            $response = self::request($route, $request);
+            $response = self::request($route, $request, $token !== "");
             self::send($response);
             return true;
         } catch (Exception $e) {
@@ -179,9 +179,10 @@ class Framework {
      * Requests an API function
      * @param string  $route
      * @param Request $request
+     * @param bool    $hasToken True when the Request brings the API Token itself.
      * @return Response
      */
-    private static function request(string $route, Request $request): Response {
+    private static function request(string $route, Request $request, bool $hasToken): Response {
         // The Route doesn't exist
         if (!Router::has($route)) {
             return self::errorResponse("GENERAL_ERROR_PATH");
@@ -207,8 +208,9 @@ class Framework {
         // Perform the Request
         $response = Router::call($route, $request);
 
-        // Add the Tokens, the API doesn't use them
-        if (!Auth::hasAPI()) {
+        // Add the Tokens, except when the API Token comes in every Request, as
+        // a client that logged in with it, like a kiosk, keeps a session
+        if (!$hasToken) {
             $response->addTokens(Auth::getAccessToken(), Auth::getRefreshToken());
         }
         return $response;
