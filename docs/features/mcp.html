@@ -42,7 +42,7 @@
 <div class="eyebrow">Features</div>
 <h1>MCP Server</h1>
 <p class="lead">Mark a method with <code>#[MCPTool]</code> and the build lists it as a tool of a
-<a href="https://modelcontextprotocol.io/specification/2025-06-18" target="_blank" rel="noopener noreferrer">Model Context Protocol</a>
+<a href="https://modelcontextprotocol.io/specification/2025-11-25" target="_blank" rel="noopener noreferrer">Model Context Protocol</a>
 server, so an assistant like Claude can call it with the parameters it describes.</p>
 
 <h2 id="tools">Declaring a tool</h2>
@@ -147,6 +147,11 @@ it to <code>MCPServer::execute()</code> before reading anything of the request, 
 <a href="../core/routing.html">routes</a>: none of them is reached through it, and it is not reached
 through them.</p>
 <pre><code class="language-apache">RewriteRule ^mcp$ backend/index.php [QSA,L]</code></pre>
+<p>Another path is given in a config, and the paths of the <a href="#oauth">OAuth</a> start with it too, so the
+<code>.htaccess</code> sends that one instead:</p>
+<figure class="code"><figcaption class="code-tab">config/MCP.config.php</figcaption><pre><code class="language-php">use Framework\MCP\MCPServer;
+
+MCPServer::setPath(&quot;/api/mcp&quot;);</code></pre></figure>
 <p>Before any message the server checks:</p>
 <ul>
     <li><strong>The origin:</strong> a request with an <code>Origin</code> of another host is answered with a <code>403</code>, so a page open in a browser can not call it.</li>
@@ -157,6 +162,22 @@ through them.</p>
 only lists and calls the ones its Access is granted. With Claude
 Code the server is added as an HTTP one:</p>
 <pre><code class="language-bash">claude mcp add --transport http acme https://acme.com/mcp --header &quot;Authorization: Bearer $TOKEN&quot;</code></pre>
+<p>The assistants show the server with the name of the app and the favicon of the site, and the app can give them
+more about it in a config. Each one is only sent when it is set:</p>
+<ul>
+    <li><strong>Title:</strong> the name to show instead of the one of the app.</li>
+    <li><strong>Description:</strong> what the server is for.</li>
+    <li><strong>Website Url:</strong> the url of the site of the app.</li>
+    <li><strong>Icon:</strong> a path after the <code>APP_URL</code>, or the <code>URL</code> when the app has none.</li>
+    <li><strong>Instructions:</strong> how to use the tools, which the assistant reads when it connects.</li>
+</ul>
+<figure class="code"><figcaption class="code-tab">config/MCP.config.php</figcaption><pre><code class="language-php">use Framework\MCP\MCPServer;
+
+MCPServer::setTitle(&quot;Acme&quot;);
+MCPServer::setDescription(&quot;The tasks and the tickets of Acme&quot;);
+MCPServer::setWebsiteUrl(&quot;https://acme.com&quot;);
+MCPServer::setIcon(&quot;apple-touch-icon.png&quot;);
+MCPServer::setInstructions(&quot;Search a task before editing it.&quot;);</code></pre></figure>
 
 <h2 id="oauth">Connecting with OAuth</h2>
 <p>An assistant like claude.ai can not keep a token of its own, so it connects as a credential with the OAuth

@@ -25,9 +25,9 @@ class MCPAuth {
 
     public const ResourcePath  = "/.well-known/oauth-protected-resource";
     public const ServerPath    = "/.well-known/oauth-authorization-server";
-    public const RegisterPath  = "/mcp/register";
-    public const AuthorizePath = "/mcp/authorize";
-    public const TokenPath     = "/mcp/token";
+    public const RegisterPath  = "/register";
+    public const AuthorizePath = "/authorize";
+    public const TokenPath     = "/token";
 
     private static string $authorizeRoute = "";
     private static Access $access         = Access::Admin;
@@ -74,12 +74,12 @@ class MCPAuth {
         // The clients also ask for the documents with the path of the MCP at their end
         return Arrays::contains([
             self::ResourcePath,
-            self::ResourcePath . MCPServer::Path,
+            self::ResourcePath . MCPServer::getPath(),
             self::ServerPath,
-            self::ServerPath . MCPServer::Path,
-            self::RegisterPath,
-            self::AuthorizePath,
-            self::TokenPath,
+            self::ServerPath . MCPServer::getPath(),
+            self::getPathOf(self::RegisterPath),
+            self::getPathOf(self::AuthorizePath),
+            self::getPathOf(self::TokenPath),
         ], $path);
     }
 
@@ -125,13 +125,13 @@ class MCPAuth {
         if (Strings::startsWith($path, self::ServerPath)) {
             return self::getServer();
         }
-        if (!Server::isPostRequest() && $path !== self::AuthorizePath) {
+        if (!Server::isPostRequest() && $path !== self::getPathOf(self::AuthorizePath)) {
             return Response::text("")->setStatusCode(405);
         }
 
         return match ($path) {
-            self::RegisterPath  => self::register($request),
-            self::AuthorizePath => self::authorize($request),
+            self::getPathOf(self::RegisterPath)  => self::register($request),
+            self::getPathOf(self::AuthorizePath) => self::authorize($request),
             default             => self::token($request),
         };
     }
@@ -143,7 +143,7 @@ class MCPAuth {
      */
     private static function getResource(): Response {
         return self::json([
-            "resource"                 => self::getUrl(MCPServer::Path),
+            "resource"                 => self::getUrl(MCPServer::getPath()),
             "authorization_servers"    => [ self::getIssuer() ],
             "bearer_methods_supported" => [ "header" ],
         ]);
@@ -155,11 +155,15 @@ class MCPAuth {
      * @return Response
      */
     private static function getServer(): Response {
+        $authorizePath = self::getPathOf(self::AuthorizePath);
+        $tokenPath     = self::getPathOf(self::TokenPath);
+        $registerPath  = self::getPathOf(self::RegisterPath);
+
         return self::json([
             "issuer"                                => self::getIssuer(),
-            "authorization_endpoint"                => self::getUrl(self::AuthorizePath),
-            "token_endpoint"                        => self::getUrl(self::TokenPath),
-            "registration_endpoint"                 => self::getUrl(self::RegisterPath),
+            "authorization_endpoint"                => self::getUrl($authorizePath),
+            "token_endpoint"                        => self::getUrl($tokenPath),
+            "registration_endpoint"                 => self::getUrl($registerPath),
             "response_types_supported"              => [ "code" ],
             "grant_types_supported"                 => [ "authorization_code", "refresh_token" ],
             "code_challenge_methods_supported"      => [ "S256" ],
@@ -224,7 +228,7 @@ class MCPAuth {
         }
 
         $resource = Strings::stripEnd($request->getString("resource"), "/");
-        if ($resource !== "" && $resource !== self::getUrl(MCPServer::Path)) {
+        if ($resource !== "" && $resource !== self::getUrl(MCPServer::getPath())) {
             return self::redirect($redirectUri, $state, error: "invalid_target");
         }
 
@@ -383,6 +387,15 @@ class MCPAuth {
     }
 
 
+
+    /**
+     * Returns the given Path of the OAuth after the Path of the MCP
+     * @param string $path
+     * @return string
+     */
+    public static function getPathOf(string $path): string {
+        return MCPServer::getPath() . $path;
+    }
 
     /**
      * Returns the Url of the App with the given Path

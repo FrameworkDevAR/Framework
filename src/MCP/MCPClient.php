@@ -41,7 +41,7 @@ class MCPClient {
             return null;
         }
 
-        $url    = $url . Strings::stripStart(MCPServer::Path, "/");
+        $url    = $url . Strings::stripStart(MCPServer::getPath(), "/");
         $token  = $token !== "" ? $token : Configs::getString("mcpToken");
         $result = self::callTool($url, $token, $tool, $arguments);
         if ($result->isError) {

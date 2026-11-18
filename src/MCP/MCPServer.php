@@ -10,6 +10,7 @@ use Framework\MCP\MCPSignature;
 use Framework\IO\Request;
 use Framework\IO\Response;
 use Framework\Intl\NLS;
+use Framework\System\Config;
 use Framework\System\MCPTools;
 use Framework\Utils\Arrays;
 use Framework\Utils\Dictionary;
@@ -23,12 +24,11 @@ use Throwable;
 
 /**
  * The MCP Server
- * https://modelcontextprotocol.io/specification/2025-06-18
+ * https://modelcontextprotocol.io/specification/2025-11-25
  */
 class MCPServer {
 
-    public const Path     = "/mcp";
-    public const Versions = [ "2025-06-18", "2025-03-26", "2024-11-05" ];
+    public const Versions = [ "2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05" ];
 
     public const ReadOnlyPrefixes    = [ "get", "list", "search" ];
     public const DestructivePrefixes = [ "delete", "remove" ];
@@ -38,7 +38,76 @@ class MCPServer {
     public const MethodNotFound = -32601;
     public const InvalidParams  = -32602;
 
+    private static string $path         = "/mcp";
+    private static string $title        = "";
+    private static string $description  = "";
+    private static string $websiteUrl   = "";
+    private static string $icon         = "";
+    private static string $instructions = "";
 
+
+
+    /**
+     * Sets the Path where the MCP is answered, which the paths of its OAuth also start with
+     * @param string $path
+     * @return void
+     */
+    public static function setPath(string $path): void {
+        self::$path = "/" . Strings::stripStart($path, "/");
+    }
+
+    /**
+     * Returns the Path where the MCP is answered
+     * @return string
+     */
+    public static function getPath(): string {
+        return self::$path;
+    }
+
+    /**
+     * Sets the Title that the assistants show for the MCP, instead of the Name of the App
+     * @param string $title
+     * @return void
+     */
+    public static function setTitle(string $title): void {
+        self::$title = $title;
+    }
+
+    /**
+     * Sets the Description of the MCP
+     * @param string $description
+     * @return void
+     */
+    public static function setDescription(string $description): void {
+        self::$description = $description;
+    }
+
+    /**
+     * Sets the Url of the website of the MCP
+     * @param string $websiteUrl
+     * @return void
+     */
+    public static function setWebsiteUrl(string $websiteUrl): void {
+        self::$websiteUrl = $websiteUrl;
+    }
+
+    /**
+     * Sets the Icon that the assistants show for the MCP, as a path of the App
+     * @param string $icon
+     * @return void
+     */
+    public static function setIcon(string $icon): void {
+        self::$icon = $icon;
+    }
+
+    /**
+     * Sets the Instructions that the assistants read about how to use the MCP
+     * @param string $instructions
+     * @return void
+     */
+    public static function setInstructions(string $instructions): void {
+        self::$instructions = $instructions;
+    }
 
     /**
      * Returns true if the Request is for the MCP or its OAuth, which have paths of their own
@@ -47,7 +116,7 @@ class MCPServer {
      */
     public static function isRequest(): bool {
         $path = Server::getPath();
-        if ($path !== self::Path && !MCPAuth::isPath($path)) {
+        if ($path !== self::$path && !MCPAuth::isPath($path)) {
             return false;
         }
         return count(MCPTools::getHandlers()) > 0;
@@ -59,7 +128,7 @@ class MCPServer {
      */
     public static function execute(): Response {
         $path = Server::getPath();
-        if ($path !== self::Path) {
+        if ($path !== self::$path) {
             return MCPAuth::execute($path);
         }
 
@@ -135,14 +204,32 @@ class MCPServer {
             $version = self::Versions[0];
         }
 
-        return [
+        $serverInfo = [
+            "name"    => Application::getName(),
+            "version" => Application::getVersion(),
+        ];
+        if (self::$title !== "") {
+            $serverInfo["title"] = self::$title;
+        }
+        if (self::$description !== "") {
+            $serverInfo["description"] = self::$description;
+        }
+        if (self::$websiteUrl !== "") {
+            $serverInfo["websiteUrl"] = self::$websiteUrl;
+        }
+        if (self::$icon !== "") {
+            $serverInfo["icons"] = [[ "src" => Config::getAppUrl(self::$icon) ]];
+        }
+
+        $result = [
             "protocolVersion" => $version,
             "capabilities"    => [ "tools" => [ "listChanged" => false ] ],
-            "serverInfo"      => [
-                "name"    => Application::getName(),
-                "version" => Application::getVersion(),
-            ],
+            "serverInfo"      => $serverInfo,
         ];
+        if (self::$instructions !== "") {
+            $result["instructions"] = self::$instructions;
+        }
+        return $result;
     }
 
     /**

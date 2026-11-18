@@ -35,14 +35,27 @@ class MCPAuthTest extends TestCase {
     public static function providerIsPath(): array {
         return [
             "the resource"            => [ MCPAuth::ResourcePath, true ],
-            "the resource of the MCP" => [ MCPAuth::ResourcePath . MCPServer::Path, true ],
+            "the resource of the MCP" => [ MCPAuth::ResourcePath . MCPServer::getPath(), true ],
             "the server"              => [ MCPAuth::ServerPath, true ],
-            "the register"            => [ MCPAuth::RegisterPath, true ],
-            "the authorize"           => [ MCPAuth::AuthorizePath, true ],
-            "the token"               => [ MCPAuth::TokenPath, true ],
-            "the MCP"                 => [ MCPServer::Path, false ],
+            "the register"            => [ MCPAuth::getPathOf(MCPAuth::RegisterPath), true ],
+            "the authorize"           => [ MCPAuth::getPathOf(MCPAuth::AuthorizePath), true ],
+            "the token"               => [ MCPAuth::getPathOf(MCPAuth::TokenPath), true ],
+            "the MCP"                 => [ MCPServer::getPath(), false ],
             "another one"             => [ "/mcp/other", false ],
         ];
+    }
+
+    public function testThePathsFollowTheOneOfTheMCP(): void {
+        MCPAuth::setAuthorizeRoute("oauth/{requestID}");
+        MCPServer::setPath("api/mcp");
+        $isPath  = MCPAuth::isPath("/api/mcp/token");
+        $isOld   = MCPAuth::isPath("/mcp/token");
+        $mcpPath = MCPServer::getPath();
+        MCPServer::setPath("/mcp");
+
+        $this->assertSame("/api/mcp", $mcpPath);
+        $this->assertTrue($isPath);
+        $this->assertFalse($isOld);
     }
 
     public function testTheAuthenticatePointsToTheResource(): void {

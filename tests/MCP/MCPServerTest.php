@@ -7,6 +7,7 @@ use Framework\IO\Response;
 use Framework\MCP\MCPServer;
 use Framework\MCP\Attr\MCPTool;
 use Framework\System\Access;
+use Framework\System\Config;
 
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -114,11 +115,35 @@ class MCPServerTest extends TestCase {
      */
     public static function providerInitialize(): array {
         return [
-            "the latest"      => [ "2025-06-18", "2025-06-18" ],
+            "the latest"      => [ "2025-11-25", "2025-11-25" ],
             "an older one"    => [ "2024-11-05", "2024-11-05" ],
             "an unknown one"  => [ "2030-01-01", MCPServer::Versions[0] ],
             "none"            => [ "", MCPServer::Versions[0] ],
         ];
+    }
+
+    public function testTheInfoIsSentWhenSet(): void {
+        $result = self::send("initialize")["result"];
+        $this->assertSame([ "name", "version" ], array_keys($result["serverInfo"]));
+        $this->assertArrayNotHasKey("instructions", $result);
+
+        MCPServer::setTitle("Title");
+        MCPServer::setDescription("Description");
+        MCPServer::setWebsiteUrl("https://example.com");
+        MCPServer::setIcon("icon.png");
+        MCPServer::setInstructions("Instructions");
+        $result = self::send("initialize")["result"];
+        MCPServer::setTitle("");
+        MCPServer::setDescription("");
+        MCPServer::setWebsiteUrl("");
+        MCPServer::setIcon("");
+        MCPServer::setInstructions("");
+
+        $this->assertSame("Title", $result["serverInfo"]["title"]);
+        $this->assertSame("Description", $result["serverInfo"]["description"]);
+        $this->assertSame("https://example.com", $result["serverInfo"]["websiteUrl"]);
+        $this->assertSame([[ "src" => Config::getAppUrl("icon.png") ]], $result["serverInfo"]["icons"]);
+        $this->assertSame("Instructions", $result["instructions"]);
     }
 
     public function testThePingAnswersAnEmptyObject(): void {
@@ -142,14 +167,14 @@ class MCPServerTest extends TestCase {
      */
     public static function providerIsRequest(): array {
         return [
-            "the one of the MCP" => [ MCPServer::Path ],
+            "the one of the MCP" => [ MCPServer::getPath() ],
             "another one"        => [ "/api/mcp" ],
         ];
     }
 
     #[DataProvider("providerRefusedRequests")]
     public function testTheRequestsThatCanNotGetIn(array $server, int $status): void {
-        $server["REQUEST_URI"] = MCPServer::Path;
+        $server["REQUEST_URI"] = MCPServer::getPath();
         $previous = [];
         foreach ($server as $key => $value) {
             $previous[$key] = $_SERVER[$key] ?? null;
