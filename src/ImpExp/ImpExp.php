@@ -6,6 +6,7 @@ use Framework\ImpExp\Exporter;
 use Framework\ImpExp\Importer;
 use Framework\ImpExp\ImpExpType;
 use Framework\ImpExp\ImpExpStatus;
+use Framework\ImpExp\XLSXReader;
 use Framework\ImpExp\Schema\ImpExpSchema;
 use Framework\ImpExp\Schema\ImpExpEntity;
 use Framework\ImpExp\Schema\ImpExpQuery;
@@ -24,30 +25,75 @@ use Framework\Utils\Strings;
  */
 class ImpExp extends ImpExpSchema {
 
-    // An export or import with more rows than this takes more than a minute, so it runs in blocks
-    private static int $rowLimit   = 30000;
-    private static int $expireDays = 3;
+    // Over these amounts of rows an Export or an Import takes more than about 20 seconds, so it
+    // runs in blocks, and an Import is much slower, as it checks and saves each row
+    private static int $exportLimit = 10000;
+    private static int $importLimit = 500;
+    private static int $excelLimit  = 2000;
+    private static int $expireDays  = 3;
 
     private const Folder = "impexp";
 
 
 
     /**
-     * Sets the amount of rows over which an Import or Export runs in blocks
-     * @param int $rowLimit
+     * Sets the amount of rows over which an Export runs in blocks
+     * @param int $exportLimit
      * @return void
      */
-    public static function setRowLimit(int $rowLimit): void {
-        self::$rowLimit = $rowLimit;
+    public static function setExportLimit(int $exportLimit): void {
+        self::$exportLimit = $exportLimit;
     }
 
     /**
-     * Returns true if an Import or Export of the given total has to run in blocks
+     * Sets the amount of rows over which an Import runs in blocks
+     * @param int $importLimit
+     * @return void
+     */
+    public static function setImportLimit(int $importLimit): void {
+        self::$importLimit = $importLimit;
+    }
+
+    /**
+     * Sets the amount of rows over which an Import has to be a CSV instead of an Excel
+     * @param int $excelLimit
+     * @return void
+     */
+    public static function setExcelLimit(int $excelLimit): void {
+        self::$excelLimit = $excelLimit;
+    }
+
+    /**
+     * Returns true if an Export of the given total has to run in blocks
      * @param int $total
      * @return bool
      */
-    public static function isLong(int $total): bool {
-        return $total > self::$rowLimit;
+    public static function isLongExport(int $total): bool {
+        return $total > self::$exportLimit;
+    }
+
+    /**
+     * Returns true if an Import of the given total has to run in blocks
+     * @param int $total
+     * @return bool
+     */
+    public static function isLongImport(int $total): bool {
+        return $total > self::$importLimit;
+    }
+
+    /**
+     * Returns true if the given file is an Excel too big to import, which has to be a CSV
+     * @param string $filePath
+     * @return bool
+     */
+    public static function isLongExcel(string $filePath): bool {
+        // Each block of a long Import reads the file from its first row, which is fast in a
+        // CSV but means reading the whole Excel file each time, which only takes a few
+        // seconds while the file is not too big
+        if (Storage::getExtension($filePath) !== "xlsx") {
+            return false;
+        }
+        return XLSXReader::countRows($filePath) - 1 > self::$excelLimit;
     }
 
 

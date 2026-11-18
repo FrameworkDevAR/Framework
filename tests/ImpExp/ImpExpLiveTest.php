@@ -10,6 +10,9 @@ use Framework\ImpExp\ImpExpStatus;
 use Framework\ImpExp\Schema\ImpExpEntity;
 use Framework\ImpExp\Schema\ImpExpRequest;
 
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Writer\XLSX\Writer;
+
 use Tests\LiveTestCase;
 use Tests\TestHelpers;
 
@@ -33,7 +36,9 @@ class ImpExpLiveTest extends LiveTestCase {
     }
 
     protected function tearDown(): void {
-        ImpExp::setRowLimit(30000);
+        ImpExp::setExportLimit(10000);
+        ImpExp::setImportLimit(500);
+        ImpExp::setExcelLimit(2000);
         Storage::deleteDir(FilePath::getPath("impexp", self::CredentialID));
         if ($this->csvPath !== "" && is_file($this->csvPath)) {
             @unlink($this->csvPath);
@@ -90,11 +95,42 @@ class ImpExpLiveTest extends LiveTestCase {
     }
 
 
-    public function testIsLongUsesTheRowLimit(): void {
-        ImpExp::setRowLimit(10);
+    public function testIsLongExportUsesTheExportLimit(): void {
+        ImpExp::setExportLimit(10);
+        ImpExp::setImportLimit(100);
 
-        $this->assertFalse(ImpExp::isLong(10));
-        $this->assertTrue(ImpExp::isLong(11));
+        $this->assertFalse(ImpExp::isLongExport(10));
+        $this->assertTrue(ImpExp::isLongExport(11));
+    }
+
+    public function testIsLongImportUsesTheImportLimit(): void {
+        ImpExp::setExportLimit(100);
+        ImpExp::setImportLimit(10);
+
+        $this->assertFalse(ImpExp::isLongImport(10));
+        $this->assertTrue(ImpExp::isLongImport(11));
+    }
+
+    public function testIsLongExcelCountsTheRowsOfAnExcel(): void {
+        ImpExp::setExcelLimit(2);
+        $this->csvPath = sys_get_temp_dir() . "/impexp_test_" . uniqid() . ".xlsx";
+        $writer = new Writer();
+        $writer->openToFile($this->csvPath);
+        foreach ([ "Name", "Ana", "Bob", "Cara" ] as $name) {
+            $writer->addRow(Row::fromValues([ $name ]));
+        }
+        $writer->close();
+        $this->assertTrue(ImpExp::isLongExcel($this->csvPath));
+
+        ImpExp::setExcelLimit(3);
+        $this->assertFalse(ImpExp::isLongExcel($this->csvPath));
+    }
+
+    public function testIsLongExcelSkipsACSV(): void {
+        ImpExp::setExcelLimit(0);
+        $import = $this->createImport([ "Ana", "Bob" ]);
+        $this->assertFalse(ImpExp::isLongExcel($this->csvPath));
+        $this->assertSame(ImpExpType::Import, $import->impExpType);
     }
 
     public function testCreateExportStoresTheIDsAndStartsRunning(): void {

@@ -15,6 +15,7 @@ use OpenSpout\Common\Entity\Row;
 use OpenSpout\Common\Entity\Cell\FormulaCell;
 
 use Exception;
+use ZipArchive;
 
 /**
  * The XLSX Reader
@@ -57,6 +58,70 @@ class XLSXReader implements ImporterReader {
     }
 
 
+
+    /**
+     * Returns the amount of rows of the first sheet of the given file, with its header
+     * @param string $path
+     * @return int
+     */
+    public static function countRows(string $path): int {
+        // The rows are counted in the XML of the sheet, without reading their cells, so it
+        // takes an instant even when the file is too big for the Reader to read in a Request
+        $zip = new ZipArchive();
+        if ($zip->open($path, ZipArchive::RDONLY) !== true) {
+            return 0;
+        }
+        $stream = $zip->getStream(self::getFirstSheetPath($zip));
+        if ($stream === false) {
+            $zip->close();
+            return 0;
+        }
+
+        // A tag can be split between two chunks, so only the ones that start before the end
+        // of the chunk are counted, and the end is kept for the next one, where it is whole
+        $total  = 0;
+        $buffer = "";
+        while (!feof($stream)) {
+            $buffer .= (string)fread($stream, 65536);
+            $limit   = feof($stream) ? strlen($buffer) : max(0, strlen($buffer) - 16);
+            preg_match_all('/<(?:\w+:)?row[\s>]/', $buffer, $matches, PREG_OFFSET_CAPTURE);
+            foreach ($matches[0] as [ , $offset ]) {
+                if ($offset < $limit) {
+                    $total += 1;
+                }
+            }
+            $buffer = substr($buffer, $limit);
+        }
+        fclose($stream);
+        $zip->close();
+        return $total;
+    }
+
+    /**
+     * Returns the path of the first sheet of the Workbook inside the file
+     * @param ZipArchive $zip
+     * @return string
+     */
+    private static function getFirstSheetPath(ZipArchive $zip): string {
+        $workbook  = (string)$zip->getFromName("xl/workbook.xml");
+        $relations = (string)$zip->getFromName("xl/_rels/workbook.xml.rels");
+        if (preg_match('/<(?:\w+:)?sheet\s[^>]*r:id="([^"]+)"/', $workbook, $sheet) !== 1) {
+            return "xl/worksheets/sheet1.xml";
+        }
+
+        $pattern = '/<Relationship\s[^>]*Id="' . preg_quote($sheet[1], "/") . '"[^>]*>/';
+        if (preg_match($pattern, $relations, $relation) !== 1 ||
+            preg_match('/Target="([^"]+)"/', $relation[0] ?? "", $target) !== 1
+        ) {
+            return "xl/worksheets/sheet1.xml";
+        }
+
+        // The Target is relative to the folder of the Workbook, unless it starts with a slash
+        if (str_starts_with($target[1], "/")) {
+            return substr($target[1], 1);
+        }
+        return "xl/{$target[1]}";
+    }
 
     /**
      * Returns true if the Reader is valid

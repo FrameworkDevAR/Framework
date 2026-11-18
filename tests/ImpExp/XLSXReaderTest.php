@@ -37,6 +37,26 @@ class XLSXReaderTest extends TestCase {
     }
 
 
+    public function testCountRowsCountsTheHeaderAndEveryRow(): void {
+        $this->assertSame(4, XLSXReader::countRows($this->path));
+    }
+
+    public function testCountRowsOfASheetLongerThanAChunk(): void {
+        // The XML of the sheet is read in chunks, and a row split between two is counted once
+        $rows = [[ "Name", "Email" ]];
+        for ($i = 1; $i <= 5000; $i += 1) {
+            $rows[] = [ "Name $i", "name-$i@example.com" ];
+        }
+        $this->writeRows($rows);
+
+        $this->assertSame(5001, XLSXReader::countRows($this->path));
+    }
+
+    public function testCountRowsOfAFileThatIsNotAnExcel(): void {
+        $this->assertSame(0, XLSXReader::countRows($this->path . ".missing"));
+        $this->assertSame(0, XLSXReader::countRows(__FILE__));
+    }
+
     public function testIsAvailable(): void {
         $this->assertTrue(XLSXReader::isAvailable("xlsx"));
         $this->assertTrue(XLSXReader::isAvailable("xls"));
