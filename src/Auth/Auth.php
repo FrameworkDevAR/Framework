@@ -19,6 +19,8 @@ use Framework\Date\TimeZone;
 use Framework\Utils\Arrays;
 use Framework\Utils\Strings;
 
+use Closure;
+
 /**
  * The Auth
  */
@@ -31,11 +33,15 @@ class Auth {
     private static int    $credentialID = 0;
     private static int    $adminID      = 0;
     private static int    $userID       = 0;
+    private static int    $requestUser  = 0;
     private static string $apiToken     = "";
     private static bool   $isExternal   = false;
 
     private static ?CredentialEntity $credential = null;
     private static ?CredentialEntity $admin      = null;
+
+    /** @var (Closure(CredentialEntity,int):bool)|null */
+    private static ?Closure $userValidator = null;
 
 
 
@@ -48,11 +54,21 @@ class Auth {
     }
 
     /**
+     * Sets the function that says if a Credential can use the given User in a Request
+     * @param Closure(CredentialEntity,int):bool $userValidator
+     * @return void
+     */
+    public static function setUserValidator(Closure $userValidator): void {
+        self::$userValidator = $userValidator;
+    }
+
+    /**
      * Validates the Credential
      * @param string $accessToken
      * @param string $refreshToken
      * @param string $langcode
      * @param int    $timezone
+     * @param int    $userID       Optional.
      * @return bool
      */
     public static function validateCredential(
@@ -60,6 +76,7 @@ class Auth {
         string $refreshToken,
         string $langcode,
         int $timezone,
+        int $userID = 0,
     ): bool {
         Reset::deleteOld();
         AuthToken::deleteOld();
@@ -97,6 +114,14 @@ class Auth {
 
         // Set the Credential
         self::setCredential($credential, $admin, $credential->currentUser);
+
+        // The Request can work as another User that the App allows, which only changes the
+        // User ID, as the Access, the Credential and the Tokens stay the current ones
+        if ($userID !== 0 && !$admin->exists() && self::$userValidator !== null &&
+            (self::$userValidator)($credential, $userID)
+        ) {
+            self::$requestUser = $userID;
+        }
 
         // Start or reuse a log session
         ActionLog::startSession();
@@ -290,6 +315,7 @@ class Auth {
         self::$credentialID = 0;
         self::$adminID      = 0;
         self::$userID       = 0;
+        self::$requestUser  = 0;
     }
 
     /**
@@ -405,6 +431,7 @@ class Auth {
         self::$credential   = $credential;
         self::$credentialID = $credential->id;
         self::$userID       = $userID;
+        self::$requestUser  = 0;
 
         if ($credential->userAccess !== Access::None) {
             self::$accessName = $credential->userAccess;
@@ -455,8 +482,9 @@ class Auth {
      * @return void
      */
     public static function setCurrentUser(int $userID, Access|string $accessName): void {
-        self::$userID     = $userID;
-        self::$accessName = Access::fromValue($accessName);
+        self::$userID      = $userID;
+        self::$requestUser = 0;
+        self::$accessName  = Access::fromValue($accessName);
 
         ActionLog::endSession();
         ActionLog::startSession(destroy: true);
@@ -551,7 +579,7 @@ class Auth {
      * @return int
      */
     public static function getUserID(): int {
-        return self::$userID;
+        return self::$requestUser !== 0 ? self::$requestUser : self::$userID;
     }
 
     /**

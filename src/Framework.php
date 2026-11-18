@@ -54,6 +54,7 @@ class Framework {
         $langcode     = $request->getString("xLangcode");
         $timezone     = $request->getInt("xTimezone");
         $socketID     = $request->getString("xSocketID");
+        $userID       = $request->getInt("xUserID");
 
         // Remove sensitive data
         $request->remove("route");
@@ -63,6 +64,7 @@ class Framework {
         $request->remove("xLangcode");
         $request->remove("xTimezone");
         $request->remove("xSocketID");
+        $request->remove("xUserID");
 
         // The Route is required
         if ($route === "") {
@@ -92,6 +94,7 @@ class Framework {
                 $refreshToken,
                 $langcode,
                 $timezone,
+                $userID,
             );
         }
 

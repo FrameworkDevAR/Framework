@@ -42,6 +42,7 @@ class AuthLiveTest extends LiveTestCase {
 
     protected function tearDown(): void {
         Auth::logout();
+        $this->setPrivateStaticProperty(Auth::class, "userValidator", null);
         $this->setConfig("AUTH_API_TOKEN", "");
         $this->setConfig("AUTH_FIELDS", []);
 
@@ -469,6 +470,68 @@ class AuthLiveTest extends LiveTestCase {
 
     public function testThereIsNoCredentialToReadAgainForNobody(): void {
         $this->assertFalse(Auth::updateCredential());
+    }
+
+    /**
+     * Returns the data of the Access Token that the Auth gives now
+     * @return Dictionary
+     */
+    private function accessData(): Dictionary {
+        /** @var Dictionary */
+        return $this->callPrivateStaticMethod(AuthToken::class, "getAccessData", Auth::getAccessToken());
+    }
+
+    /**
+     * Validates a Request of a new Admin that asks for the given User
+     * @param int $userID
+     * @return void
+     */
+    private function validateWithUser(int $userID): void {
+        $credentialID = $this->create(self::AdminEmail);
+        $refreshToken = AuthToken::createRefreshToken($credentialID);
+        $this->assertTrue(Auth::validateCredential("", $refreshToken, "", 0, $userID));
+    }
+
+    public function testARequestUsesTheUserThatTheAppAllows(): void {
+        Auth::setUserValidator(fn ($credential, int $userID) => $userID === 55);
+        $this->validateWithUser(55);
+
+        // Only the User changes, and the Token keeps the current one
+        $this->assertSame(55, Auth::getUserID());
+        $this->assertSame(Access::Admin, Auth::getAccessName());
+        $this->assertSame(0, $this->accessData()->getInt("userID"));
+    }
+
+    public function testAUserThatTheAppRefusesIsNotUsed(): void {
+        Auth::setUserValidator(fn ($credential, int $userID) => false);
+        $this->validateWithUser(55);
+
+        $this->assertSame(0, Auth::getUserID());
+    }
+
+    public function testAUserIsNotUsedWithoutAValidator(): void {
+        $this->validateWithUser(55);
+
+        $this->assertSame(0, Auth::getUserID());
+    }
+
+    public function testTheValidatorIsGivenTheCredentialAndTheUser(): void {
+        $given = [];
+        Auth::setUserValidator(function ($credential, int $userID) use (&$given): bool {
+            $given = [ $credential->email, $userID ];
+            return true;
+        });
+        $this->validateWithUser(55);
+
+        $this->assertSame([ self::AdminEmail, 55 ], $given);
+    }
+
+    public function testChangingTheCurrentUserLetsGoOfTheUserOfTheRequest(): void {
+        Auth::setUserValidator(fn ($credential, int $userID) => true);
+        $this->validateWithUser(55);
+        Auth::setCurrentUser(77, Access::General);
+
+        $this->assertSame(77, Auth::getUserID());
     }
 
     public function testTheCurrentUserIsSet(): void {
