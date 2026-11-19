@@ -421,16 +421,18 @@ class Schema {
     /**
      * Creates a new Entity with data
      * @param array<string,QueryValue> $fields
-     * @param int                      $createdUser  Optional.
-     * @param int                      $modifiedUser Optional.
+     * @param int                      $createdUser     Optional.
+     * @param int                      $modifiedUser    Optional.
+     * @param bool                     $ignoreDuplicate Optional.
      * @return int
      */
     protected static function createSchemaEntity(
         array $fields,
         int $createdUser = 0,
         int $modifiedUser = 0,
+        bool $ignoreDuplicate = false,
     ): int {
-        return ModificationBuilder::insert(static::getModel())
+        return ModificationBuilder::insert(static::getModel(), $ignoreDuplicate)
             ->addFields($fields)
             ->addCreation($createdUser)
             ->addModification($modifiedUser)

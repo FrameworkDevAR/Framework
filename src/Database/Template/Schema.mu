@@ -709,7 +709,8 @@ class {{name}}Schema extends Schema {
      * @param int $createdUser Optional.{{/hasUsers}}{{#hasEditTimestamps}}
      * @param Date|null $modifiedTime Optional.{{/hasEditTimestamps}}{{#hasEditUsers}}
      * @param int $modifiedUser Optional.{{/hasEditUsers}}{{#hasPositions}}
-     * @param bool $skipOrder Optional.{{/hasPositions}}
+     * @param bool $skipOrder Optional.{{/hasPositions}}{{^hasPositions}}
+     * @param bool $ignoreDuplicate Optional.{{/hasPositions}}
      * @return int
      */
     protected static function createEntity({{#hasRequestFields}}
@@ -720,7 +721,8 @@ class {{name}}Schema extends Schema {
         int $createdUser = 0,{{/hasUsers}}{{#hasEditTimestamps}}
         ?Date $modifiedTime = null,{{/hasEditTimestamps}}{{#hasEditUsers}}
         int $modifiedUser = 0,{{/hasEditUsers}}{{#hasPositions}}
-        bool $skipOrder = false,{{/hasPositions}}
+        bool $skipOrder = false,{{/hasPositions}}{{^hasPositions}}
+        bool $ignoreDuplicate = false,{{/hasPositions}}
     ): int {
         $fields = [];
         {{#fields}}
@@ -780,6 +782,7 @@ class {{name}}Schema extends Schema {
             fields: $fields,{{#hasUsers}}
             createdUser: $createdUser,{{/hasUsers}}{{#hasEditUsers}}
             modifiedUser: $modifiedUser,{{/hasEditUsers}}
+            ignoreDuplicate: $ignoreDuplicate,
         );
         {{/hasPositions}}
     }

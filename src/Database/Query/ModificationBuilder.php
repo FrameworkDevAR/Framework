@@ -30,10 +30,17 @@ class ModificationBuilder {
     /**
      * Creates a new Insert Modification instance
      * @param SchemaModel $schemaModel
+     * @param bool        $ignoreDuplicate Optional.
      * @return ModificationBuilder
      */
-    public static function insert(SchemaModel $schemaModel): ModificationBuilder {
+    public static function insert(
+        SchemaModel $schemaModel,
+        bool $ignoreDuplicate = false,
+    ): ModificationBuilder {
         $builder = Query::insert($schemaModel->tableName);
+        if ($ignoreDuplicate) {
+            $builder = Query::insertIgnore($schemaModel->tableName);
+        }
         return new ModificationBuilder($builder, $schemaModel);
     }
 

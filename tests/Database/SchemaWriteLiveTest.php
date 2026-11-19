@@ -1,11 +1,15 @@
 <?php
 namespace Tests\Database;
 
+use Framework\Core\MigrationData;
+use Framework\Database\Query\Query;
 use Framework\Email\EmailWhiteList;
 use Framework\Email\Schema\EmailWhiteListQuery;
 use Framework\Email\Schema\EmailWhiteListRequest;
 
 use Tests\LiveTestCase;
+
+use ReflectionMethod;
 
 /**
  * The Schema, which every generated one extends, through a Model that writes
@@ -17,8 +21,9 @@ use Tests\LiveTestCase;
  */
 class SchemaWriteLiveTest extends LiveTestCase {
 
-    private const Email = "live@framework.test";
-    private const Other = "other@framework.test";
+    private const Email     = "live@framework.test";
+    private const Other     = "other@framework.test";
+    private const Migration = "live-duplicate";
 
 
     protected function setUp(): void {
@@ -81,6 +86,27 @@ class SchemaWriteLiveTest extends LiveTestCase {
 
         $this->assertTrue($entity->createdTime->isNotEmpty());
         $this->assertTrue($entity->modifiedTime->isNotEmpty());
+    }
+
+    public function testADuplicateCanBeIgnored(): void {
+        // The White List checks its unique email in the code, so the
+        // Migrations, whose name is the primary key, are the ones that
+        // refuse a second row in the database. The create is protected, as
+        // each Schema decides what it offers, so it is reached from here
+        $create = new ReflectionMethod(MigrationData::class, "createEntity");
+        Query::delete("migrations")->where("name", "=", self::Migration)->execute();
+
+        $create->invokeArgs(null, [ "name" => self::Migration, "title" => "first" ]);
+        $create->invokeArgs(null, [
+            "name"            => self::Migration,
+            "title"           => "second",
+            "ignoreDuplicate" => true,
+        ]);
+        $migrations = Query::select("migrations")->where("name", "=", self::Migration)->getAll();
+        Query::delete("migrations")->where("name", "=", self::Migration)->execute();
+
+        $this->assertSame(1, $migrations->count());
+        $this->assertSame("first", $migrations->getFirst()->getString("title"));
     }
 
     public function testARowThatIsNotThereComesBackEmpty(): void {

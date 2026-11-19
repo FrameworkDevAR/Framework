@@ -79,6 +79,15 @@ class Query implements QueryLike {
     }
 
     /**
+     * Creates a new INSERT IGNORE Query for the given table
+     * @param QueryLike|string $queryOrTable
+     * @return Query
+     */
+    public static function insertIgnore(QueryLike|string $queryOrTable): Query {
+        return new Query(QueryMode::InsertIgnore, $queryOrTable);
+    }
+
+    /**
      * Creates a new REPLACE Query for the given table
      * @param QueryLike|string $queryOrTable
      * @return Query
@@ -724,7 +733,8 @@ class Query implements QueryLike {
         $bindings   = $this->queryBuilder->getBindings();
         $result     = $db->execute($expression, $bindings);
 
-        if ($this->mode === QueryMode::Insert) {
+        // An ignored row inserts nothing, so it gives no ID
+        if ($this->mode === QueryMode::Insert || $this->mode === QueryMode::InsertIgnore) {
             return $result ? $db->getInsertID() : 0;
         }
         return $result ? 1 : 0;

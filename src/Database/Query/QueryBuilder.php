@@ -221,12 +221,13 @@ class QueryBuilder {
      */
     public function toSQL(bool $forDebug = false): string {
         $result = match ($this->mode) {
-            QueryMode::Select   => $this->toSelectSQL($forDebug),
-            QueryMode::Insert   => $this->toInsertSQL(),
-            QueryMode::Replace  => $this->toReplaceSQL(),
-            QueryMode::Update   => $this->toUpdateSQL(),
-            QueryMode::Delete   => $this->toDeleteSQL(),
-            QueryMode::Truncate => $this->toTruncateSQL(),
+            QueryMode::Select       => $this->toSelectSQL($forDebug),
+            QueryMode::Insert       => $this->toInsertSQL(),
+            QueryMode::InsertIgnore => $this->toInsertSQL(isIgnore: true),
+            QueryMode::Replace      => $this->toReplaceSQL(),
+            QueryMode::Update       => $this->toUpdateSQL(),
+            QueryMode::Delete       => $this->toDeleteSQL(),
+            QueryMode::Truncate     => $this->toTruncateSQL(),
         };
 
         $result = Strings::replace($result, "\n", " ");
@@ -279,15 +280,17 @@ class QueryBuilder {
 
     /**
      * Converts the Query Builder to an Insert SQL string
+     * @param bool $isIgnore Optional.
      * @return string
      */
-    private function toInsertSQL(): string {
+    private function toInsertSQL(bool $isIgnore = false): string {
         $values = [];
         foreach ($this->fields as $field => $value) {
             $values[] = $value instanceof Assign ? $value->toSQL($field) : "?";
         }
 
-        $expression  = "INSERT INTO " . $this->table->toSQL();
+        $expression  = $isIgnore ? "INSERT IGNORE INTO " : "INSERT INTO ";
+        $expression .= $this->table->toSQL();
         $expression .= " (`" . Strings::joinKeys($this->fields, "`, `") . "`)";
         $expression .= " VALUES (" . Strings::join($values, ", ") . ")";
 

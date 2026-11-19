@@ -477,6 +477,10 @@ class QueryTest extends TestCase {
                 function () { $q = Query::replace("t"); $q->set("a", 1); return $q; },
                 "REPLACE INTO `t` (`a`) VALUES (?)", [ 1 ],
             ],
+            "ignore"    => [
+                function () { $q = Query::insertIgnore("t"); $q->set("a", 1); return $q; },
+                "INSERT IGNORE INTO `t` (`a`) VALUES (?)", [ 1 ],
+            ],
             "raw exp"   => [
                 function () { $q = Query::update("t"); $q->setExp("views", "views + 1"); return $q; },
                 "UPDATE `t` SET `views` = views + 1", [],
