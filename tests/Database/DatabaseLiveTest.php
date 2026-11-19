@@ -9,6 +9,8 @@ use Tests\TestHelpers;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 
+use ErrorException;
+
 /**
  * The Database itself, connected to the one kept for the tests
  *
@@ -137,19 +139,10 @@ class DatabaseLiveTest extends LiveTestCase {
             charset:  "utf8mb4",
         );
 
-        $captured = "";
-        set_error_handler(function (int $number, string $message) use (&$captured): bool {
-            $captured = $message;
-            return true;
-        });
-        try {
-            $result = $db->setDatabase("framework_test_nope");
-        } finally {
-            restore_error_handler();
-        }
-
-        $this->assertFalse($result);
-        $this->assertStringContainsString("Select Error", $captured);
+        // Without the Error Log, like in the tests, the error stops the request
+        $this->expectException(ErrorException::class);
+        $this->expectExceptionMessage("Select Error");
+        $db->setDatabase("framework_test_nope");
     }
 
     public function testAClosedOneStaysClosed(): void {

@@ -2,6 +2,7 @@
 namespace Framework\File;
 
 use Framework\File\Storage;
+use Framework\Log\ErrorLog;
 use Framework\Utils\Arrays;
 use Framework\Utils\Numbers;
 use Framework\Utils\Strings;
@@ -739,7 +740,7 @@ class Image {
             }
 
             // Log the error
-            trigger_error("Imagick Error: $error", E_USER_ERROR);
+            ErrorLog::fatal("Imagick Error: $error");
         }
         return true;
     }

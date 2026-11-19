@@ -13,6 +13,8 @@ use Tests\TestHelpers;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 
+use ErrorException;
+
 /**
  * The Errors Log, one row per error with the times it has happened
  *
@@ -37,6 +39,7 @@ class ErrorLogLiveTest extends LiveTestCase {
     }
 
     protected function tearDown(): void {
+        $this->setPrivateStaticProperty(ErrorLog::class, "loaded", false);
         $this->setPrivateStaticProperty(Framework::class, "route", "");
         parent::tearDown();
     }
@@ -101,6 +104,24 @@ class ErrorLogLiveTest extends LiveTestCase {
         ErrorLog::handler(E_USER_WARNING, "The same one", "/tmp/a.php", 12);
 
         $this->assertSame(3, $this->onlyOne()->amount);
+    }
+
+    public function testAFatalErrorIsLoggedWhereItWasCalled(): void {
+        $this->setPrivateStaticProperty(ErrorLog::class, "loaded", true);
+        ErrorLog::fatal("A query that failed");
+
+        $log = $this->onlyOne();
+        $this->assertSame(E_USER_ERROR, $log->errorCode);
+        $this->assertSame("Fatal Error", $log->errorText);
+        $this->assertSame(__LINE__ - 5, $log->line);
+        $this->assertStringContainsString("ErrorLogLiveTest.php", $log->file);
+        $this->assertStringContainsString("A query that failed", $log->description);
+    }
+
+    public function testAFatalErrorStopsWithoutTheLog(): void {
+        $this->expectException(ErrorException::class);
+        $this->expectExceptionMessage("A query that failed");
+        ErrorLog::fatal("A query that failed");
     }
 
     public function testAnotherLineIsAnotherRow(): void {

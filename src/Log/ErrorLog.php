@@ -16,6 +16,8 @@ use Framework\Date\Date;
 use Framework\Utils\Arrays;
 use Framework\Utils\Strings;
 
+use ErrorException;
+
 /**
  * The Errors Log
  */
@@ -24,6 +26,7 @@ class ErrorLog extends LogErrorSchema {
     private static bool   $loaded    = false;
     private static string $framePath = "";
     private static string $basePath  = "";
+    private static bool   $isFatal   = false;
 
 
     /**
@@ -185,6 +188,37 @@ class ErrorLog extends LogErrorSchema {
             );
         }
         return true;
+    }
+
+    /**
+     * Logs a Fatal Error, which is what a trigger_error with an E_USER_ERROR did
+     * @param string $description
+     * @return void
+     * @throws ErrorException When the Error can not be logged.
+     */
+    public static function fatal(string $description): void {
+        // PHP 8.4 deprecated the E_USER_ERROR in trigger_error, which logged a second
+        // error for each one. The caller is the file and line that the trigger had
+        $caller   = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1)[0] ?? [];
+        $filePath = $caller["file"] ?? "";
+        $line     = $caller["line"] ?? 0;
+
+        // With the handler the request goes on, as it did with the trigger, and without
+        // it, like in the console or when the Log can not be written, the error stops it.
+        // The Log is written with a query, so one that fails while logging is not logged
+        // again, as PHP did not call the handler again while it was running
+        if (self::$loaded && !self::$isFatal) {
+            self::$isFatal = true;
+            try {
+                $isLogged = self::handler(E_USER_ERROR, $description, $filePath, $line);
+            } finally {
+                self::$isFatal = false;
+            }
+            if ($isLogged) {
+                return;
+            }
+        }
+        throw new ErrorException($description, 0, E_USER_ERROR, $filePath, $line);
     }
 
     /**

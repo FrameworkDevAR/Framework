@@ -2,6 +2,7 @@
 namespace Framework\Database;
 
 use Framework\Analysis\Attr\NotTested;
+use Framework\Log\ErrorLog;
 use Framework\Log\QueryLog;
 use Framework\System\Config;
 use Framework\Date\Timer;
@@ -132,7 +133,7 @@ class Database {
             );
         } catch (Throwable $e) {
             if ($this->triggerError) {
-                trigger_error("Connect Error " . $e->getMessage(), E_USER_ERROR);
+                ErrorLog::fatal("Connect Error " . $e->getMessage());
             }
             return;
         }
@@ -141,7 +142,7 @@ class Database {
             $errno = $this->mysqli->connect_errno;
             $error = $this->mysqli->connect_error;
             if ($this->triggerError) {
-                trigger_error("Connect Error ($errno) $error", E_USER_ERROR);
+                ErrorLog::fatal("Connect Error ($errno) $error");
             }
             return;
         }
@@ -178,7 +179,7 @@ class Database {
         } catch (mysqli_sql_exception $e) {
             $this->isConnected = false;
             if ($this->triggerError) {
-                trigger_error("Select Error: " . $e->getMessage(), E_USER_ERROR);
+                ErrorLog::fatal("Select Error: " . $e->getMessage());
             }
         }
         return false;
@@ -344,10 +345,8 @@ class Database {
             if (Server::isLocalHost()) {
                 die($error);
             }
-            trigger_error($error, E_USER_ERROR);
+            ErrorLog::fatal($error);
         }
-
-        // @phpstan-ignore deadCode.unreachable
         return null;
     }
 
