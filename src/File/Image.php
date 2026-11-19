@@ -57,7 +57,7 @@ class Image {
     public static function getType(string $fileName): int {
         if (URL::isValid($fileName)) {
             $fileName = URL::encode($fileName);
-        } elseif (!Storage::fileExists($fileName)) {
+        } elseif (!Storage::fileExists($fileName) || Storage::getFileSize($fileName) === 0) {
             return 0;
         }
 
@@ -85,7 +85,9 @@ class Image {
      */
     public static function getSize(int|string ...$pathParts): array {
         $filePath = Storage::parsePath(...$pathParts);
-        if (!Storage::fileExists($filePath) || !FileType::isImage($filePath)) {
+        if (!Storage::fileExists($filePath) || !FileType::isImage($filePath) ||
+            Storage::getFileSize($filePath) === 0
+        ) {
             return [ 0, 0, 0 ];
         }
 
@@ -143,6 +145,21 @@ class Image {
             return false;
         }
 
+        // Imagick reads the type from the contents, as a photo can have the extension of a
+        // PNG, and it throws when the file is cut, where GD only warns
+        if (class_exists("Imagick")) {
+            try {
+                $image = new Imagick($filePath);
+                return $image->getImageFormat() === "PNG" &&
+                    Strings::toLowerCase((string)$image->identifyFormat("%[opaque]")) === "false";
+            } catch (Exception $e) {
+                return false;
+            }
+        }
+
+        if (self::getType($filePath) !== IMAGETYPE_PNG) {
+            return false;
+        }
         $imgData = imagecreatefrompng($filePath);
         if ($imgData === false) {
             return false;

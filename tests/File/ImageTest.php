@@ -36,6 +36,8 @@ class ImageTest extends TestCase {
             "corrupt"     => $this->tmpDir . DIRECTORY_SEPARATOR . "corrupt.png",
             "truncated"   => $this->tmpDir . DIRECTORY_SEPARATOR . "truncated.png",
             "oriented"    => $this->tmpDir . DIRECTORY_SEPARATOR . "oriented.jpg",
+            "photo"       => $this->tmpDir . DIRECTORY_SEPARATOR . "photo.PNG",
+            "empty"       => $this->tmpDir . DIRECTORY_SEPARATOR . "empty.png",
         ];
 
         $this->writeFixtureImage($this->files["gif"], 1, 30, 15);
@@ -59,6 +61,8 @@ class ImageTest extends TestCase {
 
         // A JPEG carrying an EXIF Orientation tag
         $this->writeFixtureImage($this->files["oriented"], 2, 30, 20);
+        $this->writeFixtureImage($this->files["photo"], 2, 30, 20);
+        @file_put_contents($this->files["empty"], "");
         $this->writeExifOrientation($this->files["oriented"], 6);
 
         $GLOBALS["test_image_url_files"] = [];
@@ -564,16 +568,29 @@ class ImageTest extends TestCase {
     public static function providerUnreadableImage(): array {
         return [
             "corrupt png" => [ "corrupt" ],
+            "empty png"   => [ "empty" ],
         ];
     }
 
 
-    public function testHasTransparencyWithUnreadableImage(): void {
-        $result = $this->runWithSuppressedWarnings(
-            fn() => Image::hasTransparency($this->files["corrupt"]),
-            suppress: true,
-        );
-        $this->assertFalse($result);
+    #[DataProvider("providerTransparencyUnreadable")]
+    public function testHasTransparencyWithUnreadableImage(string $token): void {
+        // Nothing is suppressed, as a file that can not be read gives no warning
+        $this->assertFalse(Image::hasTransparency($this->files[$token]));
+    }
+
+    /**
+     * A photo can come with the extension of a PNG, and a file can be cut
+     * or empty when its upload failed
+     * @return array<string,array{string}>
+     */
+    public static function providerTransparencyUnreadable(): array {
+        return [
+            "corrupt png"       => [ "corrupt" ],
+            "truncated png"     => [ "truncated" ],
+            "a photo named png" => [ "photo" ],
+            "an empty png"      => [ "empty" ],
+        ];
     }
 
 
