@@ -188,6 +188,15 @@ class Utils {
     }
 
     /**
+     * Returns the given Email trimmed and in lowercase
+     * @param string $email
+     * @return string
+     */
+    public static function normalizeEmail(string $email): string {
+        return Strings::toLowerCase(Strings::trim($email));
+    }
+
+    /**
      * Extracts the Domain from the given email
      * @param string $email
      * @return string

@@ -182,6 +182,25 @@ class UtilsTest extends TestCase {
     }
 
 
+    #[DataProvider("providerNormalizeEmail")]
+    public function testNormalizeEmail(string $email, string $expected): void {
+        $this->assertEquals($expected, Utils::normalizeEmail($email));
+    }
+
+    public static function providerNormalizeEmail(): array {
+        return [
+            "already normal"  => [ "user@example.com", "user@example.com" ],
+            "uppercase"       => [ "User.Name@Example.COM", "user.name@example.com" ],
+            "leading space"   => [ " user@example.com", "user@example.com" ],
+            "trailing spaces" => [ "user@example.com  ", "user@example.com" ],
+            "tabs and lines"  => [ "\tUser@Example.com\n", "user@example.com" ],
+            "not an email"    => [ " Not An Email ", "not an email" ],
+            "empty"           => [ "", "" ],
+            "only spaces"     => [ "   ", "" ],
+        ];
+    }
+
+
     #[DataProvider("providerGetEmailDomain")]
     public function testGetEmailDomain(string $email, string $expected): void {
         $this->assertEquals($expected, Utils::getEmailDomain($email));
