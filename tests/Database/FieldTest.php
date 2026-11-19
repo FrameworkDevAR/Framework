@@ -281,6 +281,7 @@ class FieldTest extends TestCase {
             "a number"          => [ FieldType::Number, [ "value" => "12" ], 12 ],
             "a float"           => [ FieldType::Float, [ "value" => "150" ], 1.5 ],
             "a string"          => [ FieldType::String, [ "value" => "hi" ], "hi" ],
+            "a long digits"     => [ FieldType::String, [ "value" => "0424418520341153812334" ], "0424418520341153812334" ],
             "a text"            => [ FieldType::Text, [ "value" => "hi" ], "hi" ],
             "a long text"       => [ FieldType::LongText, [ "value" => "hi" ], "hi" ],
             "an encrypt"        => [ FieldType::Encrypt, [ "valueDecrypt" => "secret" ], "secret" ],

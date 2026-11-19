@@ -89,6 +89,19 @@ enum FieldType implements Enum, JsonSerializable {
     }
 
     /**
+     * Returns true if the Field Type is stored as a Number
+     * @return bool
+     */
+    public function isNumeric(): bool {
+        return match ($this) {
+            self::Date,
+            self::Number,
+            self::Float => true,
+            default     => false,
+        };
+    }
+
+    /**
      * Returns the Native Type from the given Field Type
      * @param string $enumClass Optional.
      * @param bool   $forEntity Optional.

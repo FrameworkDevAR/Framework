@@ -433,8 +433,14 @@ class Field {
     public function toValues(array $data): array {
         $key    = $this->prefixName;
         $string = isset($data[$key]) ? Strings::toString($data[$key]) : "";
-        $number = isset($data[$key]) ? Numbers::toInt($data[$key])    : 0;
         $result = [];
+
+        // The number is only read for the numeric types, as a text that only has digits, like
+        // a long phone, does not fit in an int
+        $number = 0;
+        if (isset($data[$key]) && $this->type->isNumeric()) {
+            $number = Numbers::toInt($data[$key]);
+        }
 
         // Set the main value of the field
         $result[$key] = match ($this->type) {
