@@ -716,13 +716,7 @@ class OpenAI {
             $result->outputTokens  = $response->getDict("usage")->getInt("output_tokens");
             $result->runTime       = $timer->getElapsedSecondsInt();
 
-            foreach ($response->getList("tools") as $tool) {
-                $type = $tool->getString("type");
-                if ($type  === "web_search" || $type  === "web_search_preview") {
-                    $result->didSearchCall = true;
-                    break;
-                }
-            }
+            $result->setSearchCalls($response);
         }
         return $result;
     }

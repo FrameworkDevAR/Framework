@@ -11,28 +11,29 @@ class OpenAIOutput {
 
     public Dictionary $response;
 
-    public string $error         = "";
+    public string $error           = "";
 
-    public string $url           = "";
-    public string $route         = "";
+    public string $url             = "";
+    public string $route           = "";
 
-    public CurlMethod $method    = CurlMethod::POST;
+    public CurlMethod $method      = CurlMethod::POST;
 
-    public string $externalID    = "";
-    public string $vectorStoreID = "";
-    public string $fileIDs       = "";
+    public string $externalID      = "";
+    public string $vectorStoreID   = "";
+    public string $fileIDs         = "";
 
-    public string $text          = "";
-    public string $language      = "";
-    public int    $duration      = 0;
+    public string $text            = "";
+    public string $language        = "";
+    public int    $duration        = 0;
 
-    public int    $runTime       = 0;
-    public int    $inputTokens   = 0;
-    public int    $outputTokens  = 0;
-    public bool   $didSearchCall = false;
+    public int    $runTime         = 0;
+    public int    $inputTokens     = 0;
+    public int    $outputTokens    = 0;
+    public int    $webSearchCalls  = 0;
+    public int    $fileSearchCalls = 0;
 
     /** @var list<array{callID:string,name:string,arguments:array<int|string,mixed>}> */
-    public array  $functionCalls = [];
+    public array  $functionCalls   = [];
 
 
 
@@ -62,6 +63,26 @@ class OpenAIOutput {
                 $this->error = $error;
             } else {
                 $this->error = $response->getDict("error")->getString("message");
+            }
+        }
+    }
+
+    /**
+     * Sets the amount of web and file searches that the given Response ran
+     * @param Dictionary $response
+     * @return void
+     */
+    public function setSearchCalls(Dictionary $response): void {
+        $this->webSearchCalls  = 0;
+        $this->fileSearchCalls = 0;
+
+        // The searches are billed by each call the model made, and not by the tools it got
+        foreach ($response->getList("output") as $output) {
+            $type = $output->getString("type");
+            if ($type === "web_search_call") {
+                $this->webSearchCalls += 1;
+            } elseif ($type === "file_search_call") {
+                $this->fileSearchCalls += 1;
             }
         }
     }
