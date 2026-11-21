@@ -18,6 +18,7 @@ use Exception;
 class AuthToken {
 
     private const Algorithm = "HS256";
+    private const KeyLength = 32;
 
     private static ?CredentialRefreshTokenEntity $tokenData = null;
 
@@ -112,8 +113,8 @@ class AuthToken {
      */
     private static function getAccessData(string $accessToken): Dictionary {
         JWT::$leeway = 1000;
+        $key = new Key(self::getKey(), self::Algorithm);
         try {
-            $key = new Key(Config::getAuthKey(), self::Algorithm);
             $jwt = JWT::decode($accessToken, $key);
         } catch (Exception $e) {
             return new Dictionary();
@@ -139,7 +140,22 @@ class AuthToken {
             "exp"  => $time + self::getAccessTokenDuration(),
             "data" => $data,
         ];
-        return JWT::encode($token, Config::getAuthKey(), self::Algorithm);
+        return JWT::encode($token, self::getKey(), self::Algorithm);
+    }
+
+    /**
+     * Returns the Key that signs the Access Tokens
+     * @throws \UnexpectedValueException When the key is too short.
+     * @return string
+     */
+    private static function getKey(): string {
+        // An HS256 key with less than 32 bytes is refused by php-jwt, and on a decode it would
+        // look like a token that is not valid, so it is said here instead
+        $key = Config::getAuthKey();
+        if (strlen($key) < self::KeyLength) {
+            throw new \UnexpectedValueException("The AUTH_KEY must have at least 32 bytes");
+        }
+        return $key;
     }
 
 

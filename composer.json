@@ -17,7 +17,7 @@
         "ext-mbstring": "*"
     },
     "require-dev": {
-        "firebase/php-jwt": "^6.10",
+        "firebase/php-jwt": "^7.0",
         "mustache/mustache": "^3.0",
         "phpmailer/phpmailer": "^6.9",
         "openspout/openspout": "^4.26",

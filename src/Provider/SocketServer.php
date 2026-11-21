@@ -18,6 +18,7 @@ use Firebase\JWT\JWT;
 class SocketServer {
 
     private const Algorithm = "HS256";
+    private const KeyLength = 32;
 
     /** @var array<string,bool> */
     private static array $topics = [];
@@ -172,6 +173,20 @@ class SocketServer {
             "scopes"   => $scopes,
             "iat"      => $time,
             "exp"      => $time + Config::getSocketTokenHours() * 3600,
-        ], Config::getSocketSecret(), self::Algorithm);
+        ], self::getSecret(), self::Algorithm);
+    }
+
+    /**
+     * Returns the Secret that signs the Tokens of the Socket
+     * @throws \UnexpectedValueException When the secret is too short.
+     * @return string
+     */
+    private static function getSecret(): string {
+        // php-jwt refuses an HS256 key with less than 32 bytes
+        $secret = Config::getSocketSecret();
+        if (strlen($secret) < self::KeyLength) {
+            throw new \UnexpectedValueException("The SOCKET_SECRET must have at least 32 bytes");
+        }
+        return $secret;
     }
 }

@@ -91,4 +91,12 @@ class SocketServerTest extends TestCase {
         $this->assertSame([ "u45", "c6" ], $data["scopes"]);
         $this->assertSame(2 * 3600, $data["exp"] - $data["iat"]);
     }
+
+    public function testAShortSecretIsRefused(): void {
+        $this->useSocket(true);
+        $this->setConfig("SOCKET_SECRET", "short");
+
+        $this->expectExceptionMessage("The SOCKET_SECRET must have at least 32 bytes");
+        SocketServer::createToken("desktop", 45, [ "u45" ]);
+    }
 }

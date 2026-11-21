@@ -102,7 +102,7 @@ removes the row, and <a class="src-link" href="https://github.com/FrameworkDevAR
 <table class="api-table">
     <thead><tr><th>Key</th><th>Sets</th></tr></thead>
     <tbody>
-        <tr><td><code>AUTH_KEY</code></td><td>The secret the JWTs are signed with — keep it private; changing it invalidates every issued token.</td></tr>
+        <tr><td><code>AUTH_KEY</code></td><td>The secret the JWTs are signed with, of at least 32 bytes — keep it private; changing it invalidates every issued token.</td></tr>
         <tr><td><code>AUTH_HOURS</code></td><td>Access-token lifetime, in hours (shorter is safer, but refreshes more often).</td></tr>
         <tr><td><code>AUTH_DAYS</code></td><td>Refresh-token lifetime, in days — how long a session survives before a full sign-in.</td></tr>
     </tbody>
@@ -231,7 +231,7 @@ Auth::logoutAs();                   // return to the admin</code></pre>
     <thead><tr><th>Key</th><th>Controls</th></tr></thead>
     <tbody>
         <tr><td><code>AUTH_ACTIVE</code></td><td>Enables the auth module.</td></tr>
-        <tr><td><code>AUTH_KEY</code></td><td>Secret used to sign the JWT tokens.</td></tr>
+        <tr><td><code>AUTH_KEY</code></td><td>Secret used to sign the JWT tokens, of at least 32 bytes.</td></tr>
         <tr><td><code>AUTH_HOURS</code></td><td>Access-token lifetime, in hours.</td></tr>
         <tr><td><code>AUTH_DAYS</code></td><td>Refresh-token lifetime, in days.</td></tr>
         <tr><td><code>AUTH_API_TOKEN</code></td><td>Static token for server-to-server API access.</td></tr>
