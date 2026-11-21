@@ -52,6 +52,12 @@ class ImpExpModel {
     public string $fileCode = "";
 
     #[Field]
+    public bool $isStored = false;
+
+    #[Field]
+    public int $fileSize = 0;
+
+    #[Field]
     public int $totalRows = 0;
 
     #[Field]
@@ -59,6 +65,9 @@ class ImpExpModel {
 
     #[Field]
     public int $importedRows = 0;
+
+    #[Field]
+    public ?JSON $warnings = null;
 
     #[Field]
     public ?Date $expirationTime = null;

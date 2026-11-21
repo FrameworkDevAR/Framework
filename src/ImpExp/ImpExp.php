@@ -3,6 +3,7 @@ namespace Framework\ImpExp;
 
 use Framework\Analysis\Attr\NotTested;
 use Framework\ImpExp\Exporter;
+use Framework\ImpExp\ImpExpStorage;
 use Framework\ImpExp\Importer;
 use Framework\ImpExp\ImpExpType;
 use Framework\ImpExp\ImpExpStatus;
@@ -16,9 +17,10 @@ use Framework\File\FilePath;
 use Framework\File\Storage;
 use Framework\Date\Date;
 use Framework\Utils\Arrays;
-use Framework\Utils\Dictionary;
 use Framework\Utils\JSON;
 use Framework\Utils\Strings;
+
+use Exception;
 
 /**
  * The Import and Export
@@ -31,6 +33,14 @@ class ImpExp extends ImpExpSchema {
     private static int $importLimit = 500;
     private static int $excelLimit  = 2000;
     private static int $expireDays  = 3;
+
+    private static ?ImpExpStorage $storage = null;
+
+    /** @var array<int,list<int>> */
+    private static array $ids = [];
+
+    /** @var array<int,string> */
+    private static array $readFiles = [];
 
     private const Folder = "impexp";
 
@@ -62,6 +72,22 @@ class ImpExp extends ImpExpSchema {
     public static function setExcelLimit(int $excelLimit): void {
         self::$excelLimit = $excelLimit;
     }
+
+    /**
+     * Sets where the Imports and Exports keep their files
+     * @param ImpExpStorage|null $storage
+     * @return void
+     */
+    public static function setStorage(?ImpExpStorage $storage): void {
+        // Each block can run on another server, so with a Storage nothing is kept in the
+        // server: each block of an Export is written to a local file and sent to the Storage,
+        // and each run of an Import reads its file once from the Storage
+        self::$storage   = $storage;
+        self::$ids       = [];
+        self::$readFiles = [];
+    }
+
+
 
     /**
      * Returns true if an Export of the given total has to run in blocks
@@ -194,11 +220,11 @@ class ImpExp extends ImpExpSchema {
         // same order, even when rows are added or deleted while it runs
         $fileCode = Strings::random(32);
         $idsPath  = self::getPath($credentialID, $fileCode, "json");
-        if (!JSON::writeFile($idsPath, $ids)) {
+        if (self::$storage === null && !JSON::writeFile($idsPath, $ids)) {
             return 0;
         }
 
-        return self::createEntity(
+        $impExpID = self::createEntity(
             credentialID: $credentialID,
             impExpType:   ImpExpType::Export,
             module:       $module,
@@ -209,10 +235,20 @@ class ImpExp extends ImpExpSchema {
             totalRows:    count($ids),
             impExpStatus: ImpExpStatus::Running,
         );
+        if (self::$storage === null || $impExpID === 0) {
+            return $impExpID;
+        }
+
+        if (!self::$storage->createExport(self::getByID($impExpID), $ids)) {
+            self::removeEntity($impExpID);
+            return 0;
+        }
+        self::editEntity($impExpID, isStored: true);
+        return $impExpID;
     }
 
     /**
-     * Creates an Import of the given file, which is copied so it outlives the temp files
+     * Creates an Import of the given file, which is kept so it outlives the temp files
      * @param int               $credentialID
      * @param string            $module
      * @param int               $dataID
@@ -229,18 +265,15 @@ class ImpExp extends ImpExpSchema {
         string $filePath,
         int $totalRows,
     ): int {
-        // The json of an Import keeps the rows that could not be imported, so they can be
-        // downloaded once it ends
         $fileName  = Storage::getBaseName($filePath);
         $fileCode  = Strings::random(32);
         $extension = Storage::getExtension($fileName);
         $copyPath  = self::getPath($credentialID, $fileCode, $extension);
-        $jsonPath  = self::getPath($credentialID, $fileCode, "json");
-        if (!Storage::copyFile($filePath, $copyPath) || !JSON::writeFile($jsonPath, [])) {
+        if (self::$storage === null && !Storage::copyFile($filePath, $copyPath)) {
             return 0;
         }
 
-        return self::createEntity(
+        $impExpID = self::createEntity(
             credentialID: $credentialID,
             impExpType:   ImpExpType::Import,
             module:       $module,
@@ -251,6 +284,16 @@ class ImpExp extends ImpExpSchema {
             totalRows:    $totalRows,
             impExpStatus: ImpExpStatus::Running,
         );
+        if (self::$storage === null || $impExpID === 0) {
+            return $impExpID;
+        }
+
+        if (!self::$storage->createImport(self::getByID($impExpID), $filePath)) {
+            self::removeEntity($impExpID);
+            return 0;
+        }
+        self::editEntity($impExpID, isStored: true);
+        return $impExpID;
     }
 
     /**
@@ -260,8 +303,15 @@ class ImpExp extends ImpExpSchema {
      * @return list<int>
      */
     public static function getNextIDs(ImpExpEntity $impExp, int $amount): array {
-        $idsPath = self::getPath($impExp->credentialID, $impExp->fileCode, "json");
-        $ids     = Arrays::toInts(JSON::readFile($idsPath));
+        // The IDs of the Storage are read once in each run, which writes many blocks
+        $storage = self::getStorage($impExp);
+        if ($storage !== null) {
+            self::$ids[$impExp->id] ??= $storage->getExportIDs($impExp);
+            $ids = self::$ids[$impExp->id];
+        } else {
+            $idsPath = self::getPath($impExp->credentialID, $impExp->fileCode, "json");
+            $ids     = Arrays::toInts(JSON::readFile($idsPath));
+        }
         return array_slice($ids, $impExp->doneRows, $amount);
     }
 
@@ -270,8 +320,13 @@ class ImpExp extends ImpExpSchema {
      * @param ImpExpEntity $impExp
      * @param int          $amount
      * @return Importer
+     * @throws Exception When the file can not be read from the Storage.
      */
     public static function getImporter(ImpExpEntity $impExp, int $amount): Importer {
+        if (!self::readFile($impExp)) {
+            throw new Exception("The file of the Import {$impExp->id} could not be read");
+        }
+
         $importer = new Importer(self::getFilePath($impExp));
         $importer->setColumns(Arrays::toStringIntMap($impExp->options->toArray()));
         $importer->setRange($impExp->doneRows, $amount);
@@ -279,7 +334,7 @@ class ImpExp extends ImpExpSchema {
     }
 
     /**
-     * Returns the path of the file of the Import or Export
+     * Returns the path of the file of the Import or Export, or of the block of an Export
      * @param ImpExpEntity $impExp
      * @return string
      */
@@ -294,10 +349,8 @@ class ImpExp extends ImpExpSchema {
      * @return list<array{index:int,name:string}>
      */
     public static function getWarnings(ImpExpEntity $impExp): array {
-        $jsonPath = self::getPath($impExp->credentialID, $impExp->fileCode, "json");
-        $list     = new Dictionary(JSON::readFile($jsonPath));
-        $result   = [];
-        foreach ($list as $warning) {
+        $result = [];
+        foreach ($impExp->warnings as $warning) {
             $result[] = [
                 "index" => $warning->getInt("index"),
                 "name"  => $warning->getString("name"),
@@ -313,11 +366,42 @@ class ImpExp extends ImpExpSchema {
      * @return bool
      */
     public static function addRows(ImpExpEntity $impExp, int $amount): bool {
-        $isDone = $amount === 0 || $impExp->doneRows + $amount >= $impExp->totalRows;
-        if ($isDone) {
-            Storage::deleteFile(self::getPath($impExp->credentialID, $impExp->fileCode, "json"));
+        $isDone  = $amount === 0 || $impExp->doneRows + $amount >= $impExp->totalRows;
+        $storage = self::getStorage($impExp);
+        if ($storage === null) {
+            $filePath = self::getFilePath($impExp);
+            if ($isDone) {
+                $idsPath = self::getPath($impExp->credentialID, $impExp->fileCode, "json");
+                Storage::deleteFile($idsPath);
+            }
+            $fileSize = Storage::getFileSize($filePath);
+            $isEdited = self::addDone($impExp, $amount, 0, $isDone, $fileSize);
+            return $isDone && $isEdited;
         }
-        return self::addDone($impExp, $amount, 0, $isDone);
+
+        // The block is written at the size that the Export has stored, so a block that is sent
+        // again, after a run that failed before saving it, replaces the one already sent, and
+        // a block whose rows were all deleted meanwhile has nothing to send
+        $blockPath = self::getFilePath($impExp);
+        $blockSize = Storage::getFileSize($blockPath);
+        $isSent    = true;
+        if ($amount > 0 && $blockSize > 0) {
+            $isSent = $storage->appendExport($impExp, $blockPath, $impExp->fileSize);
+        }
+        Storage::deleteFile($blockPath);
+
+        // A canceled one has no file, so the block fails and the Export stays canceled
+        if (!$isSent) {
+            $current = self::getByID($impExp->id);
+            if ($current->impExpStatus === ImpExpStatus::Running) {
+                self::fail($current);
+            }
+            return false;
+        }
+
+        $fileSize = $impExp->fileSize + $blockSize;
+        $isEdited = self::addDone($impExp, $amount, 0, $isDone, $fileSize);
+        return $isDone && $isEdited;
     }
 
     /**
@@ -334,13 +418,16 @@ class ImpExp extends ImpExpSchema {
         int $imported,
         array $warnings,
     ): bool {
-        if (count($warnings) > 0) {
-            $jsonPath = self::getPath($impExp->credentialID, $impExp->fileCode, "json");
-            JSON::writeFile($jsonPath, array_merge(self::getWarnings($impExp), $warnings));
-        }
-
-        $isDone = $amount === 0 || $impExp->doneRows + $amount >= $impExp->totalRows;
-        return self::addDone($impExp, $amount, $imported, $isDone);
+        // The rows that could not be imported are kept, so they can be downloaded once it ends
+        $isDone   = $amount === 0 || $impExp->doneRows + $amount >= $impExp->totalRows;
+        $isEdited = self::addDone(
+            impExp:   $impExp,
+            amount:   $amount,
+            imported: $imported,
+            isDone:   $isDone,
+            warnings: array_merge(self::getWarnings($impExp), $warnings),
+        );
+        return $isDone && $isEdited;
     }
 
     /**
@@ -380,11 +467,15 @@ class ImpExp extends ImpExpSchema {
      */
     #[NotTested("It sends the file and exits")]
     public static function download(ImpExpEntity $impExp): never {
-        $filePath = self::getFilePath($impExp);
         if ($impExp->impExpType !== ImpExpType::Export ||
-            $impExp->impExpStatus !== ImpExpStatus::Ready ||
-            !Storage::fileExists($filePath)
+            $impExp->impExpStatus !== ImpExpStatus::Ready
         ) {
+            exit();
+        }
+
+        // The file is sent from here, so it is only downloaded by a User that can see it
+        $filePath = self::getFilePath($impExp);
+        if (!self::readFile($impExp) || !Storage::fileExists($filePath)) {
             exit();
         }
 
@@ -414,9 +505,13 @@ class ImpExp extends ImpExpSchema {
         string $fileName,
     ): never {
         $warnings = self::getWarnings($impExp);
-        $importer = new Importer(self::getFilePath($impExp));
         $isImport = $impExp->impExpType === ImpExpType::Import;
-        if (!$isImport || count($warnings) === 0 || !$importer->isValid()) {
+        if (!$isImport || count($warnings) === 0 || !self::readFile($impExp)) {
+            exit();
+        }
+
+        $importer = new Importer(self::getFilePath($impExp));
+        if (!$importer->isValid()) {
             exit();
         }
 
@@ -465,11 +560,13 @@ class ImpExp extends ImpExpSchema {
 
 
     /**
-     * Adds the done rows, and marks it as ready when it ended
-     * @param ImpExpEntity $impExp
-     * @param int          $amount
-     * @param int          $imported
-     * @param bool         $isDone
+     * Adds the done rows, marks it as ready when it ended, and returns true if it was running
+     * @param ImpExpEntity                       $impExp
+     * @param int                                $amount
+     * @param int                                $imported
+     * @param bool                               $isDone
+     * @param int                                $fileSize Optional.
+     * @param list<array{index:int,name:string}> $warnings Optional.
      * @return bool
      */
     private static function addDone(
@@ -477,6 +574,8 @@ class ImpExp extends ImpExpSchema {
         int $amount,
         int $imported,
         bool $isDone,
+        int $fileSize = 0,
+        array $warnings = [],
     ): bool {
         // Only a running one is changed, as a block that ends after it was canceled must not
         // mark it as ready
@@ -484,17 +583,23 @@ class ImpExp extends ImpExpSchema {
         $query->impExpID->equal($impExp->id);
         $query->impExpStatus->equal(ImpExpStatus::Running);
 
-        $doneRows     = $impExp->doneRows + $amount;
         $importedRows = $impExp->importedRows + $imported;
         if (!$isDone) {
-            self::editEntity($query, doneRows: $doneRows, importedRows: $importedRows);
-            return false;
+            return self::editEntity(
+                $query,
+                doneRows:     $impExp->doneRows + $amount,
+                importedRows: $importedRows,
+                fileSize:     $fileSize,
+                warnings:     $warnings,
+            );
         }
 
         return self::editEntity(
             $query,
             doneRows:       $impExp->totalRows,
             importedRows:   $importedRows,
+            fileSize:       $fileSize,
+            warnings:       $warnings,
             expirationTime: Date::now()->add(days: self::$expireDays),
             impExpStatus:   ImpExpStatus::Ready,
         );
@@ -508,6 +613,52 @@ class ImpExp extends ImpExpSchema {
     private static function deleteFiles(ImpExpEntity $impExp): void {
         Storage::deleteFile(self::getPath($impExp->credentialID, $impExp->fileCode, "json"));
         Storage::deleteFile(self::getFilePath($impExp));
+
+        unset(self::$ids[$impExp->id], self::$readFiles[$impExp->id]);
+        self::getStorage($impExp)?->delete($impExp);
+    }
+
+    /**
+     * Reads the stored file of the Import or Export into this server, once in each request
+     * @param ImpExpEntity $impExp
+     * @return bool
+     */
+    private static function readFile(ImpExpEntity $impExp): bool {
+        $storage = self::getStorage($impExp);
+        if ($storage === null || isset(self::$readFiles[$impExp->id])) {
+            return true;
+        }
+
+        $filePath = self::getFilePath($impExp);
+        if (!$storage->readFile($impExp, $filePath)) {
+            Storage::deleteFile($filePath);
+            return false;
+        }
+
+        // The copies are deleted when the request ends, as the next run can be in another server
+        if (count(self::$readFiles) === 0) {
+            register_shutdown_function(static function (): void {
+                foreach (self::$readFiles as $readPath) {
+                    Storage::deleteFile($readPath);
+                }
+                self::$readFiles = [];
+            });
+        }
+        self::$readFiles[$impExp->id] = $filePath;
+        return true;
+    }
+
+    /**
+     * Returns the Storage of the Import or Export, if it was created in one
+     * @param ImpExpEntity $impExp
+     * @return ImpExpStorage|null
+     */
+    private static function getStorage(ImpExpEntity $impExp): ?ImpExpStorage {
+        // The ones created before the Storage was set keep their files in this server
+        if (!$impExp->isStored) {
+            return null;
+        }
+        return self::$storage;
     }
 
     /**

@@ -30,6 +30,7 @@ class CSVWriter implements ExporterWriter {
      * @param resource|null $file        Optional.
      * @param bool          $sendHeaders Optional.
      * @param string        $outputPath  Optional.
+     * @param bool          $skipHeader  Optional.
      */
     public function __construct(
         string $fileName,
@@ -37,6 +38,7 @@ class CSVWriter implements ExporterWriter {
         mixed $file = null,
         bool $sendHeaders = true,
         string $outputPath = "",
+        bool $skipHeader = false,
     ) {
         $this->fileName = $fileName;
         $this->lang     = $lang;
@@ -45,8 +47,9 @@ class CSVWriter implements ExporterWriter {
             $this->file = $file;
         } elseif ($outputPath !== "") {
             // A file that already has rows was started by an earlier call, which wrote the
-            // header, so the new rows are added after the last one
-            $this->hasHeader = Storage::getFileSize($outputPath) > 0;
+            // header, so the new rows are added after the last one, and a file that is only a
+            // part of another one skips it too
+            $this->hasHeader = $skipHeader || Storage::getFileSize($outputPath) > 0;
             $sendHeaders     = false;
 
             $handle = fopen($outputPath, "a");

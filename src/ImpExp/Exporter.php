@@ -36,6 +36,7 @@ class Exporter {
      * @param bool   $useCSV      Optional.
      * @param bool   $sendHeaders Optional.
      * @param string $outputPath  Optional.
+     * @param bool   $skipHeader  Optional.
      */
     public function __construct(
         int $total,
@@ -45,6 +46,7 @@ class Exporter {
         bool $useCSV = false,
         bool $sendHeaders = true,
         string $outputPath = "",
+        bool $skipHeader = false,
     ) {
         $this->fileName  = NLS::getString($fileName, $lang);
         $this->fileName .= "_" . Date::now()->toString(DateFormat::Reverse);
@@ -65,6 +67,7 @@ class Exporter {
                 lang:        $lang,
                 sendHeaders: $sendHeaders,
                 outputPath:  $outputPath,
+                skipHeader:  $skipHeader,
             );
         }
     }

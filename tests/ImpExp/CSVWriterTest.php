@@ -72,6 +72,21 @@ class CSVWriterTest extends TestCase {
         }
     }
 
+    public function testSkipHeaderWritesOnlyTheLines(): void {
+        $path = tempnam(sys_get_temp_dir(), "csv");
+        $this->assertNotFalse($path);
+
+        try {
+            $writer = new CSVWriter("export", "root", outputPath: $path, skipHeader: true);
+            $writer->writeHeader([ "name" => "Name" ])->writeLine([ "name" => "Bob" ]);
+            $writer->downloadFile();
+
+            $this->assertSame("Bob\n", file_get_contents($path));
+        } finally {
+            unlink($path);
+        }
+    }
+
     public function testDownloadFile(): void {
         $file = fopen("php://memory", "w+");
         $this->assertNotFalse($file);

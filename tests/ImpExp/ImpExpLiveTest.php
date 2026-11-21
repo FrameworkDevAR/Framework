@@ -5,6 +5,7 @@ use Framework\Date\Date;
 use Framework\File\FilePath;
 use Framework\File\Storage;
 use Framework\ImpExp\ImpExp;
+use Framework\ImpExp\ImpExpStorage;
 use Framework\ImpExp\ImpExpType;
 use Framework\ImpExp\ImpExpStatus;
 use Framework\ImpExp\Schema\ImpExpEntity;
@@ -39,6 +40,7 @@ class ImpExpLiveTest extends LiveTestCase {
         ImpExp::setExportLimit(10000);
         ImpExp::setImportLimit(500);
         ImpExp::setExcelLimit(2000);
+        ImpExp::setStorage(null);
         Storage::deleteDir(FilePath::getPath("impexp", self::CredentialID));
         if ($this->csvPath !== "" && is_file($this->csvPath)) {
             @unlink($this->csvPath);
@@ -82,6 +84,79 @@ class ImpExpLiveTest extends LiveTestCase {
         );
         $this->assertGreaterThan(0, $impExpID);
         return ImpExp::getByID($impExpID);
+    }
+
+    /**
+     * Sets a Storage that keeps the Exports in memory and returns it
+     * @return object{ids:array<string,list<int>>,files:array<string,string>,reads:int,fails:bool}
+     */
+    private function useStorage(): object {
+        $storage = new class implements ImpExpStorage {
+            /** @var array<string,list<int>> */
+            public array $ids   = [];
+
+            /** @var array<string,string> */
+            public array $files = [];
+
+            public int  $reads = 0;
+            public bool $fails = false;
+
+            public function createExport(ImpExpEntity $impExp, array $ids): bool {
+                if ($this->fails) {
+                    return false;
+                }
+                $this->ids[$impExp->fileCode]   = $ids;
+                $this->files[$impExp->fileCode] = "";
+                return true;
+            }
+
+            public function getExportIDs(ImpExpEntity $impExp): array {
+                $this->reads += 1;
+                return $this->ids[$impExp->fileCode] ?? [];
+            }
+
+            public function appendExport(ImpExpEntity $impExp, string $filePath, int $offset): bool {
+                $file = $this->files[$impExp->fileCode] ?? null;
+                if ($this->fails || $file === null || strlen($file) < $offset) {
+                    return false;
+                }
+                $block = (string)file_get_contents($filePath);
+                $this->files[$impExp->fileCode] = substr($file, 0, $offset) . $block;
+                return true;
+            }
+
+            public function createImport(ImpExpEntity $impExp, string $filePath): bool {
+                if ($this->fails) {
+                    return false;
+                }
+                $this->files[$impExp->fileCode] = (string)file_get_contents($filePath);
+                return true;
+            }
+
+            public function readFile(ImpExpEntity $impExp, string $filePath): bool {
+                $this->reads += 1;
+                $file = $this->files[$impExp->fileCode] ?? null;
+                if ($this->fails || $file === null) {
+                    return false;
+                }
+                return file_put_contents($filePath, $file) !== false;
+            }
+
+            public function delete(ImpExpEntity $impExp): bool {
+                unset($this->ids[$impExp->fileCode], $this->files[$impExp->fileCode]);
+                return true;
+            }
+        };
+        ImpExp::setStorage($storage);
+        return $storage;
+    }
+
+    /**
+     * Returns the amount of Imports and Exports
+     * @return int
+     */
+    private function countRows(): int {
+        return count(ImpExp::getAllRunning());
     }
 
     /**
@@ -185,6 +260,161 @@ class ImpExpLiveTest extends LiveTestCase {
 
         $this->assertFalse(ImpExp::addRows($export, 2));
         $this->assertSame(ImpExpStatus::Canceled, ImpExp::getByID($export->id)->impExpStatus);
+    }
+
+    public function testCreateExportWithAStorageKeepsNothingHere(): void {
+        $storage = $this->useStorage();
+        $export  = $this->createExport([ 5, 3, 9 ]);
+
+        $this->assertTrue($export->isStored);
+        $this->assertSame([ 5, 3, 9 ], $storage->ids[$export->fileCode]);
+        $this->assertSame("", $storage->files[$export->fileCode]);
+        $this->assertFileDoesNotExist($this->getJsonPath($export));
+    }
+
+    public function testCreateExportFailsWhenTheStorageFails(): void {
+        $storage = $this->useStorage();
+        $storage->fails = true;
+
+        $impExpID = ImpExp::createExport(
+            credentialID: self::CredentialID,
+            module:       self::Module,
+            dataID:       self::DataID,
+            filters:      [],
+            fileName:     "contacts",
+            ids:          [ 1 ],
+        );
+        $this->assertSame(0, $impExpID);
+        $this->assertSame(0, $this->countRows());
+    }
+
+    public function testGetNextIDsReadsTheStorageOnce(): void {
+        $storage = $this->useStorage();
+        $export  = $this->createExport([ 5, 3, 9 ]);
+
+        $this->assertSame([ 5, 3 ], ImpExp::getNextIDs($export, 2));
+        ImpExp::addRows($export, 2);
+        $export = ImpExp::getByID($export->id);
+        $this->assertSame([ 9 ], ImpExp::getNextIDs($export, 2));
+        $this->assertSame(1, $storage->reads);
+    }
+
+    public function testAddRowsSendsEachBlockAtTheStoredSize(): void {
+        $storage = $this->useStorage();
+        $export  = $this->createExport([ 1, 2 ]);
+
+        Storage::writeFile(ImpExp::getFilePath($export), "id\n1\n");
+        $this->assertFalse(ImpExp::addRows($export, 1));
+        $this->assertFileDoesNotExist(ImpExp::getFilePath($export));
+        $export = ImpExp::getByID($export->id);
+        $this->assertSame(5, $export->fileSize);
+
+        Storage::writeFile(ImpExp::getFilePath($export), "2\n");
+        $this->assertTrue(ImpExp::addRows($export, 1));
+        $export = ImpExp::getByID($export->id);
+        $this->assertSame(ImpExpStatus::Ready, $export->impExpStatus);
+        $this->assertSame(7, $export->fileSize);
+        $this->assertSame("id\n1\n2\n", $storage->files[$export->fileCode]);
+    }
+
+    public function testAddRowsReplacesABlockSentAgain(): void {
+        $storage = $this->useStorage();
+        $export  = $this->createExport([ 1, 2 ]);
+        $storage->files[$export->fileCode] = "id\nold\n";
+
+        Storage::writeFile(ImpExp::getFilePath($export), "id\n1\n");
+        ImpExp::addRows($export, 1);
+        $this->assertSame("id\n1\n", $storage->files[$export->fileCode]);
+    }
+
+    public function testAddRowsFailsTheExportWhenTheBlockIsNotSent(): void {
+        $storage = $this->useStorage();
+        $export  = $this->createExport([ 1, 2 ]);
+        $storage->fails = true;
+
+        Storage::writeFile(ImpExp::getFilePath($export), "id\n1\n");
+        $this->assertFalse(ImpExp::addRows($export, 1));
+        $this->assertSame(ImpExpStatus::Failed, ImpExp::getByID($export->id)->impExpStatus);
+        $this->assertArrayNotHasKey($export->fileCode, $storage->files);
+    }
+
+    public function testAddRowsKeepsAnExportCanceledMeanwhileCanceled(): void {
+        $storage = $this->useStorage();
+        $export  = $this->createExport([ 1 ]);
+        ImpExp::cancel(ImpExp::getByID($export->id));
+
+        Storage::writeFile(ImpExp::getFilePath($export), "id\n1\n");
+        $this->assertFalse(ImpExp::addRows($export, 1));
+        $this->assertSame(ImpExpStatus::Canceled, ImpExp::getByID($export->id)->impExpStatus);
+        $this->assertArrayNotHasKey($export->fileCode, $storage->files);
+    }
+
+    public function testRemoveDeletesTheFileOfTheStorage(): void {
+        $storage = $this->useStorage();
+        $export  = $this->createExport([ 1 ]);
+
+        $this->assertTrue(ImpExp::remove(ImpExp::getByID($export->id)));
+        $this->assertArrayNotHasKey($export->fileCode, $storage->files);
+        $this->assertArrayNotHasKey($export->fileCode, $storage->ids);
+    }
+
+    public function testCreateImportWithAStorageKeepsNothingHere(): void {
+        $storage = $this->useStorage();
+        $import  = $this->createImport([ "Ana", "Bob" ]);
+
+        $this->assertTrue($import->isStored);
+        $this->assertSame("Name\nAna\nBob\n", $storage->files[$import->fileCode]);
+        $this->assertFileDoesNotExist(ImpExp::getFilePath($import));
+    }
+
+    public function testCreateImportFailsWhenTheStorageFails(): void {
+        $storage = $this->useStorage();
+        $storage->fails = true;
+
+        $this->csvPath = sys_get_temp_dir() . "/impexp_test_" . uniqid() . ".csv";
+        Storage::writeFile($this->csvPath, "Name\nAna\n");
+        $impExpID = ImpExp::createImport(
+            credentialID: self::CredentialID,
+            module:       self::Module,
+            dataID:       self::DataID,
+            columns:      [ "name" => 1 ],
+            filePath:     $this->csvPath,
+            totalRows:    1,
+        );
+        $this->assertSame(0, $impExpID);
+        $this->assertSame(0, $this->countRows());
+    }
+
+    public function testGetImporterReadsTheStoredFileOnce(): void {
+        $storage = $this->useStorage();
+        $import  = $this->createImport([ "Ana", "Bob", "Cara" ]);
+
+        $names = [];
+        foreach ([ 0, 1 ] as $done) {
+            $import->doneRows = $done;
+            foreach (ImpExp::getImporter($import, 1) as $row) {
+                $names[] = $row->getString("name");
+            }
+        }
+        $this->assertSame([ "Ana", "Bob" ], $names);
+        $this->assertSame(1, $storage->reads);
+    }
+
+    public function testGetImporterFailsWhenTheStoredFileCanNotBeRead(): void {
+        $storage = $this->useStorage();
+        $import  = $this->createImport([ "Ana" ]);
+        $storage->fails = true;
+
+        $this->expectException(\Exception::class);
+        ImpExp::getImporter($import, 1);
+    }
+
+    public function testRemoveDeletesTheStoredImport(): void {
+        $storage = $this->useStorage();
+        $import  = $this->createImport([ "Ana" ]);
+
+        $this->assertTrue(ImpExp::remove(ImpExp::getByID($import->id)));
+        $this->assertArrayNotHasKey($import->fileCode, $storage->files);
     }
 
     public function testCreateImportCopiesTheFile(): void {
