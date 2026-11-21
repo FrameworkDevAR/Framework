@@ -29,6 +29,7 @@ class OpenAIOutput {
     public int    $runTime         = 0;
     public int    $inputTokens     = 0;
     public int    $outputTokens    = 0;
+    public int    $cachedTokens    = 0;
     public int    $webSearchCalls  = 0;
     public int    $fileSearchCalls = 0;
 
@@ -64,6 +65,27 @@ class OpenAIOutput {
             } else {
                 $this->error = $response->getDict("error")->getString("message");
             }
+        }
+    }
+
+    /**
+     * Sets the tokens of the given Response or Chat Completion
+     * @param Dictionary $response
+     * @return void
+     */
+    public function setUsage(Dictionary $response): void {
+        $usage = $response->getDict("usage");
+
+        // A Response names the tokens as input and output, and a Chat Completion as prompt and
+        // completion. The cached ones are part of the input, and are billed at a lower price
+        if ($usage->has("input_tokens")) {
+            $this->inputTokens  = $usage->getInt("input_tokens");
+            $this->outputTokens = $usage->getInt("output_tokens");
+            $this->cachedTokens = $usage->getDict("input_tokens_details")->getInt("cached_tokens");
+        } else {
+            $this->inputTokens  = $usage->getInt("prompt_tokens");
+            $this->outputTokens = $usage->getInt("completion_tokens");
+            $this->cachedTokens = $usage->getDict("prompt_tokens_details")->getInt("cached_tokens");
         }
     }
 

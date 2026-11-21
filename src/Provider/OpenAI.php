@@ -424,10 +424,9 @@ class OpenAI {
             $text = self::removeReferences($text);
         }
 
-        $result->text         = $text;
-        $result->inputTokens  = $response->getDict("usage")->getInt("prompt_tokens");
-        $result->outputTokens = $response->getDict("usage")->getInt("completion_tokens");
-        $result->runTime      = $timer->getElapsedSecondsInt();
+        $result->text    = $text;
+        $result->runTime = $timer->getElapsedSecondsInt();
+        $result->setUsage($response);
         return $result;
     }
 
@@ -712,10 +711,9 @@ class OpenAI {
             $result->vectorStoreID = Strings::join($storeIDs, ",");
             $result->text          = $text;
             $result->functionCalls = $calls;
-            $result->inputTokens   = $response->getDict("usage")->getInt("input_tokens");
-            $result->outputTokens  = $response->getDict("usage")->getInt("output_tokens");
             $result->runTime       = $timer->getElapsedSecondsInt();
 
+            $result->setUsage($response);
             $result->setSearchCalls($response);
         }
         return $result;

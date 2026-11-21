@@ -47,6 +47,53 @@ class OpenAIOutputTest extends TestCase {
         ];
     }
 
+    /**
+     * @param array<string,mixed> $usage
+     */
+    #[DataProvider("providerUsage")]
+    public function testTheTokensAreTheOnesOfTheUsage(
+        array $usage,
+        int $inputTokens,
+        int $outputTokens,
+        int $cachedTokens,
+    ): void {
+        $result = new OpenAIOutput(new Dictionary());
+        $result->setUsage(new Dictionary([ "usage" => $usage ]));
+
+        $this->assertSame($inputTokens, $result->inputTokens);
+        $this->assertSame($outputTokens, $result->outputTokens);
+        $this->assertSame($cachedTokens, $result->cachedTokens);
+    }
+
+    /**
+     * @return array<string,array{array<string,mixed>,int,int,int}>
+     */
+    public static function providerUsage(): array {
+        return [
+            "a response" => [
+                [
+                    "input_tokens"         => 1200,
+                    "output_tokens"        => 80,
+                    "input_tokens_details" => [ "cached_tokens" => 1024 ],
+                ],
+                1200, 80, 1024,
+            ],
+            "a chat completion" => [
+                [
+                    "prompt_tokens"         => 900,
+                    "completion_tokens"     => 40,
+                    "prompt_tokens_details" => [ "cached_tokens" => 512 ],
+                ],
+                900, 40, 512,
+            ],
+            "nothing cached" => [
+                [ "input_tokens" => 300, "output_tokens" => 20 ],
+                300, 20, 0,
+            ],
+            "no usage" => [ [], 0, 0, 0 ],
+        ];
+    }
+
     public function testTheSearchesAreCountedAgainForEachResponse(): void {
         $result = new OpenAIOutput(new Dictionary());
         $result->setSearchCalls(new Dictionary([ "output" => [[ "type" => "web_search_call" ]] ]));
