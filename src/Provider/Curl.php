@@ -302,8 +302,10 @@ class Curl {
         curl_exec($curl);
         fclose($file);
 
-        $error = curl_error($curl);
-        return $error !== "";
+        // An answer with an error status writes its error page in the file
+        $error  = curl_error($curl);
+        $status = curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+        return $error === "" && $status < 400;
     }
 
     /**
