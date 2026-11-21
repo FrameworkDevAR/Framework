@@ -1,6 +1,6 @@
 # Framework
 
-A PHP 8.1 framework built around attribute discovery and code generation.
+A PHP 8.3 framework built around attribute discovery and code generation.
 
 ## Committing
 

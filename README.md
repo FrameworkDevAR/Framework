@@ -9,7 +9,7 @@ single `./framework` CLI.
 
 ## Requirements
 
-PHP 8.1 or newer with the `mysqli`, `curl`, `zip`, `gd` and `mbstring` extensions, and a MySQL database.
+PHP 8.3 or newer with the `mysqli`, `curl`, `zip`, `gd` and `mbstring` extensions, and a MySQL database.
 
 
 ## Installation
