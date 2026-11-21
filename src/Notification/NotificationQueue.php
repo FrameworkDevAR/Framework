@@ -53,8 +53,7 @@ class NotificationQueue extends NotificationQueueSchema {
             NotificationQueueColumn::CredentialLastName,
         ], $request->search);
 
-        $query->createdTime->greaterThan($request->fromDate);
-        $query->createdTime->lessThan($request->toDate);
+        $query->createdTime->inPeriod($request);
         $query->notificationResult->in(NotificationResult::fromList($request->results));
         return $query;
     }

@@ -63,8 +63,7 @@ class ErrorLog extends LogErrorSchema {
             LogErrorColumn::File,
         ], $request->search);
 
-        $query->createdTime->greaterThan($request->fromDate);
-        $query->createdTime->lessThan($request->toDate);
+        $query->createdTime->inPeriod($request);
 
         if ($request->isResolved === "yes") {
             $query->isResolved->isTrue();

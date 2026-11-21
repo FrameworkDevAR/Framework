@@ -36,8 +36,7 @@ class EmailQueue extends EmailQueueSchema {
             EmailQueueColumn::Message,
         ], $request->search);
 
-        $query->createdTime->greaterThan($request->fromDate);
-        $query->createdTime->lessThan($request->toDate);
+        $query->createdTime->inPeriod($request);
         $query->dataID->equalIf($request->dataID);
         $query->emailResult->in(EmailResult::fromList($request->results));
         return $query;
