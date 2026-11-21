@@ -499,6 +499,14 @@
                 "type": "string"
             },
             {
+                "name": "isStored",
+                "type": "boolean"
+            },
+            {
+                "name": "fileSize",
+                "type": "number"
+            },
+            {
                 "name": "totalRows",
                 "type": "number"
             },
@@ -509,6 +517,10 @@
             {
                 "name": "importedRows",
                 "type": "number"
+            },
+            {
+                "name": "warnings",
+                "type": "json"
             },
             {
                 "name": "expirationTime",
