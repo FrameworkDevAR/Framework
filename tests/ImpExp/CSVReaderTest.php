@@ -22,10 +22,10 @@ class CSVReaderTest extends TestCase {
         $file = fopen($this->path, "w");
         $this->assertNotFalse($file);
 
-        fputcsv($file, [ "Name", "Age", "", "Tags" ]);
-        fputcsv($file, [ "Alice", "30", "", "one,two" ]);
-        fputcsv($file, [ "Bob", "0", "ignored", "" ]);
-        fputcsv($file, [ "Cara", "", "", "last" ]);
+        fputcsv($file, [ "Name", "Age", "", "Tags" ], escape: "\\");
+        fputcsv($file, [ "Alice", "30", "", "one,two" ], escape: "\\");
+        fputcsv($file, [ "Bob", "0", "ignored", "" ], escape: "\\");
+        fputcsv($file, [ "Cara", "", "", "last" ], escape: "\\");
 
         fclose($file);
     }
@@ -203,7 +203,7 @@ class CSVReaderTest extends TestCase {
         $this->assertNotFalse($file);
 
         foreach ($rows as $row) {
-            fputcsv($file, $row);
+            fputcsv($file, $row, escape: "\\");
         }
 
         fclose($file);

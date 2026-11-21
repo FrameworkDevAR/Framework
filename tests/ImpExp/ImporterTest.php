@@ -161,7 +161,7 @@ class ImporterTest extends TestCase {
         $this->assertNotFalse($file);
 
         foreach ($rows as $row) {
-            fputcsv($file, $row);
+            fputcsv($file, $row, escape: "\\");
         }
 
         fclose($file);

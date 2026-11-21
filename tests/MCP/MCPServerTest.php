@@ -146,6 +146,27 @@ class MCPServerTest extends TestCase {
         $this->assertSame("Instructions", $result["instructions"]);
     }
 
+    #[DataProvider("providerSetPath")]
+    public function testThePathStartsWithASlash(string $path, string $expected): void {
+        $previous = MCPServer::getPath();
+        MCPServer::setPath($path);
+        $result = MCPServer::getPath();
+        MCPServer::setPath($previous);
+
+        $this->assertSame($expected, $result);
+    }
+
+    /**
+     * @return array<string,array{string,string}>
+     */
+    public static function providerSetPath(): array {
+        return [
+            "with the slash"    => [ "/assistant", "/assistant" ],
+            "without the slash" => [ "assistant", "/assistant" ],
+            "a deeper one"      => [ "api/assistant", "/api/assistant" ],
+        ];
+    }
+
     public function testThePingAnswersAnEmptyObject(): void {
         $result = self::send("ping");
 

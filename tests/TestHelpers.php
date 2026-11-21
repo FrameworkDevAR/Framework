@@ -51,7 +51,7 @@ trait TestHelpers {
     protected function setPrivateStaticProperty(string $class, string $name, mixed $value): void {
         $ref = new ReflectionClass($class);
         $prop = $ref->getProperty($name);
-        $prop->setValue($value);
+        $prop->setValue(null, $value);
     }
 
     protected function setPrivateProperty(object $obj, string $name, mixed $value): void {
