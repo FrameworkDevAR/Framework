@@ -93,9 +93,13 @@ class Discovery {
             $classPaths = self::getAllFiles($forFramework);
         }
 
-        $result = [];
+        // The Schemas and the System of the Framework are written by the build, so an app can
+        // still have a System folder of its own
+        $buildPath = Package::getBuildPath() . "/";
+        $result    = [];
         foreach ($classPaths as $className => $filePath) {
-            if (Strings::contains($filePath, [ "/Schema/", "/System/" ])) {
+            $isBuilt = Strings::contains($filePath, "/Schema/");
+            if ($isBuilt || Strings::startsWith($filePath, $buildPath)) {
                 continue;
             }
 
