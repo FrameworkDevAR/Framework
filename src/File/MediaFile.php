@@ -325,10 +325,20 @@ class MediaFile {
         $oldThumbs  = self::getThumbPath($oldPath, $oldName);
         $newThumbs  = self::getThumbPath($newPath, $newName);
 
+        $isDir = FileType::isDir($oldSource);
         if (!Storage::moveFile($oldSource, $newSource)) {
             return false;
         }
-        if (FileType::isImage($oldName)) {
+        if ($isDir) {
+            // The Thumbs of a Directory are in a Directory of the same name, which follows it
+            if (Storage::fileExists($oldThumbs)) {
+                Storage::deleteDir($newThumbs);
+                Storage::createDir(self::getThumbPath($newPath));
+                if (!Storage::moveFile($oldThumbs, $newThumbs)) {
+                    return false;
+                }
+            }
+        } elseif (FileType::isImage($oldName)) {
             // The File was already moved, so a missing Thumb is made from its new place
             if (!Storage::fileExists($oldThumbs)) {
                 if (!Image::resize($newSource, $newThumbs, 200, 200, Image::Resize)) {

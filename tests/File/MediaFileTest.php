@@ -416,6 +416,55 @@ class MediaFileTest extends TestCase {
 
 
     /**
+     * The Thumbs of a Directory follow it when it is renamed or moved, replacing old ones
+     * @param string       $action
+     * @param list<string> $newDir
+     * @param bool         $withOldThumbs
+     * @return void
+     */
+    #[DataProvider("providerDirectoryThumbs")]
+    public function testTheThumbsOfADirectoryFollowIt(
+        string $action,
+        array $newDir,
+        bool $withOldThumbs,
+    ): void {
+        MediaFile::createDir("parent", "album");
+        MediaFile::createDir("other");
+        $this->createImageWithThumb(
+            Path::getSourcePath($this->mediaID, "parent", "album", "cover.png"),
+            Path::getThumbsPath($this->mediaID, "parent", "album", "cover.png"),
+            50,
+            25,
+        );
+        if ($withOldThumbs) {
+            Storage::createDir(Path::getThumbsPath($this->mediaID, ...$newDir));
+            Storage::writeFile(Path::getThumbsPath($this->mediaID, ...[ ...$newDir, "old.png" ]), "old");
+        }
+
+        $result = $action === "rename"
+            ? MediaFile::renamePath("parent", "album", "photos")
+            : MediaFile::movePath("parent", "other", "album");
+
+        $this->assertTrue($result);
+        $this->assertDirectoryDoesNotExist(Path::getThumbsPath($this->mediaID, "parent", "album"));
+        $this->assertFileExists(Path::getSourcePath($this->mediaID, ...[ ...$newDir, "cover.png" ]));
+        $this->assertFileExists(Path::getThumbsPath($this->mediaID, ...[ ...$newDir, "cover.png" ]));
+        $this->assertFileDoesNotExist(Path::getThumbsPath($this->mediaID, ...[ ...$newDir, "old.png" ]));
+    }
+
+    /**
+     * @return array<string,array{string,list<string>,bool}>
+     */
+    public static function providerDirectoryThumbs(): array {
+        return [
+            "renamed"                 => [ "rename", [ "parent", "photos" ], false ],
+            "moved"                   => [ "move",   [ "other", "album" ],   false ],
+            "renamed over old thumbs" => [ "rename", [ "parent", "photos" ], true ],
+        ];
+    }
+
+
+    /**
      * A path that came in a request can not reach out of the Media
      * @param list<string> $pathParts
      * @param list<string> $expected
