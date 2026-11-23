@@ -30,7 +30,7 @@ class MCPAuth {
     public const TokenPath     = "/token";
 
     private static string $authorizeRoute = "";
-    private static Access $access         = Access::Admin;
+    private static ?Access $access        = null;
 
 
 
@@ -351,7 +351,7 @@ class MCPAuth {
             return "";
         }
 
-        if (!$isAllowed || !Auth::hasCredential() || !Auth::grant(self::$access)) {
+        if (!$isAllowed || !Auth::hasCredential() || !self::hasAccess()) {
             MCPGrant::remove($requestID);
             return self::getRedirect($grant->redirectUri, $grant->state, error: "access_denied");
         }
@@ -383,7 +383,18 @@ class MCPAuth {
 
         // A Credential that lost its Access since it allowed the App loses the App too
         Auth::setCredential($credential);
-        return Auth::grant(self::$access);
+        return self::hasAccess();
+    }
+
+    /**
+     * Returns true if the Credential has the Access that is needed to allow an App
+     * @return bool
+     */
+    private static function hasAccess(): bool {
+        // The Accesses are of each App, so Admin might not be one, and the level of None would
+        // grant everyone
+        $access = self::$access ?? Access::fromValue("Admin");
+        return $access !== Access::None && Auth::grant($access);
     }
 
 
