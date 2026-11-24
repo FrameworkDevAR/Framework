@@ -89,10 +89,10 @@ class TimeTableTest extends TestCase {
 
 
     #[DataProvider("isValidProvider")]
-    public function testIsValid(array $input, bool $withHolidays, bool $isRequired, bool $expectedHasErrors, string $expectedKey = ""): void {
+    public function testIsValid(array $input, bool $withHolidays, bool $isRequired, bool $expectedHasErrors, string $expectedKey = "", bool $allowMidnight = false): void {
         $tt     = TimeTable::create($input, allowEmpty: true);
         $errors = new Errors();
-        $valid  = $tt->isValid($errors, $withHolidays, $isRequired);
+        $valid  = $tt->isValid($errors, $withHolidays, $isRequired, allowMidnight: $allowMidnight);
 
         $this->assertSame(!$expectedHasErrors, $valid);
         if ($expectedHasErrors && $expectedKey !== "") {
@@ -110,6 +110,9 @@ class TimeTableTest extends TestCase {
             "invalid period" => [ [[ "days" => [ 1 ], "from" => "12:00", "to" => "10:00" ]], false, false, true, "timeTables-0-from" ],
             "holiday good"   => [ [[ "days" => [ 7 ], "from" => "10:00", "to" => "12:00" ]], true, false, false, "" ],
             "holiday bad"    => [ [[ "days" => [ 8 ], "from" => "10:00", "to" => "12:00" ]], true, false, true, "timeTables-0-days" ],
+            "midnight"       => [ [[ "days" => [ 1 ], "from" => "06:00", "to" => "00:00" ]], false, false, false, "", true ],
+            "midnight off"   => [ [[ "days" => [ 1 ], "from" => "06:00", "to" => "00:00" ]], false, false, true, "timeTables-0-from" ],
+            "midnight both"  => [ [[ "days" => [ 1 ], "from" => "00:00", "to" => "00:00" ]], false, false, true, "timeTables-0-from", true ],
         ];
     }
 
@@ -161,6 +164,9 @@ class TimeTableTest extends TestCase {
             "holiday"            => [ [[ "days" => [ 8 ], "from" => "10:00", "to" => "12:00" ]], "2023-01-02", "11:00", 0, true, false, true ],
             "holiday is holiday" => [ [[ "days" => [ 7 ], "from" => "10:00", "to" => "12:00" ]], "2023-01-02", "03:00", 0, true, false, false ],
             "holiday skip time"  => [ [[ "days" => [ 8 ], "from" => "10:00", "to" => "12:00" ]], "2023-01-02", "03:00", 0, true, true, true ],
+            "until midnight"     => [ [[ "days" => [ 1 ], "from" => "06:00", "to" => "00:00" ]], "2023-01-02", "23:30", 0, false, false, true ],
+            "midnight gap"       => [ [[ "days" => [ 1 ], "from" => "06:00", "to" => "00:00" ]], "2023-01-02", "23:50", 15, false, false, false ],
+            "before midnight"    => [ [[ "days" => [ 1 ], "from" => "06:00", "to" => "00:00" ]], "2023-01-02", "05:00", 0, false, false, false ],
         ];
     }
 
@@ -188,6 +194,21 @@ class TimeTableTest extends TestCase {
             "not current" => [ [[ "days" => [ 2 ], "from" => "10:00", "to" => "12:00" ] ], "2023-01-02", "13:00", true ],
             "empty"       => [ [], "2023-01-02", "11:00", true ],
             "empty days"  => [ [[ "days" => [], "from" => "", "to" => "" ]], "2023-01-02", "11:00", true ],
+        ];
+    }
+
+    #[DataProvider("midnightEndProvider")]
+    public function testGetCurrentEndTimeAtMidnight(string $date, string $time, string $expected): void {
+        $tt = TimeTable::create([[ "days" => [ 1 ], "from" => "06:00", "to" => "00:00" ]]);
+        $ed = $tt->getCurrentEndTime(Date::create($date, $time));
+
+        $this->assertSame(Date::create($expected, "00:00")->toTime(), $ed->toTime());
+    }
+
+    public static function midnightEndProvider(): array {
+        return [
+            "morning" => [ "2023-01-02", "06:00", "2023-01-03" ],
+            "night"   => [ "2023-01-02", "23:59", "2023-01-03" ],
         ];
     }
 

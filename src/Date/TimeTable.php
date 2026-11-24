@@ -101,9 +101,10 @@ class TimeTable {
     /**
      * Returns true if the Time Tables are valid and adds the Errors
      * @param Errors $errors
-     * @param bool   $withHolidays Optional.
-     * @param bool   $isRequired   Optional.
-     * @param string $fieldKey     Optional.
+     * @param bool   $withHolidays  Optional.
+     * @param bool   $isRequired    Optional.
+     * @param string $fieldKey      Optional.
+     * @param bool   $allowMidnight Optional.
      * @return bool
      */
     public function isValid(
@@ -111,6 +112,7 @@ class TimeTable {
         bool $withHolidays = false,
         bool $isRequired = false,
         string $fieldKey = "timeTables",
+        bool $allowMidnight = false,
     ): bool {
         $hasError = false;
 
@@ -141,8 +143,13 @@ class TimeTable {
                 $errors->add("$fieldKey-$index-to", "GENERAL_ERROR_PERIOD_TO_TIME");
                 $hasError = true;
             }
-            if ($timeTable->from !== "" && $timeTable->to !== "" &&
-                !DateUtils::isValidHourPeriod($timeTable->from, $timeTable->to, allow24: true)
+            // A period that ends at 00:00 ends at the midnight of the next day
+            $toHour = $timeTable->to;
+            if ($allowMidnight && $toHour !== "" && DateUtils::timeToMinutes($toHour) === 0) {
+                $toHour = "24:00";
+            }
+            if ($timeTable->from !== "" && $toHour !== "" &&
+                !DateUtils::isValidHourPeriod($timeTable->from, $toHour, allow24: true)
             ) {
                 $errors->add("$fieldKey-$index-from", "GENERAL_ERROR_PERIOD_FROM_TO");
                 $hasError = true;
@@ -216,7 +223,7 @@ class TimeTable {
             }
 
             $fromMinutes = DateUtils::timeToMinutes($timeTable->from);
-            $toMinutes   = DateUtils::timeToMinutes($timeTable->to) - $minuteGap;
+            $toMinutes   = self::getEndMinutes($timeTable->to) - $minuteGap;
             if ($nowMinutes >= $fromMinutes && $nowMinutes <= $toMinutes) {
                 return true;
             }
@@ -247,7 +254,7 @@ class TimeTable {
             }
 
             $fromMinutes = DateUtils::timeToMinutes($timeTable->from);
-            $toMinutes   = DateUtils::timeToMinutes($timeTable->to);
+            $toMinutes   = self::getEndMinutes($timeTable->to);
             if ($nowMinutes >= $fromMinutes && $nowMinutes <= $toMinutes) {
                 $resultDate = $dayStart->add(minutes: $toMinutes);
                 break;
@@ -296,6 +303,21 @@ class TimeTable {
         }
 
         return $resultDate;
+    }
+
+
+
+    /**
+     * Returns the Minutes of the end of a Period, where 00:00 is the midnight of the next day
+     * @param string $toHour
+     * @return int
+     */
+    private static function getEndMinutes(string $toHour): int {
+        $minutes = DateUtils::timeToMinutes($toHour);
+        if ($toHour !== "" && $minutes === 0) {
+            return 1440;
+        }
+        return $minutes;
     }
 
 
