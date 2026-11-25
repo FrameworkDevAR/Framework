@@ -193,10 +193,11 @@ class Configs implements DiscoveryBuilder {
                 $value = Strings::substringBetween($value, "[", "]");
                 $value = Strings::replace($value, [ "\"", " " ], "");
                 $value = Strings::split($value, ",");
-            } elseif (Strings::contains($value, ".")) {
-                $value = (float)$value;
-            } else {
-                $value = (int)$value;
+
+            // Only a number is read as one, and any other text without quotes is kept as it is,
+            // as a key would be cast to a zero
+            } elseif (Numbers::isValid($value, min: null)) {
+                $value = Strings::contains($value, ".") ? (float)$value : (int)$value;
             }
 
             $result[$key] = $value;

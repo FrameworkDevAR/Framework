@@ -103,6 +103,9 @@ class ConfigsTest extends TestCase {
             "a float"     => [ "KEY = 1.5", 1.5 ],
             "an int"      => [ "KEY = 42", 42 ],
             "a zero"      => [ "KEY = 0", 0 ],
+            "a negative"  => [ "KEY = -3", -3 ],
+            "a text"      => [ "KEY = sk-proj-a1b2", "sk-proj-a1b2" ],
+            "a version"   => [ "KEY = 1.2.3", "1.2.3" ],
             "a list"      => [ "KEY = [\"a\", \"b\"]", [ "a", "b" ] ],
             "empty list"  => [ "KEY = []", [] ],
         ];
