@@ -390,6 +390,18 @@ class DocsTest extends TestCase {
         }
     }
 
+    public function testTheIndexHasAnEntryPerLine(): void {
+        /** @var list<array<string,string>> */
+        $index   = $this->call("buildIndex", $this->docsPath());
+        $encoded = $this->call("encodeIndex", $index);
+        $this->assertIsString($encoded);
+
+        // Two lines for the brackets, and one per entry
+        $lines = explode("\n", trim($encoded));
+        $this->assertCount(count($index) + 2, $lines);
+        $this->assertSame($index, json_decode($encoded, true));
+    }
+
     public function testEveryPageHasAnEntryOfItsOwn(): void {
         /** @var list<array<string,string>> */
         $index = $this->call("buildIndex", $this->docsPath());

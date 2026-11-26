@@ -120,7 +120,7 @@ class Docs {
         $index = self::buildIndex($docsPath);
 
         // Encoding returns an empty string when it fails, which would wipe the index
-        $encoded = JSON::encode($index);
+        $encoded = self::encodeIndex($index);
         if ($encoded === "") {
             print("- Could not encode the search index, it was left untouched\n");
             return;
@@ -209,6 +209,23 @@ class Docs {
     }
 
     /**
+     * Encodes the search index with one entry per line, so a change diffs as the entries it touches
+     * @param list<array<string,string>> $index
+     * @return string
+     */
+    private static function encodeIndex(array $index): string {
+        $lines = [];
+        foreach ($index as $entry) {
+            $line = JSON::encode($entry);
+            if ($line === "") {
+                return "";
+            }
+            $lines[] = $line;
+        }
+        return "[\n" . Strings::join($lines, ",\n") . "\n]\n";
+    }
+
+    /**
      * Returns the path of the search index
      * @return string
      */
@@ -222,7 +239,7 @@ class Docs {
      * @return int
      */
     private static function checkSearchIndex(string $docsPath): int {
-        $expected = JSON::encode(self::buildIndex($docsPath));
+        $expected = self::encodeIndex(self::buildIndex($docsPath));
         if ($expected === "") {
             print("  The search index cannot be encoded from the current pages\n");
             return 1;
