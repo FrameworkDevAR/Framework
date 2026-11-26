@@ -1570,6 +1570,25 @@ class StringsTest extends TestCase {
     }
 
 
+    #[DataProvider("providerToAscii")]
+    public function testToAscii(string $value, string $expected): void {
+        $this->assertSame($expected, Strings::toAscii($value));
+    }
+
+    public static function providerToAscii(): array {
+        return [
+            "ascii unchanged"   => [ "Room 1503 - Smith, J.", "Room 1503 - Smith, J." ],
+            "spanish accents"   => [ "José Núñez", "Jose Nunez" ],
+            "uppercase accents" => [ "CAÑAS LÓPEZ", "CANAS LOPEZ" ],
+            "german letters"    => [ "Stürmer Reisebüro ß", "Sturmer Reiseburo ss" ],
+            "nordic letters"    => [ "Øster Zoë", "Oster Zoe" ],
+            "emoji removed"     => [ "Ana 😀 Paz", "Ana Paz" ],
+            "lines kept"        => [ "Line\nNext", "Line\nNext" ],
+            "empty"             => [ "", "" ],
+        ];
+    }
+
+
     #[DataProvider("providerHasEmoji")]
     public function testHasEmoji(string $value, bool $expected): void {
         $this->assertSame($expected, Strings::hasEmoji($value));

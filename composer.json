@@ -36,7 +36,8 @@
         "firebase/php-jwt": "Used in Auth",
         "phpmailer/phpmailer": "Used for Mailing with SMTP",
         "openspout/openspout": "Used to Import/Export XLSX data",
-        "dompdf/dompdf": "Used to create PDFs from HTML"
+        "dompdf/dompdf": "Used to create PDFs from HTML",
+        "ext-intl": "Used to convert the Strings to ASCII"
     },
     "config": {
         "allow-plugins": {

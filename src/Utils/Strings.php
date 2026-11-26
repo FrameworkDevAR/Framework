@@ -7,6 +7,8 @@ use Framework\Date\Type\DateFormat;
 use Framework\Enum\Enum;
 use Framework\Utils\Arrays;
 
+use Transliterator;
+
 /**
  * Several String Utils
  * @phpstan-type Replacement list<string>|string
@@ -1308,6 +1310,52 @@ class Strings {
             return mb_strtolower($clean, "UTF-8");
         }
         return strtolower($clean);
+    }
+
+    /**
+     * Converts the String to ASCII, removing the accents and what has no equivalent
+     * @param string $string
+     * @return string
+     */
+    public static function toAscii(string $string): string {
+        // The Transliterator of the intl extension converts every script, like "Иван" to
+        // "Ivan", and without it only the common Latin letters are, and the rest is removed
+        if (class_exists(Transliterator::class)) {
+            $converted = Transliterator::create("Any-Latin; Latin-ASCII")?->transliterate($string);
+            if (is_string($converted)) {
+                $string = $converted;
+            }
+        }
+
+        $letters = [
+            "a"  => "áàâäãå",
+            "A"  => "ÁÀÂÄÃÅ",
+            "e"  => "éèêë",
+            "E"  => "ÉÈÊË",
+            "i"  => "íìîï",
+            "I"  => "ÍÌÎÏ",
+            "o"  => "óòôöõø",
+            "O"  => "ÓÒÔÖÕØ",
+            "u"  => "úùûü",
+            "U"  => "ÚÙÛÜ",
+            "n"  => "ñ",
+            "N"  => "Ñ",
+            "c"  => "ç",
+            "C"  => "Ç",
+            "y"  => "ýÿ",
+            "Y"  => "Ý",
+            "ss" => "ß",
+            "ae" => "æ",
+            "AE" => "Æ",
+        ];
+
+        $result = $string;
+        foreach ($letters as $letter => $accents) {
+            $result = self::replace($result, mb_str_split($accents), $letter);
+        }
+
+        $result = self::replacePattern($result, '/[^\x20-\x7E\t\r\n]/', "");
+        return self::replacePattern($result, '/ {2,}/', " ");
     }
 
     /**

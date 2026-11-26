@@ -95,6 +95,7 @@ Strings::replaceCallback($text, &quot;/\{(\w+)\}/&quot;, $callback);
 
 Strings::sanitize($input);        // safe to store
 Strings::removeHtml($html);       // and toHtml, fromHtml, decodeHtml
+Strings::toAscii(&quot;José Núñez&quot;);   // &quot;Jose Nunez&quot;
 Strings::normalized($text);       // strip accents for comparing
 
 Strings::random(12);              // a random string
