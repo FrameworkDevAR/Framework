@@ -42,14 +42,20 @@ class MCPApp extends MCPAppSchema {
      * Registers an App with the given Name and Urls, and returns its Client ID
      * @param string       $name
      * @param list<string> $redirectUris
+     * @param bool         $writesAsUser Optional.
      * @return string
      */
-    public static function register(string $name, array $redirectUris): string {
+    public static function register(
+        string $name,
+        array $redirectUris,
+        bool $writesAsUser = false,
+    ): string {
         $clientID = Strings::randomCode(32);
         self::createEntity(
             clientID:     $clientID,
             name:         $name,
             redirectUris: JSON::encode($redirectUris),
+            writesAsUser: $writesAsUser,
         );
         return $clientID;
     }

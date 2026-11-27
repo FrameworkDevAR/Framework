@@ -869,6 +869,10 @@
                 "type": "text"
             },
             {
+                "name": "writesAsUser",
+                "type": "boolean"
+            },
+            {
                 "name": "createdTime",
                 "type": "date"
             }

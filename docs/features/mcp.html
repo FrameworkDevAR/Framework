@@ -197,7 +197,7 @@ RewriteRule ^\.well-known/oauth- backend/index.php [QSA,L]</code></pre>
     <tbody>
         <tr><td><code>/.well-known/oauth-protected-resource</code></td><td>The MCP as a resource, and the server that gives its tokens.</td></tr>
         <tr><td><code>/.well-known/oauth-authorization-server</code></td><td>The paths below, the code flow with PKCE and the refresh tokens.</td></tr>
-        <tr><td><code>/mcp/register</code></td><td>Registers an app with its urls, which have to be <code>https</code> or of the computer it runs in.</td></tr>
+        <tr><td><code>/mcp/register</code></td><td>Registers an app with its urls, which have to be <code>https</code> or of the computer it runs in. An app that is not an assistant, like a client of the user's own, sends <code>"writes_as_user": true</code>, and <code>MCPAuth::isAssistant()</code> is then false for the calls of its tokens.</td></tr>
         <tr><td><code>/mcp/authorize</code></td><td>Stores the request of a known app, with the PKCE, and sends the browser to the page of the app for 10 minutes.</td></tr>
         <tr><td><code>/mcp/token</code></td><td>Gives an access token of an hour and a refresh token of 30 days for a code, or new ones for a refresh token. Each code and each refresh token is used once.</td></tr>
     </tbody>

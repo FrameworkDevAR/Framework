@@ -31,6 +31,7 @@ class MCPAuth {
 
     private static string $authorizeRoute = "";
     private static ?Access $access        = null;
+    private static bool $writesAsUser     = false;
 
 
 
@@ -180,6 +181,7 @@ class MCPAuth {
     private static function register(Request $request): Response {
         $name         = $request->getString("client_name");
         $redirectUris = $request->getStrings("redirect_uris");
+        $writesAsUser = $request->getBool("writes_as_user");
         if (count($redirectUris) === 0) {
             return self::error("invalid_redirect_uri", 400);
         }
@@ -192,11 +194,12 @@ class MCPAuth {
             }
         }
 
-        $clientID = MCPApp::register($name, $redirectUris);
+        $clientID = MCPApp::register($name, $redirectUris, $writesAsUser);
         return self::json([
             "client_id"                  => $clientID,
             "client_name"                => $name,
             "redirect_uris"              => $redirectUris,
+            "writes_as_user"             => $writesAsUser,
             "grant_types"                => [ "authorization_code", "refresh_token" ],
             "response_types"             => [ "code" ],
             "token_endpoint_auth_method" => "none",
@@ -319,9 +322,10 @@ class MCPAuth {
 
 
     /**
-     * Returns the name of the App of the given Request and the host it goes back to, or null
+     * Returns the name of the App of the given Request, the host it goes back to, and whether
+     * it writes as the user, or null
      * @param string $requestID
-     * @return array{name:string,host:string}|null
+     * @return array{name:string,host:string,writesAsUser:bool}|null
      */
     #[NotTested("It needs the database")]
     public static function getRequestApp(string $requestID): ?array {
@@ -333,8 +337,9 @@ class MCPAuth {
         // The name is the one the App gave itself, so the host is what shows which App it is
         $app = MCPApp::get($grant->clientID);
         return [
-            "name" => $app->name,
-            "host" => URL::getHost($grant->redirectUri),
+            "name"         => $app->name,
+            "host"         => URL::getHost($grant->redirectUri),
+            "writesAsUser" => $app->writesAsUser,
         ];
     }
 
@@ -383,7 +388,17 @@ class MCPAuth {
 
         // A Credential that lost its Access since it allowed the App loses the App too
         Auth::setCredential($credential);
+        self::$writesAsUser = MCPApp::get($token->clientID)->writesAsUser;
         return self::hasAccess();
+    }
+
+    /**
+     * Returns true unless the App of the Token that logged in writes as the user, so that what
+     * an assistant writes is shown as its own
+     * @return bool
+     */
+    public static function isAssistant(): bool {
+        return !self::$writesAsUser;
     }
 
     /**

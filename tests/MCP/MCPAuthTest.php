@@ -90,4 +90,10 @@ class MCPAuthTest extends TestCase {
         $this->assertNotSame(MCPAuth::hash("a-token"), MCPAuth::hash("another-token"));
         $this->assertSame(64, strlen(MCPAuth::hash("a-token")));
     }
+
+    public function testWithoutTheTokenOfAnAppItIsAnAssistant(): void {
+        // A call that did not log in with the Token of an App, like one with the Token of an
+        // Access, is taken as an assistant's, as only an App can say that it writes as the user
+        $this->assertTrue(MCPAuth::isAssistant());
+    }
 }

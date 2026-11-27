@@ -22,4 +22,8 @@ class MCPAppModel {
 
     #[Field(isText: true)]
     public string $redirectUris = "";
+
+    // An App that is not an assistant, like a client of the user's own, writes as the user
+    #[Field]
+    public bool $writesAsUser = false;
 }
